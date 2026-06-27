@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'username', 'score', 'confirmations_count', 'accepted_confirmations_count', 'penalized_confirmations_count', 'is_suspended', 'referral_code'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,6 +27,32 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_suspended' => 'boolean',
         ];
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(FlagReport::class);
+    }
+
+    public function scoreTransactions()
+    {
+        return $this->hasMany(ScoreTransaction::class);
+    }
+
+    public function referrals()
+    {
+        return $this->hasMany(Referral::class, 'referrer_user_id');
+    }
+
+    public function referral()
+    {
+        return $this->hasOne(Referral::class, 'invited_user_id');
+    }
+
+    public function favorites()
+    {
+        return $this->belongsToMany(Beach::class, 'favorites', 'user_id', 'beach_id')->withTimestamps();
     }
 }

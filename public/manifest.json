@@ -1,0 +1,17 @@
+{
+  "name": "CheckPraia - Bandeiras das Praias em Tempo Real",
+  "short_name": "CheckPraia",
+  "description": "Consulta a bandeira mais provável das praias de Portugal antes de saíres de casa.",
+  "start_url": "/pt",
+  "display": "standalone",
+  "background_color": "#070a13",
+  "theme_color": "#0d1527",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
