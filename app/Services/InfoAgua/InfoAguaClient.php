@@ -11,30 +11,9 @@ class InfoAguaClient
      */
     public function getWaterQuality(string $externalId): string
     {
-        try {
-            // Query the Portuguese Gov Open Data portal for bathing water quality datasets
-            $response = Http::timeout(4)->get('https://dados.gov.pt/api/1/datasets/?q=qualidade+balnear');
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $datasets = $data['data'] ?? [];
-                
-                // If a valid dataset resource is found, verify its active status
-                if (!empty($datasets)) {
-                    // Successfully connected to real government endpoints
-                    // For performance and limits, we map the official classes.
-                    // Typically: Excellent, Good, Sufficient, Poor.
-                    // Deterministically match by the externalId hash to keep it consistent
-                    $hash = crc32($externalId);
-                    $classes = ['Excellent', 'Excellent', 'Excellent', 'Good', 'Good', 'Sufficient', 'Poor'];
-                    return $classes[abs($hash) % count($classes)];
-                }
-            }
-        } catch (\Exception $e) {
-            logger()->error('InfoAgua Government API request failed: ' . $e->getMessage());
-        }
-
-        // Resilient fallback based on deterministic hash of the beach external ID
+        // Since database external_ids are internal placeholders, we cannot map them
+        // to real Portuguese government bathing water code datasets (e.g. PTCO3M).
+        // We use a deterministic hash of the beach external ID to simulate quality class (Excellent, Good, Sufficient, Poor).
         $hash = crc32($externalId);
         $classes = ['Excellent', 'Excellent', 'Good', 'Good', 'Sufficient'];
         return $classes[abs($hash) % count($classes)];

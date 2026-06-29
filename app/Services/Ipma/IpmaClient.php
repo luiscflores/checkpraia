@@ -12,11 +12,12 @@ class IpmaClient
     public function getWeatherForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo for high-resolution coordinate weather
+            // Query Open-Meteo for high-resolution coordinate weather, requesting knots directly for wind speed unit
             $response = Http::timeout(5)->get('https://api.open-meteo.com/v1/forecast', [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
-                'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index',
+                'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index,visibility',
+                'wind_speed_unit' => 'kn',
                 'timezone' => 'Europe/London',
             ]);
 
@@ -25,9 +26,7 @@ class IpmaClient
                 $current = $payload['current'] ?? null;
 
                 if ($current) {
-                    // Convert wind speed from km/h to knots (1 knot = 1.852 km/h)
-                    $windSpeedKmh = (float) ($current['wind_speed_10m'] ?? 15);
-                    $windSpeedKt = round($windSpeedKmh / 1.852, 1);
+                    $windSpeedKt = (float) ($current['wind_speed_10m'] ?? 0.0);
 
                     // Convert wind degree to compass direction
                     $windDegree = (int) ($current['wind_direction_10m'] ?? 0);
@@ -35,42 +34,32 @@ class IpmaClient
                     
                     $uv = (float) ($current['uv_index'] ?? 0.0);
 
-                    // Jellyfish calculation (Physalia physalis index):
-                    $jellyRisk = 'Baixo';
-                    if ($windSpeedKt > 12.0) {
-                        $jellyRisk = 'Moderado';
-                        if ($windSpeedKt > 18.0) {
-                            $jellyRisk = 'Alto';
-                        }
+                    // Visibility classification
+                    $visibilityMeters = (float) ($current['visibility'] ?? 10000.0);
+                    $visibility = 'Boa';
+                    if ($visibilityMeters < 2000.0) {
+                        $visibility = 'Fraca';
+                    } elseif ($visibilityMeters < 10000.0) {
+                        $visibility = 'Moderada';
                     }
 
                     return [
                         'wind_speed' => $windSpeedKt,
                         'wind_direction' => $windDirection,
                         'precipitation' => (float) ($current['precipitation'] ?? 0.0),
-                        'visibility' => 'Boa', // Default visibility
+                        'visibility' => $visibility,
                         'temp' => (float) ($current['temperature_2m'] ?? 20.0),
                         'uv_index' => $uv,
-                        'jellyfish_risk' => $jellyRisk,
+                        'jellyfish_risk' => $windSpeedKt > 18.0 ? 'Alto' : ($windSpeedKt > 12.0 ? 'Moderado' : 'Baixo'),
                         'forecasted_at' => now(),
                     ];
                 }
             }
+            throw new \Exception('Weather forecast data is missing in the API response.');
         } catch (\Exception $e) {
             logger()->error('Open-Meteo Weather API failed: ' . $e->getMessage());
+            throw $e;
         }
-
-        // Resilient fallback values
-        return [
-            'wind_speed' => 12.0,
-            'wind_direction' => 'N',
-            'precipitation' => 0.0,
-            'visibility' => 'Boa',
-            'temp' => 21.0,
-            'uv_index' => 6.0,
-            'jellyfish_risk' => 'Baixo',
-            'forecasted_at' => now(),
-        ];
     }
 
     /**
@@ -79,11 +68,11 @@ class IpmaClient
     public function getOceanForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo Marine API for wave heights and period at exact coordinates
+            // Query Open-Meteo Marine API for wave heights, period and sea surface temp at exact coordinates
             $response = Http::timeout(5)->get('https://marine-api.open-meteo.com/v1/marine', [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
-                'current' => 'wave_height,wave_period,wave_direction',
+                'current' => 'wave_height,wave_period,wave_direction,sea_surface_temperature',
                 'timezone' => 'Europe/London',
             ]);
 
@@ -92,43 +81,27 @@ class IpmaClient
                 $current = $payload['current'] ?? null;
 
                 if ($current) {
-                    $height = (float) ($current['wave_height'] ?? 1.0);
-                    $period = (float) ($current['wave_period'] ?? 7.0);
+                    $height = (float) ($current['wave_height'] ?? 0.0);
+                    $period = (float) ($current['wave_period'] ?? 0.0);
                     $waveDegree = (int) ($current['wave_direction'] ?? 270);
-
-                    // Estimate sea surface temp based on latitude/region
-                    $waterTemp = 16.0; // Default continental summer SST
-                    if ($latitude < 35.0) {
-                        $waterTemp = 21.5; // Madeira / Azores waters are warmer
-                    } elseif ($latitude < 38.0) {
-                        $waterTemp = 19.0; // Algarve waters
-                    }
+                    $waterTemp = (float) ($current['sea_surface_temperature'] ?? 0.0);
 
                     return [
-                        'wave_height_min' => max(0.1, round($height * 0.7, 1)),
-                        'wave_height_max' => max(0.2, round($height * 1.3, 1)),
-                        'wave_period_min' => max(3.0, round($period * 0.8, 1)),
-                        'wave_period_max' => max(4.0, round($period * 1.2, 1)),
+                        'wave_height_min' => $height,
+                        'wave_height_max' => $height,
+                        'wave_period_min' => $period,
+                        'wave_period_max' => $period,
                         'wave_direction' => $this->getCompassDirection($waveDegree),
                         'water_temp' => $waterTemp,
                         'forecasted_at' => now(),
                     ];
                 }
             }
+            throw new \Exception('Ocean forecast data is missing in the API response.');
         } catch (\Exception $e) {
             logger()->error('Open-Meteo Marine API failed: ' . $e->getMessage());
+            throw $e;
         }
-
-        // Resilient default oceanographic values
-        return [
-            'wave_height_min' => 0.4,
-            'wave_height_max' => 1.2,
-            'wave_period_min' => 6.0,
-            'wave_period_max' => 8.0,
-            'wave_direction' => 'W',
-            'water_temp' => 17.0,
-            'forecasted_at' => now(),
-        ];
     }
 
     /**

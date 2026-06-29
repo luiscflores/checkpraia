@@ -212,10 +212,86 @@
                 </form>
             </div>
 
+            <!-- Beach Profile Manager Card -->
+            <div class="glass-card p-6 rounded-3xl space-y-4">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Perfis de Previsão por Praia</h3>
+                
+                @if(session()->has('beach_profile_success'))
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-xl font-semibold">
+                        ✔️ {{ session('beach_profile_success') }}
+                    </div>
+                @endif
+
+                <div class="space-y-3">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Selecionar Praia para Configurar</label>
+                        <select wire:change="selectBeachForEdit($event.target.value)" class="w-full glass-input px-3.5 py-2.5 rounded-xl bg-slate-900 border-white/12 text-white">
+                            <option value="">-- Selecione uma Praia --</option>
+                            @foreach($beachesList as $bc)
+                                <option value="{{ $bc->id }}" {{ $selectedBeachId == $bc->id ? 'selected' : '' }}>{{ $bc->name }} ({{ $bc->type }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    @if($selectedBeachId)
+                        <form wire:submit.prevent="saveBeachProfile" class="space-y-3 pt-3 border-t border-white/5">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Tipo de Praia</label>
+                                    <select wire:model="beachType" class="w-full glass-input px-3.5 py-2.5 rounded-xl bg-slate-900 border-white/12 text-white">
+                                        <option value="oceanic">Oceânica (Exposta)</option>
+                                        <option value="estuarine">Estuarina (Rio/Foz)</option>
+                                        <option value="fluvial">Fluvial (Rio/Interior)</option>
+                                        <option value="lagoon">Lagunar (Lagoa)</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Fator de Exposição</label>
+                                    <input type="number" step="0.05" min="0.0" max="5.0" wire:model="exposureFactor" class="w-full glass-input px-3.5 py-2.5 rounded-xl" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Fator de Abrigo</label>
+                                    <input type="number" step="0.05" min="0.1" max="10.0" wire:model="shelterFactor" class="w-full glass-input px-3.5 py-2.5 rounded-xl" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Peso Ondulação</label>
+                                    <input type="number" step="0.1" min="0.0" max="2.0" wire:model="waveHeightWeight" class="w-full glass-input px-3.5 py-2.5 rounded-xl" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Peso Vento</label>
+                                    <input type="number" step="0.1" min="0.0" max="2.0" wire:model="windWeight" class="w-full glass-input px-3.5 py-2.5 rounded-xl" />
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors">
+                                Salvar Perfil de Previsão
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+
             <!-- Operations details logs status -->
             <div class="glass-card p-6 rounded-3xl space-y-4">
                 <h3 class="text-sm font-bold text-white uppercase tracking-wider">Estado Operacional de APIs Externas</h3>
                 
+                @if(session()->has('sync_success'))
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-xl font-semibold">
+                        ✔️ {{ session('sync_success') }}
+                    </div>
+                @endif
+                @if(session()->has('sync_error'))
+                    <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded-xl font-semibold">
+                        ❌ {{ session('sync_error') }}
+                    </div>
+                @endif
+
                 <div class="space-y-3 text-xs">
                     <div class="flex justify-between items-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
                         <span>🌤️ IPMA Meteo & Swell Forecast API</span>
@@ -235,6 +311,20 @@
                     <div class="flex justify-between items-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
                         <span>🍴 TheFork Booking API Wrapper</span>
                         <span class="font-extrabold text-[10px] uppercase">Operacional (Cache)</span>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5 space-y-2">
+                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Ações de Sincronização Manual</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button wire:click="syncIpmaData" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl text-[10px] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50">
+                            <span wire:loading wire:target="syncIpmaData" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>🔄 Sincronizar IPMA</span>
+                        </button>
+                        <button wire:click="syncWaterQualityData" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl text-[10px] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50">
+                            <span wire:loading wire:target="syncWaterQualityData" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>🔄 Sincronizar InfoÁgua</span>
+                        </button>
                     </div>
                 </div>
             </div>

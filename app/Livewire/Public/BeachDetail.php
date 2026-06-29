@@ -105,7 +105,8 @@ class BeachDetail extends Component
         // Fetch forecasts
         $latestOcean = OceanForecast::where('beach_id', $this->beach->id)->orderBy('forecasted_at', 'desc')->first();
         $latestWeather = WeatherForecast::where('beach_id', $this->beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $latestQuality = WaterQualitySnapshot::where('beach_id', $this->beach->id)->orderBy('sampled_at', 'desc')->first();
+        $latestQuality = WaterQualitySnapshot::where('beach_id', $this->beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
+        $latestPrediction = \App\Models\FlagPrediction::where('beach_id', $this->beach->id)->orderBy('calculated_at', 'desc')->first();
         
         $activeAlerts = OfficialAlert::where('beach_id', $this->beach->id)
             ->orWhereNull('beach_id')
@@ -119,6 +120,7 @@ class BeachDetail extends Component
             'weather' => $latestWeather,
             'quality' => $latestQuality,
             'alerts' => $activeAlerts,
+            'prediction' => $latestPrediction,
         ])->layout('components.layouts.app');
     }
 }

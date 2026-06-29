@@ -114,14 +114,16 @@ class ConsensusResolver
 
         // 3. Fallback to automatic prediction
         $prediction = FlagPrediction::where('beach_id', $beach->id)->orderBy('calculated_at', 'desc')->first();
-        if ($prediction) {
+        if ($prediction && \Carbon\Carbon::parse($prediction->calculated_at)->isAfter(now()->subHours(24))) {
             $reason = 'Condições favoráveis de vento, ondulação e qualidade da água.';
             
             $ocean = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
             $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-            $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->first();
+            $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
             
-            if ($prediction->selected_flag === 'red') {
+            if ($prediction->selected_flag === 'gray') {
+                $reason = 'Dados insuficientes ou obsoletos para previsão.';
+            } elseif ($prediction->selected_flag === 'red') {
                 if ($quality && strtolower($quality->quality_class) === 'poor') {
                     $reason = 'Qualidade da água imprópria para banhos.';
                 } elseif ($ocean && $ocean->wave_height_max > 2.0) {

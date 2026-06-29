@@ -61,43 +61,61 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="bg-slate-900 text-slate-100 antialiased min-h-screen flex justify-center selection:bg-blue-600 selection:text-white">
+<body class="bg-slate-900 text-slate-100 antialiased min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
 
-    <!-- Mobile Device Container Mock -->
-    <div class="w-full max-w-md bg-slate-950 min-h-screen flex flex-col shadow-2xl border-x border-white/5 relative">
+    <!-- Responsive Container -->
+    <div class="w-full flex-1 flex flex-col relative bg-slate-950/20">
         
         <!-- Header -->
-        <header class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between transition-all duration-300">
-            <a href="{{ route('home') }}" class="flex items-center gap-1.5 group">
-                <span class="text-lg">🌊</span>
-                <span class="text-base font-black tracking-tight text-white uppercase bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">CheckPraia</span>
-            </a>
+        <header class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
+            <div class="w-full max-w-7xl mx-auto px-4 md:px-6 py-3.5 flex items-center justify-between">
+                <a href="{{ route('home') }}" class="flex items-center gap-1.5 group">
+                    <span class="text-lg">🌊</span>
+                    <span class="text-base font-black tracking-tight text-white uppercase bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">CheckPraia</span>
+                </a>
 
-            <!-- Right Controls: Score and Auth -->
-            <div class="flex items-center gap-2">
-                @auth
-                    <span class="text-[10px] bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shadow-sm">
-                        🏆 {{ auth()->user()->score }}
-                    </span>
-                    <a href="{{ route('profile') }}" class="text-[10px] font-semibold text-slate-200 hover:text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
-                        👤 {{ Str::limit(auth()->user()->name, 8) }}
+                <!-- Desktop Navigation Menu -->
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="{{ route('home') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('home') ? 'text-blue-400 font-extrabold' : 'text-slate-400 hover:text-white' }}">
+                        🗺️ Mapa
                     </a>
-                @else
-                    <a href="{{ route('profile') }}" class="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-lg transition-all shadow-md">
-                        Entrar
+                    <a href="{{ route('rankings') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('rankings') ? 'text-blue-400 font-extrabold' : 'text-slate-400 hover:text-white' }}">
+                        🏆 Rankings
                     </a>
-                @endauth
+                    <a href="{{ route('profile') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('profile') || request()->routeIs('account.*') ? 'text-blue-400 font-extrabold' : 'text-slate-400 hover:text-white' }}">
+                        👤 Perfil
+                    </a>
+                    <a href="{{ route('admin.dashboard') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('admin.*') ? 'text-teal-400 font-extrabold' : 'text-slate-400 hover:text-white' }}">
+                        ⚙️ Admin
+                    </a>
+                </nav>
+
+                <!-- Right Controls: Score and Auth -->
+                <div class="flex items-center gap-2">
+                    @auth
+                        <span class="text-[10px] bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            🏆 {{ auth()->user()->score }}
+                        </span>
+                        <a href="{{ route('profile') }}" class="text-[10px] font-semibold text-slate-200 hover:text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                            👤 {{ Str::limit(auth()->user()->name, 8) }}
+                        </a>
+                    @else
+                        <a href="{{ route('profile') }}" class="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-lg transition-all shadow-md">
+                            Entrar
+                        </a>
+                    @endauth
+                </div>
             </div>
         </header>
 
         <!-- Main Content Area -->
-        <main class="flex-1 w-full px-4 py-4 pb-28 overflow-y-auto">
+        <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-6 pb-28 md:pb-12">
             {{ $slot }}
 
-            <!-- Footer Area (Inside scrollable main to avoid fixed layout blocking) -->
+            <!-- Footer Area -->
             <footer class="w-full border-t border-white/5 py-6 mt-12 text-slate-500 text-[10px] space-y-4">
                 <!-- Safety Disclaimer (Required Section 52) -->
-                <div class="p-3.5 rounded-xl border border-red-500/20 bg-red-950/10 text-red-300 leading-relaxed shadow-sm">
+                <div class="p-4 rounded-xl border border-red-500/20 bg-red-950/10 text-red-300 leading-relaxed shadow-sm">
                     <span class="font-bold text-red-400 uppercase tracking-wide block mb-1">⚠️ Aviso de Segurança:</span>
                     A bandeira apresentada pelo CheckPraia resulta de previsões automáticas ou partilhas da comunidade. Não constitui informação oficial. Verifica sempre a bandeira na praia e segue os nadadores-salvadores.
                 </div>
@@ -113,8 +131,8 @@
             </footer>
         </main>
 
-        <!-- Sticky Bottom Navigation Bar for all screens (PWA Feel) -->
-        <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50 bg-slate-950/90 backdrop-blur-lg border-t border-white/10 flex justify-around items-center py-2.5 px-4 shadow-lg pb-safe">
+        <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
+        <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50 bg-slate-950/90 backdrop-blur-lg border-t border-white/10 flex justify-around items-center py-2.5 px-4 shadow-lg pb-safe md:hidden">
             <a href="{{ route('home') }}" class="flex flex-col items-center gap-0.5 text-[9px] {{ request()->routeIs('home') ? 'text-blue-400 font-bold' : 'text-slate-400' }}">
                 <span class="text-lg">🗺️</span>
                 <span>Mapa</span>

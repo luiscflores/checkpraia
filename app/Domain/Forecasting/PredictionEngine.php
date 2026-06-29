@@ -20,16 +20,10 @@ class PredictionEngine
         $profile = $beach->predictionProfile ?: $beach->predictionProfile()->create();
         $features = $beach->features ?: $beach->features()->create();
 
-        // 1. Base probabilities
-        $green = 50;
-        $yellow = 30;
-        $red = 20;
-        $confidence = 100;
-
         // Fetch latest forecasts and alerts
         $ocean = OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
         $weather = WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $quality = WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->first();
+        $quality = WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
         
         $alert = OfficialAlert::where('beach_id', $beach->id)
             ->orWhereNull('beach_id') // regional or national warnings
@@ -38,77 +32,188 @@ class PredictionEngine
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
             })->first();
 
-        // Wave exposure multipliers
-        $waveHeight = $ocean ? (float) $ocean->wave_height_max : 0.5; // default calm
+        // 1. If we have no external forecast data, return gray flag (Indisponível)
+        if (!$ocean || !$weather) {
+            return new FlagPrediction([
+                'beach_id' => $beach->id,
+                'green_probability' => 0,
+                'yellow_probability' => 0,
+                'red_probability' => 0,
+                'selected_flag' => 'gray',
+                'confidence' => 0,
+                'algorithm_version' => $profile->algorithm_version ?: '1.0',
+                'calculated_at' => now(),
+            ]);
+        }
+
+        // Validate freshness: if forecasts are older than 24 hours, do not predict (stale data)
+        $oceanAge = abs(now()->diffInHours($ocean->created_at));
+        $weatherAge = abs(now()->diffInHours($weather->created_at));
+        if ($oceanAge > 24 || $weatherAge > 24) {
+            return new FlagPrediction([
+                'beach_id' => $beach->id,
+                'green_probability' => 0,
+                'yellow_probability' => 0,
+                'red_probability' => 0,
+                'selected_flag' => 'gray',
+                'confidence' => 0,
+                'algorithm_version' => $profile->algorithm_version ?: '1.0',
+                'calculated_at' => now(),
+            ]);
+        }
+
+        // Validate essential data: if essential values are null, do not predict
+        if (($beach->type === 'oceanic' && $ocean->wave_height_max === null) || $weather->wind_speed === null) {
+            return new FlagPrediction([
+                'beach_id' => $beach->id,
+                'green_probability' => 0,
+                'yellow_probability' => 0,
+                'red_probability' => 0,
+                'selected_flag' => 'gray',
+                'confidence' => 0,
+                'algorithm_version' => $profile->algorithm_version ?: '1.0',
+                'calculated_at' => now(),
+            ]);
+        }
+
+        // 2. Base probabilities and calculations
+        $coastAngle = $this->getCompassAngle($features->coast_orientation ?: 'W');
+        $waveAngle = $this->getCompassAngle($ocean->wave_direction ?: 'W');
+        $windAngle = $this->getCompassAngle($weather->wind_direction ?: 'N');
+
+        // Wave alignment to coast: 0 deg difference = head-on swell, 180 deg difference = offshore swell
+        $waveAngleDiff = $this->getAngleDifference($coastAngle, $waveAngle);
+        $waveDirMultiplier = 0.3 + 1.0 * (1.0 - ($waveAngleDiff / 180.0));
+
+        // Wind alignment to coast: 0 deg difference = onshore wind, 180 deg difference = offshore wind
+        $windAngleDiff = $this->getAngleDifference($coastAngle, $windAngle);
+        $windDirMultiplier = 0.6 + 0.8 * (1.0 - ($windAngleDiff / 180.0));
+
+        // Wave exposure and profile weight multipliers
+        $waveHeight = (float) $ocean->wave_height_max;
         $exposureFactor = (float) ($profile->exposure_factor ?? 1.0);
         $shelterFactor = (float) ($profile->shelter_factor ?? 1.0);
+        $waveHeightWeight = (float) ($profile->wave_height_weight ?? 1.0);
 
-        // Effective wave height at beach based on exposure & shelter factors
-        $effectiveHeight = $waveHeight * ($exposureFactor / max(0.1, $shelterFactor));
+        // Effective wave height based on exposure, shelter, wave direction alignment, and weight
+        $effectiveHeight = $waveHeight * $waveDirMultiplier * ($exposureFactor / max(0.1, $shelterFactor)) * $waveHeightWeight;
 
-        // Wind calculations
-        $windSpeed = $weather ? (float) $weather->wind_speed : 8.0; // knots
-        $windDir = $weather ? $weather->wind_direction : 'N';
-        $coastDir = $features->coast_orientation ?: 'W';
+        // Estuarine, fluvial, and lagoon beaches are physically sheltered from ocean swell
+        if ($beach->type && $beach->type !== 'oceanic') {
+            $effectiveHeight = 0.0;
+        }
 
-        $isOnshore = $this->isWindOnshore($coastDir, $windDir);
-        $effectiveWindSpeed = $windSpeed * ($isOnshore ? 1.4 : 0.7);
+        // Wind calculations and wind weight multiplier
+        $windSpeed = (float) $weather->wind_speed;
+        $windWeight = (float) ($profile->wind_weight ?? 1.0);
+        $effectiveWindSpeed = $windSpeed * $windDirMultiplier * $windWeight;
 
-        // Lifeguard Safety Checklist criteria:
-        // 1. RED FLAG (Bathing Forbidden):
+        // 3. Compute continuous flag probabilities (triangular/trapezoidal membership functions)
+        $P_wave_green = 0.0; $P_wave_yellow = 0.0; $P_wave_red = 0.0;
+        if ($effectiveHeight <= 0.6) {
+            $P_wave_green = 1.0;
+        } elseif ($effectiveHeight < 1.4) {
+            $P_wave_green = (1.4 - $effectiveHeight) / 0.8;
+        }
+        if ($effectiveHeight > 0.6 && $effectiveHeight <= 1.0) {
+            $P_wave_yellow = ($effectiveHeight - 0.6) / 0.4;
+        } elseif ($effectiveHeight > 1.0 && $effectiveHeight < 2.0) {
+            $P_wave_yellow = 1.0;
+        } elseif ($effectiveHeight >= 2.0 && $effectiveHeight < 2.4) {
+            $P_wave_yellow = (2.4 - $effectiveHeight) / 0.4;
+        }
+        if ($effectiveHeight > 1.6 && $effectiveHeight < 2.4) {
+            $P_wave_red = ($effectiveHeight - 1.6) / 0.8;
+        } elseif ($effectiveHeight >= 2.4) {
+            $P_wave_red = 1.0;
+        }
+
+        $P_wind_green = 0.0; $P_wind_yellow = 0.0; $P_wind_red = 0.0;
+        if ($effectiveWindSpeed <= 10.0) {
+            $P_wind_green = 1.0;
+        } elseif ($effectiveWindSpeed < 18.0) {
+            $P_wind_green = (18.0 - $effectiveWindSpeed) / 8.0;
+        }
+        if ($effectiveWindSpeed > 10.0 && $effectiveWindSpeed <= 15.0) {
+            $P_wind_yellow = ($effectiveWindSpeed - 10.0) / 5.0;
+        } elseif ($effectiveWindSpeed > 15.0 && $effectiveWindSpeed < 22.0) {
+            $P_wind_yellow = 1.0;
+        } elseif ($effectiveWindSpeed >= 22.0 && $effectiveWindSpeed < 26.0) {
+            $P_wind_yellow = (26.0 - $effectiveWindSpeed) / 4.0;
+        }
+        if ($effectiveWindSpeed > 18.0 && $effectiveWindSpeed < 26.0) {
+            $P_wind_red = ($effectiveWindSpeed - 18.0) / 8.0;
+        } elseif ($effectiveWindSpeed >= 26.0) {
+            $P_wind_red = 1.0;
+        }
+
+        // A beach can only be as safe (green) as the worst of the wave and wind conditions
+        $rawGreen = min($P_wave_green, $P_wind_green);
+        
+        // A beach is as dangerous (red) as the worst of the wave and wind conditions
+        $rawRed = max($P_wave_red, $P_wind_red);
+        
+        // Yellow acts as the logical transition between Green and Red
+        $rawYellow = max(0.0, 1.0 - $rawGreen - $rawRed);
+
+        // Apply critical environmental modifiers (e.g. jellyfish, water quality)
+        if ($quality && strtolower($quality->quality_class) === 'poor') {
+            $rawRed = 1.0; $rawGreen = 0.0; $rawYellow = 0.0;
+        } else {
+            if ($weather->jellyfish_risk === 'Alto') {
+                $rawRed = max($rawRed, 0.8);
+                $rawGreen = 0.0;
+            } elseif ($weather->jellyfish_risk === 'Moderado') {
+                $rawYellow = max($rawYellow, 0.7);
+                $rawGreen = min($rawGreen, 0.1);
+            }
+
+            if ($quality && strtolower($quality->quality_class) === 'sufficient') {
+                $rawYellow = max($rawYellow, 0.7);
+                $rawGreen = min($rawGreen, 0.2);
+            }
+
+            // Re-adjust yellow to absorb transition after modifiers are applied
+            $rawYellow = max($rawYellow, 1.0 - $rawGreen - $rawRed);
+        }
+
+        // Normalize to 100% total
+        $sum = $rawGreen + $rawYellow + $rawRed;
+        if ($sum > 0) {
+            $green = (int) round(($rawGreen / $sum) * 100);
+            $yellow = (int) round(($rawYellow / $sum) * 100);
+            $red = 100 - $green - $yellow;
+        } else {
+            $green = 0; $yellow = 0; $red = 100;
+        }
+
+        // Selected flag is the one with the highest probability
+        if ($red >= $green && $red >= $yellow) {
+            $selectedFlag = 'red';
+        } elseif ($yellow >= $green && $yellow >= $red) {
+            $selectedFlag = 'yellow';
+        } else {
+            $selectedFlag = 'green';
+        }
+
+        // Override if official alerts are present
         if ($alert && in_array($alert->type, ['interdiction', 'restriction'])) {
             $selectedFlag = 'red';
             $green = 0; $yellow = 0; $red = 100;
-        } elseif ($quality && strtolower($quality->quality_class) === 'poor') {
-            $selectedFlag = 'red';
-            $green = 0; $yellow = 0; $red = 100;
-        } elseif ($effectiveHeight > 1.6) {
-            $selectedFlag = 'red';
-            $green = 0; $yellow = 10; $red = 90;
-        } elseif ($effectiveWindSpeed > 22.0) {
-            $selectedFlag = 'red';
-            $green = 0; $yellow = 15; $red = 85;
-        } elseif ($weather && $weather->jellyfish_risk === 'Alto') {
-            $selectedFlag = 'red';
-            $green = 0; $yellow = 20; $red = 80;
-        }
-        // 2. YELLOW FLAG (Caution, no swimming):
-        elseif ($effectiveHeight > 0.8) {
-            $selectedFlag = 'yellow';
-            $green = 10; $yellow = 80; $red = 10;
-        } elseif ($effectiveWindSpeed > 13.0) {
-            $selectedFlag = 'yellow';
-            $green = 15; $yellow = 75; $red = 10;
-        } elseif ($quality && strtolower($quality->quality_class) === 'sufficient') {
-            $selectedFlag = 'yellow';
-            $green = 20; $yellow = 70; $red = 10;
-        } elseif ($weather && $weather->jellyfish_risk === 'Moderado') {
-            $selectedFlag = 'yellow';
-            $green = 25; $yellow = 65; $red = 10;
-        } elseif ($features->current_risk === 'high') {
-            $selectedFlag = 'yellow';
-            $green = 30; $yellow = 60; $red = 10;
         } elseif ($alert && $alert->type === 'warning') {
-            $selectedFlag = 'yellow';
-            $green = 30; $yellow = 60; $red = 10;
-        }
-        // 3. GREEN FLAG (Safe for bathing):
-        else {
-            $selectedFlag = 'green';
-            $green = 95; $yellow = 5; $red = 0;
+            if ($selectedFlag === 'green') {
+                $selectedFlag = 'yellow';
+                $green = 10; $yellow = 90; $red = 0;
+            }
         }
 
         // Compute confidence based on data freshness
+        $oceanAge = abs(now()->diffInHours($ocean->created_at));
+        $weatherAge = abs(now()->diffInHours($weather->created_at));
+        $maxAge = max($oceanAge, $weatherAge);
         $confidence = 100;
-        if (!$ocean || !$weather) {
-            $confidence = 50; // no external data
-        } else {
-            $oceanAge = now()->diffInHours($ocean->created_at);
-            $weatherAge = now()->diffInHours($weather->created_at);
-            $maxAge = max($oceanAge, $weatherAge);
-            if ($maxAge > 4) {
-                $confidence = max(20, 100 - ($maxAge * 6));
-            }
+        if ($maxAge > 4) {
+            $confidence = max(20, 100 - ($maxAge * 6));
         }
 
         return new FlagPrediction([
@@ -124,29 +229,30 @@ class PredictionEngine
     }
 
     /**
-     * Check if the wind blows towards the shoreline (onshore).
+     * Map a compass direction string (N, NE, etc.) to degree angle.
      */
-    private function isWindOnshore(string $coastDir, string $windDir): bool
+    private function getCompassAngle(string $dir): int
     {
-        $coastDir = strtoupper(trim($coastDir));
-        $windDir = strtoupper(trim($windDir));
-
-        if ($coastDir === $windDir) {
-            return false; // Blowing offshore (e.g. Coast faces West, Wind is West, blows from land to sea)
-        }
-
-        // Direction mapping for onshore directions (facing coastal target)
-        $onshoreMapping = [
-            'N' => ['S', 'SW', 'SE'],
-            'S' => ['N', 'NW', 'NE'],
-            'E' => ['W', 'NW', 'SW'],
-            'W' => ['E', 'NE', 'SE'],
-            'NW' => ['SE', 'E', 'S'],
-            'NE' => ['SW', 'W', 'S'],
-            'SW' => ['NE', 'E', 'N'],
-            'SE' => ['NW', 'W', 'N']
+        $dir = strtoupper(trim($dir));
+        $mapping = [
+            'N' => 0,
+            'NE' => 45,
+            'E' => 90,
+            'SE' => 135,
+            'S' => 180,
+            'SW' => 225,
+            'W' => 270,
+            'NW' => 315
         ];
+        return $mapping[$dir] ?? 270;
+    }
 
-        return in_array($windDir, $onshoreMapping[$coastDir] ?? []);
+    /**
+     * Calculate shortest difference in degrees between two angles.
+     */
+    private function getAngleDifference(int $angle1, int $angle2): int
+    {
+        $diff = abs($angle1 - $angle2) % 360;
+        return $diff > 180 ? 360 - $diff : $diff;
     }
 }

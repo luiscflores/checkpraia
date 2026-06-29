@@ -21,6 +21,14 @@ class Dashboard extends Component
     // Search users
     public $searchUser = '';
 
+    // Beach profile state
+    public $selectedBeachId;
+    public $beachType = 'oceanic';
+    public $exposureFactor = 1.0;
+    public $shelterFactor = 1.0;
+    public $waveHeightWeight = 1.0;
+    public $windWeight = 1.0;
+
     // Score adjustment form
     public $selectedUserId;
     public $selectedUser;
@@ -36,6 +44,49 @@ class Dashboard extends Component
     public $campaignStartsAt;
     public $campaignEndsAt;
     public $campaignBeachId;
+
+    public function selectBeachForEdit($beachId)
+    {
+        $beach = Beach::with('predictionProfile')->find($beachId);
+        if ($beach) {
+            $this->selectedBeachId = $beach->id;
+            $this->beachType = $beach->type ?: 'oceanic';
+            
+            $profile = $beach->predictionProfile ?: $beach->predictionProfile()->create();
+            $this->exposureFactor = (float) $profile->exposure_factor;
+            $this->shelterFactor = (float) $profile->shelter_factor;
+            $this->waveHeightWeight = (float) $profile->wave_height_weight;
+            $this->windWeight = (float) $profile->wind_weight;
+        }
+    }
+
+    public function saveBeachProfile()
+    {
+        $beach = Beach::find($this->selectedBeachId);
+        if ($beach) {
+            $beach->type = $this->beachType;
+            $beach->save();
+
+            $profile = $beach->predictionProfile ?: $beach->predictionProfile()->create();
+            $profile->update([
+                'exposure_factor' => $this->exposureFactor,
+                'shelter_factor' => $this->shelterFactor,
+                'wave_height_weight' => $this->waveHeightWeight,
+                'wind_weight' => $this->windWeight,
+            ]);
+
+            // Re-calculate flag prediction immediately for this beach
+            $engine = new \App\Domain\Forecasting\PredictionEngine();
+            $prediction = $engine->calculate($beach);
+            $prediction->save();
+
+            // Re-evaluate current consensus status
+            $resolver = new \App\Domain\Community\ConsensusResolver();
+            $resolver->resolveCurrentStatus($beach);
+
+            session()->flash('beach_profile_success', 'Perfil de previsão da praia ' . $beach->name . ' atualizado com sucesso!');
+        }
+    }
 
     public function selectUser($userId)
     {
@@ -136,6 +187,28 @@ class Dashboard extends Component
             $user->is_suspended = !$user->is_suspended;
             $user->save();
             session()->flash('user_action', 'Estado de suspensão de ' . $user->username . ' alterado.');
+        }
+    }
+
+    public function syncIpmaData()
+    {
+        try {
+            \App\Jobs\FetchIpmaForecasts::dispatchSync();
+            session()->flash('sync_success', 'Dados de previsão (IPMA/Open-Meteo) sincronizados com sucesso!');
+        } catch (\Exception $e) {
+            logger()->error('Ipma manual sync failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha na sincronização do IPMA: ' . $e->getMessage());
+        }
+    }
+
+    public function syncWaterQualityData()
+    {
+        try {
+            \App\Jobs\FetchInfoAguaData::dispatchSync();
+            session()->flash('sync_success', 'Dados de qualidade da água (InfoÁgua) sincronizados com sucesso!');
+        } catch (\Exception $e) {
+            logger()->error('InfoAgua manual sync failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha na sincronização do InfoÁgua: ' . $e->getMessage());
         }
     }
 

@@ -11,3 +11,5 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::job(new \App\Jobs\CloseConsensusWindows)->everyMinute();
 Schedule::job(new \App\Jobs\PurgePreciseLocations)->daily();
+Schedule::job(new \App\Jobs\FetchIpmaForecasts)->hourly();
+Schedule::job(new \App\Jobs\FetchInfoAguaData)->hourly();

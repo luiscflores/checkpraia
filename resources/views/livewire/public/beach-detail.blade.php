@@ -117,6 +117,50 @@
                     <p class="text-[10px] text-slate-500">Última atualização: {{ $beach->updated_at->format('H:i') }}</p>
                 </div>
 
+                @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
+                    <div class="mt-4 w-full max-w-xs space-y-2">
+                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Distribuição de Probabilidades</span>
+                        <div class="h-4 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-white/5 p-[2px]">
+                            @if($prediction->green_probability > 0)
+                                <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                     style="width: {{ $prediction->green_probability }}%" 
+                                     title="Verde: {{ $prediction->green_probability }}%">
+                                    @if($prediction->green_probability >= 20) {{ $prediction->green_probability }}% @endif
+                                </div>
+                            @endif
+                            @if($prediction->yellow_probability > 0)
+                                <div class="bg-amber-500 transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                     style="width: {{ $prediction->yellow_probability }}%" 
+                                     title="Amarela: {{ $prediction->yellow_probability }}%">
+                                    @if($prediction->yellow_probability >= 20) {{ $prediction->yellow_probability }}% @endif
+                                </div>
+                            @endif
+                            @if($prediction->red_probability > 0)
+                                <div class="bg-rose-500 rounded-r-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-white" 
+                                     style="width: {{ $prediction->red_probability }}%" 
+                                     title="Vermelha: {{ $prediction->red_probability }}%">
+                                    @if($prediction->red_probability >= 20) {{ $prediction->red_probability }}% @endif
+                                </div>
+                            @endif
+                        </div>
+                        
+                        @php
+                            $g = $prediction->green_probability;
+                            $y = $prediction->yellow_probability;
+                            $r = $prediction->red_probability;
+                            $helperText = 'Previsão estável com tendência clara.';
+                            if ($g >= 30 && $y >= 30) {
+                                $helperText = 'Tendência mista entre Verde e Amarela (mar de transição).';
+                            } elseif ($y >= 30 && $r >= 30) {
+                                $helperText = 'Tendência instável entre Amarela e Vermelha (mar a piorar).';
+                            } elseif ($g >= 30 && $r >= 30) {
+                                $helperText = 'Condições meteorológicas e marítimas voláteis.';
+                            }
+                        @endphp
+                        <span class="text-[10px] text-slate-400 block leading-tight font-medium">💡 {{ $helperText }}</span>
+                    </div>
+                @endif
+
                 @if($beach->currentStatus && $beach->currentStatus->reason)
                     <div class="mt-4 p-3 rounded-xl border border-white/5 bg-slate-900/60 max-w-xs text-center">
                         <p class="text-xs text-slate-300 font-medium leading-relaxed">
@@ -177,60 +221,90 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Ondulação Máxima</span>
-                    <span class="text-xl font-bold text-white block">{{ $ocean ? $ocean->wave_height_max : '0.5' }}m</span>
-                    <span class="text-[10px] text-slate-500 block">Dir: {{ $ocean ? $ocean->wave_direction : 'W' }}</span>
+                    <span class="text-xl font-bold text-white block">{{ $ocean && $ocean->wave_height_max !== null ? $ocean->wave_height_max . 'm' : 'Sem Dados' }}</span>
+                    @if($ocean && $ocean->wave_direction)
+                        <span class="text-[10px] text-slate-500 block">Dir: {{ $ocean->wave_direction }}</span>
+                    @endif
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Temp. da Água</span>
-                    <span class="text-xl font-bold text-white block">{{ $ocean ? $ocean->water_temp : '17' }}°C</span>
+                    <span class="text-xl font-bold text-white block">{{ $ocean && $ocean->water_temp !== null ? $ocean->water_temp . '°C' : 'Sem Dados' }}</span>
                     <span class="text-[10px] text-slate-500 block">SST Média</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Intensidade Vento</span>
-                    <span class="text-xl font-bold text-white block">{{ $weather ? (int)$weather->wind_speed : '10' }} kt</span>
-                    <span class="text-[10px] text-slate-500 block">Dir: {{ $weather ? $weather->wind_direction : 'N' }}</span>
+                    <span class="text-xl font-bold text-white block">{{ $weather && $weather->wind_speed !== null ? (int)$weather->wind_speed . ' kt' : 'Sem Dados' }}</span>
+                    @if($weather && $weather->wind_direction)
+                        <span class="text-[10px] text-slate-500 block">Dir: {{ $weather->wind_direction }}</span>
+                    @endif
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Qualidade Água</span>
-                    <span class="text-xl font-bold text-emerald-400 block">{{ $quality ? $quality->quality_class : 'Excelente' }}</span>
+                    @php
+                        $qualityVal = $quality && $quality->quality_class && $quality->quality_class !== 'Desconhecido' ? $quality->quality_class : 'Sem Dados';
+                        $qualityColor = match($qualityVal) {
+                            'Excellent' => 'text-emerald-400',
+                            'Good' => 'text-teal-400',
+                            'Sufficient' => 'text-amber-400',
+                            'Poor' => 'text-rose-500',
+                            default => 'text-slate-400'
+                        };
+                        $qualityText = match($qualityVal) {
+                            'Excellent' => 'Excelente',
+                            'Good' => 'Boa',
+                            'Sufficient' => 'Suficiente',
+                            'Poor' => 'Imprópria',
+                            default => 'Sem Dados'
+                        };
+                    @endphp
+                    <span class="text-xl font-bold block {{ $qualityColor }}">{{ $qualityText }}</span>
                     <span class="text-[10px] text-slate-500 block">Amostra recente</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Índice UV</span>
                     @php
-                        $uv = $weather && $weather->uv_index ? (float) $weather->uv_index : 5.0;
-                        $uvClass = match(true) {
-                            $uv >= 8.0 => 'text-rose-500 font-extrabold',
-                            $uv >= 6.0 => 'text-orange-400 font-bold',
-                            $uv >= 3.0 => 'text-amber-400 font-semibold',
-                            default => 'text-emerald-400'
-                        };
-                        $uvLabel = match(true) {
-                            $uv >= 8.0 => 'Muito Alto ⚠️',
-                            $uv >= 6.0 => 'Alto',
-                            $uv >= 3.0 => 'Moderado',
-                            default => 'Baixo'
-                        };
+                        $uv = $weather && $weather->uv_index !== null ? (float) $weather->uv_index : null;
+                        $uvClass = 'text-slate-400';
+                        $uvLabel = 'Sem Dados';
+                        if ($uv !== null) {
+                            $uvClass = match(true) {
+                                $uv >= 8.0 => 'text-rose-500 font-extrabold',
+                                $uv >= 6.0 => 'text-orange-400 font-bold',
+                                $uv >= 3.0 => 'text-amber-400 font-semibold',
+                                default => 'text-emerald-400'
+                            };
+                            $uvLabel = match(true) {
+                                $uv >= 8.0 => 'Muito Alto ⚠️',
+                                $uv >= 6.0 => 'Alto',
+                                $uv >= 3.0 => 'Moderado',
+                                default => 'Baixo'
+                            };
+                        }
                     @endphp
-                    <span class="text-xl font-bold block {{ $uvClass }}">{{ $uv }}</span>
+                    <span class="text-xl font-bold block {{ $uvClass }}">{{ $uv !== null ? $uv : 'Sem Dados' }}</span>
                     <span class="text-[10px] text-slate-500 block">{{ $uvLabel }}</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Alforrecas</span>
                     @php
-                        $jelly = $weather && $weather->jellyfish_risk ? $weather->jellyfish_risk : 'Baixo';
-                        $jellyClass = match($jelly) {
-                            'Alto' => 'text-rose-500 font-extrabold',
-                            'Moderado' => 'text-amber-400 font-bold',
-                            default => 'text-emerald-400'
-                        };
+                        $jelly = $weather && $weather->jellyfish_risk ? $weather->jellyfish_risk : null;
+                        $jellyClass = 'text-slate-400';
+                        $jellyLabel = 'Sem Dados';
+                        if ($jelly !== null) {
+                            $jellyClass = match($jelly) {
+                                'Alto' => 'text-rose-500 font-extrabold',
+                                'Moderado' => 'text-amber-400 font-bold',
+                                default => 'text-emerald-400'
+                            };
+                            $jellyLabel = $jelly;
+                        }
                     @endphp
-                    <span class="text-xl font-bold block {{ $jellyClass }}">{{ $jelly }}</span>
+                    <span class="text-xl font-bold block {{ $jellyClass }}">{{ $jellyLabel }}</span>
                     <span class="text-[10px] text-slate-500 block">GelAvista</span>
                 </div>
             </div>
