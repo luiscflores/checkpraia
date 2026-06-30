@@ -2,13 +2,11 @@
 
 namespace App\Services\Tripadvisor;
 
+use App\Services\OverpassClient;
 use Illuminate\Support\Facades\Http;
 
 class TripadvisorClient
 {
-    /**
-     * Get real nearby restaurants from TripAdvisor (or OpenStreetMap Overpass fallback if no API key exists).
-     */
     public function getNearby(float $latitude, float $longitude): array
     {
         $apiKey = config('services.tripadvisor.key');
@@ -25,16 +23,16 @@ class TripadvisorClient
                 if ($response->successful()) {
                     $data = $response->json();
                     $locations = $data['data'] ?? [];
-                    
+
                     $results = [];
                     foreach (array_slice($locations, 0, 5) as $loc) {
                         if (!isset($loc['name'])) {
                             continue;
                         }
                         $results[] = [
-                            'external_id' => 'ta_rest_' . ($loc['location_id'] ?? null),
+                            'external_id' => 'ta_rest_' . ($loc['location_id'] ?? uniqid()),
                             'name' => $loc['name'],
-                            'cuisine_type' => null, // No fallback/fabricated fields
+                            'cuisine_type' => null,
                             'rating' => null,
                             'reviews_count' => null,
                             'address' => $loc['address_obj']['address_string'] ?? null,
@@ -55,6 +53,6 @@ class TripadvisorClient
             }
         }
 
-        return [];
+        return app(OverpassClient::class)->getNearbyRestaurants($latitude, $longitude);
     }
 }

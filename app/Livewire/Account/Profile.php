@@ -1,7 +1,5 @@
 <?php
 
-namespace App\App\Livewire\Account; // Wait, app path is App\Livewire\Account
-
 namespace App\Livewire\Account;
 
 use Livewire\Component;
@@ -22,6 +20,7 @@ class Profile extends Component
     public $email;
     public $username;
     public $password;
+    public $password_confirmation;
     public $referralCodeInput;
 
     // Login properties
@@ -64,9 +63,14 @@ class Profile extends Component
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'username' => 'required|string|alpha_dash|unique:users,username|min:3',
-            'password' => 'required|string|min:6',
-            'referralCodeInput' => 'nullable|exists:users,referral_code',
+            'password' => 'required|string|min:6|confirmed',
         ]);
+
+        // Validate referral code manually (case-insensitive lookup)
+        if ($this->referralCodeInput && !User::where('referral_code', strtoupper($this->referralCodeInput))->exists()) {
+            $this->addError('referralCodeInput', 'O código de convite inserido não é válido.');
+            return;
+        }
 
         $user = User::create([
             'name' => $this->name,
@@ -104,6 +108,7 @@ class Profile extends Component
 
     public function updateProfile()
     {
+        if (!Auth::check()) { $this->addError('profile', 'Sessão expirada.'); return; }
         $user = Auth::user();
         $this->validate([
             'editName' => 'required|string|max:255',
@@ -120,6 +125,7 @@ class Profile extends Component
 
     public function removeFavorite($beachId)
     {
+        if (!Auth::check()) { return; }
         $user = Auth::user();
         $user->favorites()->detach($beachId);
         session()->flash('favorite_removed', 'Praia removida dos favoritos.');
@@ -127,7 +133,12 @@ class Profile extends Component
 
     public function deleteAccount()
     {
+        if (!Auth::check()) { return; }
         $user = Auth::user();
+        $user->reports()->delete();
+        $user->scoreTransactions()->delete();
+        $user->referrals()->delete();
+        $user->favorites()->detach();
         Auth::logout();
         $user->delete();
         return redirect()->to('/' . app()->getLocale());

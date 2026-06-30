@@ -53,7 +53,7 @@ class BeachSeeder extends Seeder
             ['name' => 'Praia do Pedrógão', 'slug' => 'praia-do-pedrogao', 'district' => 'Leiria', 'municipality' => 'Leiria', 'lat' => 39.9233, 'lon' => -8.9556, 'blue_flag' => true, 'accessible' => true, 'desc' => 'A única praia arenosa pertencente ao município de Leiria.'],
             ['name' => 'Praia da Vieira', 'slug' => 'praia-da-vieira', 'district' => 'Leiria', 'municipality' => 'Marinha Grande', 'lat' => 39.8739, 'lon' => -8.9667, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Famosa pela arte xávega e gastronomia local.'],
             ['name' => 'Praia da Nazaré', 'slug' => 'praia-da-nazare', 'district' => 'Leiria', 'municipality' => 'Nazaré', 'lat' => 39.6014, 'lon' => -9.0722, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Coração da vila da Nazaré, conhecida pelas ondas gigantes.'],
-            ['name' => 'Praia de São Martinho do Porto', 'slug' => 'praia-de-sao-martinho-do-porto', 'district' => 'Leiria', 'municipality' => 'Alcobaça', 'lat' => 39.5089, 'lon' => -9.1383, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Baía natural em forma de concha com águas calmas.'],
+            ['name' => 'Praia de São Martinho do Porto', 'slug' => 'praia-de-sao-martinho-do-porto', 'district' => 'Leiria', 'municipality' => 'Alcobaça', 'lat' => 39.5089, 'lon' => -9.1383, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Baía natural em forma de concha com águas calmas.', 'features' => ['has_bays' => true, 'slope' => 'gentle', 'current_risk' => 'low', 'coast_orientation' => 'SW'], 'profile' => ['shelter_factor' => 2.0, 'exposure_factor' => 0.7, 'current_risk_factor' => 0.3]],
             ['name' => 'Praia da Foz do Arelho', 'slug' => 'praia-da-foz-do-arelho', 'district' => 'Leiria', 'municipality' => 'Caldas da Rainha', 'lat' => 39.4322, 'lon' => -9.2256, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Encontro da lagoa de Óbidos com o oceano Atlântico.'],
             ['name' => 'Praia de Peniche de Cima', 'slug' => 'praia-de-peniche-de-cima', 'district' => 'Leiria', 'municipality' => 'Peniche', 'lat' => 39.3622, 'lon' => -9.3756, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Extenso areal calmo que liga Peniche ao Baleal.'],
             ['name' => 'Praia do Baleal', 'slug' => 'praia-do-baleal', 'district' => 'Leiria', 'municipality' => 'Peniche', 'lat' => 39.3722, 'lon' => -9.3356, 'blue_flag' => true, 'accessible' => true, 'desc' => 'Istmo arenoso com duas frentes marítimas muito populares.'],
@@ -219,7 +219,7 @@ class BeachSeeder extends Seeder
             ]);
 
             // Features
-            BeachFeature::create([
+            BeachFeature::create(array_merge([
                 'beach_id' => $beach->id,
                 'coast_orientation' => 'W',
                 'exposure_direction' => 'W',
@@ -234,17 +234,17 @@ class BeachSeeder extends Seeder
                 'has_cliffs' => false,
                 'has_rocks' => false,
                 'river_influence' => false,
-            ]);
+            ], $data['features'] ?? []));
 
             // Prediction Profile
-            BeachPredictionProfile::create([
+            BeachPredictionProfile::create(array_merge([
                 'beach_id' => $beach->id,
                 'exposure_factor' => 1.00,
                 'shelter_factor' => 1.00,
                 'current_risk_factor' => 1.00,
                 'wave_height_weight' => 1.00,
                 'wind_weight' => 1.00,
-            ]);
+            ], $data['profile'] ?? []));
         }
     }
 }

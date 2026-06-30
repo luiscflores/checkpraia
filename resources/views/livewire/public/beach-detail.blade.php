@@ -3,7 +3,7 @@
     triggerReport(flagColor) {
         this.locating = true;
         if (!navigator.geolocation) {
-            alert('O teu navegador não suporta geolocalização.');
+            this.$dispatch('notify', { message: 'O teu navegador não suporta geolocalização.', type: 'error' });
             this.locating = false;
             return;
         }
@@ -13,7 +13,7 @@
                 this.locating = false;
             },
             (error) => {
-                alert('Erro de GPS: A permissão de localização é obrigatória para confirmar a bandeira.');
+                this.$dispatch('notify', { message: 'Erro de GPS: A permissão de localização é obrigatória para confirmar a bandeira.', type: 'error' });
                 this.locating = false;
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -30,29 +30,30 @@
                     {{ $beach->region }}
                 </span>
                 @if($beach->blue_flag)
-                    <span class="text-[10px] uppercase font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md border border-white/10">🔷 Bandeira Azul</span>
+                    <span class="text-xs uppercase font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md border border-white/10"><span aria-hidden="true">🔷</span> Bandeira Azul</span>
                 @endif
                 @if($beach->accessible)
-                    <span class="text-[10px] uppercase font-bold text-white bg-teal-600 px-2 py-0.5 rounded-md border border-white/10">♿ Praia Acessível</span>
+                    <span class="text-xs uppercase font-bold text-white bg-teal-600 px-2 py-0.5 rounded-md border border-white/10"><span aria-hidden="true">♿</span> Praia Acessível</span>
                 @endif
             </div>
             <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight mt-2">{{ $beach->name }}</h1>
-            <p class="text-slate-400 text-sm mt-1">📍 {{ $beach->municipality }}, {{ $beach->district ?: $beach->region }}</p>
+            <p class="text-slate-400 text-sm mt-1"><span aria-hidden="true">📍</span> {{ $beach->municipality }}, {{ $beach->district ?: $beach->region }}</p>
         </div>
 
         <div class="flex gap-3">
             <a href="https://www.google.com/maps/dir/?api=1&destination={{ $beach->latitude }},{{ $beach->longitude }}" 
                target="_blank" 
-               class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2">
-                🗺️ Direções de GPS
+               class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2"
+               aria-label="Obter direções de GPS para {{ $beach->name }}">
+                <span aria-hidden="true">🗺️</span> Direções de GPS
             </a>
         </div>
     </div>
 
     <!-- Alerts Notification Area -->
     @foreach($alerts as $alert)
-        <div class="p-4 rounded-2xl border {{ $alert->type === 'warning' ? 'border-amber-500/30 bg-amber-950/20 text-amber-200' : 'border-rose-500/30 bg-rose-950/20 text-rose-200' }} text-sm leading-relaxed shadow-sm">
-            <strong class="uppercase font-bold block mb-1">⚠️ Aviso Oficial:</strong>
+        <div class="p-4 rounded-2xl border {{ $alert->type === 'warning' ? 'border-amber-500/30 bg-amber-950/20 text-amber-200' : 'border-rose-500/30 bg-rose-950/20 text-rose-200' }} text-sm leading-relaxed shadow-sm" role="alert">
+            <strong class="uppercase font-bold block mb-1"><span aria-hidden="true">⚠️</span> Aviso Oficial:</strong>
             {{ $alert->description }} (Início: {{ $alert->started_at->format('d/m/Y H:i') }})
         </div>
     @endforeach
@@ -65,7 +66,7 @@
             <div class="glass-card p-6 rounded-3xl text-center flex flex-col items-center justify-center relative overflow-hidden">
                 <div class="absolute w-48 h-48 rounded-full blur-3xl opacity-20 -top-12 -left-12 bg-blue-500"></div>
 
-                <span class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-3">Estado da Bandeira</span>
+                <h2 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-3">Estado da Bandeira</h2>
 
                 @php
                     $flag = $beach->currentStatus ? $beach->currentStatus->flag : 'gray';
@@ -102,8 +103,10 @@
                 @endphp
 
                 <div class="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 {{ $flagBg }}" 
-                     style="box-shadow: 0 12px 48px {{ $glowColor }}">
-                    <span class="text-xl font-black uppercase tracking-wider">{{ $flagName }}</span>
+                     style="box-shadow: 0 12px 48px {{ $glowColor }}"
+                     role="img"
+                     aria-label="Bandeira {{ $flagName }}">
+                    <span class="text-xl font-black uppercase tracking-wider" aria-hidden="true">{{ $flagName }}</span>
                 </div>
 
                 <div class="mt-6 space-y-1">
@@ -164,7 +167,7 @@
                 @if($beach->currentStatus && $beach->currentStatus->reason)
                     <div class="mt-4 p-3 rounded-xl border border-white/5 bg-slate-900/60 max-w-xs text-center">
                         <p class="text-xs text-slate-300 font-medium leading-relaxed">
-                            🔍 {{ $beach->currentStatus->reason }}
+                            <span aria-hidden="true">🔍</span> {{ $beach->currentStatus->reason }}
                         </p>
                     </div>
                 @endif
@@ -173,38 +176,40 @@
             <!-- GPS Confirmation Reporter -->
             <div class="glass-card p-6 rounded-3xl space-y-4">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                    📢 Confirmar Bandeira no Local
+                    <span aria-hidden="true">📢</span> Confirmar Bandeira no Local
                 </h3>
                 <p class="text-xs text-slate-400 leading-relaxed">
                     Ajuda a comunidade! Se estás fisicamente nesta praia, reporta a cor da bandeira hasteada. A tua localização será validada.
                 </p>
 
                 @auth
-                    @if (session()->has('report_success'))
-                        <div class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl font-medium">
-                            ✔️ {{ session('report_success') }}
-                        </div>
-                    @endif
+                    <div aria-live="polite" aria-atomic="true">
+                        @if (session()->has('report_success'))
+                            <div class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl font-medium" role="status">
+                                <span aria-hidden="true">✔️</span> {{ session('report_success') }}
+                            </div>
+                        @endif
 
-                    @error('report')
-                        <div class="p-3 bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs rounded-xl font-medium">
-                            ❌ {{ $message }}
-                        </div>
-                    @enderror
-
-                    <div x-show="locating" class="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs rounded-xl flex items-center gap-2">
-                        <span class="animate-spin">🌀</span> Obtendo coordenadas GPS precisas...
+                        @error('report')
+                            <div class="p-3 bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs rounded-xl font-medium" role="alert">
+                                <span aria-hidden="true">❌</span> {{ $message }}
+                            </div>
+                        @enderror
                     </div>
 
-                    <div class="grid grid-cols-3 gap-3" x-show="!locating">
-                        <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-emerald-500/20">
-                            🟢 Verde
+                    <div x-show="locating" class="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs rounded-xl flex items-center gap-2" role="status" aria-live="polite">
+                        <span class="animate-spin" aria-hidden="true">🌀</span> Obtendo coordenadas GPS precisas...
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3" x-show="!locating" role="group" aria-label="Selecionar cor da bandeira">
+                        <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-emerald-500/20" aria-label="Reportar bandeira Verde">
+                            <span aria-hidden="true">🟢</span> Verde
                         </button>
-                        <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-amber-500/20">
-                            🟡 Amarela
+                        <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-amber-500/20" aria-label="Reportar bandeira Amarela">
+                            <span aria-hidden="true">🟡</span> Amarela
                         </button>
-                        <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl text-xs transition-all shadow shadow-rose-500/20">
-                            🔴 Vermelha
+                        <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl text-xs transition-all shadow shadow-rose-500/20" aria-label="Reportar bandeira Vermelha">
+                            <span aria-hidden="true">🔴</span> Vermelha
                         </button>
                     </div>
                 @else
@@ -398,11 +403,11 @@
 
                             <div class="flex gap-2 pt-2 border-t border-white/5">
                                 @if($restaurant->booking_url)
-                                    <a href="{{ $restaurant->booking_url }}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors">
+                                    <a href="{{ $restaurant->booking_url }}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors" aria-label="Reservar mesa no {{ $restaurant->name }}">
                                         Reservar Mesa
                                     </a>
                                 @endif
-                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700">
+                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700" aria-label="Ver ficha do {{ $restaurant->name }}">
                                     Ver Ficha
                                 </a>
                             </div>
@@ -418,19 +423,21 @@
     </div>
 
     <!-- Leaflet single location map section -->
-    <div class="glass-card p-4 rounded-3xl border border-white/10">
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">📍 Localização Geográfica</h3>
-        <div id="beach-map" class="w-full h-80 rounded-2xl border border-white/5 overflow-hidden z-0"
+    <div class="glass-card p-4 rounded-3xl border border-theme-medium">
+        <h3 class="text-sm font-bold text-theme uppercase tracking-wider mb-3"><span aria-hidden="true">📍</span> Localização Geográfica</h3>
+        <div id="beach-map" class="w-full h-80 rounded-2xl border border-theme-subtle overflow-hidden z-0"
              x-init="
                 const map = L.map('beach-map').setView([{{ $beach->latitude }}, {{ $beach->longitude }}], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors'
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '&copy; <a href=\"https://www.esri.com/\">Esri</a>',
+                    maxZoom: 19
                 }).addTo(map);
                 
                 const markerColor = '{{ $markerColorHex }}';
+                const markerBorder = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? '#070a13' : '#ffffff';
                 const icon = L.divIcon({
                     className: 'detail-div-icon',
-                    html: `<div style='width: 20px; height: 20px; background-color: ${markerColor}; border: 3.5px solid #070a13; border-radius: 50%; box-shadow: 0 0 16px ${markerColor};'></div>`,
+                    html: `<div style='width: 20px; height: 20px; background-color: ${markerColor}; border: 3.5px solid ${markerBorder}; border-radius: 50%; box-shadow: 0 0 16px ${markerColor};'></div>`,
                     iconSize: [20, 20],
                     iconAnchor: [10, 10]
                 });
@@ -439,7 +446,9 @@
                     .addTo(map)
                     .bindPopup('<strong>{{ $beach->name }}</strong>')
                     .openPopup();
-             ">
+             "
+             role="application"
+             aria-label="Mapa de localização da {{ $beach->name }}">
         </div>
     </div>
 </div>

@@ -14,14 +14,42 @@ use App\Domain\Gamification\ScoreManager;
 
 class BeachDetail extends Component
 {
+    private const VOTE_COOLDOWN_MINUTES = 60;
+    private const MAX_DISTANCE_KM = 1.0;
+
     public $slug;
     public $beach;
+    public $isFavorited = false;
 
     public function mount($slug)
     {
         $this->beach = Beach::with(['currentStatus', 'translations', 'services', 'features', 'restaurants'])
             ->where('slug', $slug)
             ->firstOrFail();
+
+        $this->isFavorited = auth()->check() && auth()->user()->favorites()
+            ->where('beach_id', $this->beach->id)
+            ->exists();
+    }
+
+    public function toggleFavorite()
+    {
+        if (!auth()->check()) {
+            session()->flash('favorite_error', 'Precisas de iniciar sessão para guardar favoritos.');
+            return;
+        }
+
+        $user = auth()->user();
+
+        if ($this->isFavorited) {
+            $user->favorites()->detach($this->beach->id);
+            $this->isFavorited = false;
+            session()->flash('favorite_success', 'Praia removida dos favoritos.');
+        } else {
+            $user->favorites()->attach($this->beach->id);
+            $this->isFavorited = true;
+            session()->flash('favorite_success', 'Praia adicionada aos favoritos! ⭐');
+        }
     }
 
     public function submitReport($flag, $lat, $lon, $accuracy = null)
@@ -37,21 +65,19 @@ class BeachDetail extends Component
             return;
         }
 
-        // Limit: one vote per beach per 60 minutes
         $exists = FlagReport::where('user_id', $user->id)
             ->where('beach_id', $this->beach->id)
-            ->where('reported_at', '>=', now()->subMinutes(60))
+            ->where('reported_at', '>=', now()->subMinutes(self::VOTE_COOLDOWN_MINUTES))
             ->exists();
 
         if ($exists) {
-            $this->addError('report', 'Já enviaste uma confirmação para esta praia nos últimos 60 minutos.');
+            $this->addError('report', 'Já enviaste uma confirmação para esta praia nos últimos ' . self::VOTE_COOLDOWN_MINUTES . ' minutos.');
             return;
         }
 
-        // Validate distance (must be <= 1.0 km)
         $distance = $this->calculateDistance((float)$lat, (float)$lon, (float)$this->beach->latitude, (float)$this->beach->longitude);
-        if ($distance > 1.0) {
-            $this->addError('report', 'Deves estar a menos de 1 km da praia para confirmar (distância atual: ' . round($distance, 2) . ' km).');
+        if ($distance > self::MAX_DISTANCE_KM) {
+            $this->addError('report', 'Deves estar a menos de ' . self::MAX_DISTANCE_KM . ' km da praia para confirmar (distância atual: ' . round($distance, 2) . ' km).');
             return;
         }
 

@@ -1,20 +1,20 @@
 <div class="max-w-md mx-auto my-12">
     @section('title', 'Autenticação - CheckPraia')
 
-    <div class="glass-card p-8 rounded-3xl border border-white/10 space-y-6 relative overflow-hidden">
+    <div class="glass-card p-5 sm:p-8 rounded-3xl border border-theme-medium space-y-6 relative overflow-hidden">
         <!-- Accent light -->
         <div class="absolute w-32 h-32 rounded-full blur-3xl opacity-20 -top-12 -right-12 bg-blue-500"></div>
 
         <!-- Heading tabs -->
-        <div class="flex border-b border-white/10 text-center font-bold text-sm">
+        <div class="flex border-b border-theme-medium text-center font-bold text-sm">
             <button 
                 @click="$wire.set('isRegister', false)" 
-                class="flex-1 pb-3 border-b-2 transition-all {{ !$isRegister ? 'border-blue-500 text-white' : 'border-transparent text-slate-400 hover:text-white' }}">
+                class="flex-1 pb-3 border-b-2 transition-all {{ !$isRegister ? 'border-blue-500 text-theme' : 'border-transparent text-theme-secondary hover:text-theme' }}">
                 Entrar
             </button>
             <button 
                 @click="$wire.set('isRegister', true)" 
-                class="flex-1 pb-3 border-b-2 transition-all {{ $isRegister ? 'border-blue-500 text-white' : 'border-transparent text-slate-400 hover:text-white' }}">
+                class="flex-1 pb-3 border-b-2 transition-all {{ $isRegister ? 'border-blue-500 text-theme' : 'border-transparent text-theme-secondary hover:text-theme' }}">
                 Registar
             </button>
         </div>
@@ -35,15 +35,15 @@
                 @enderror
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Endereço de Email</label>
-                    <input type="email" wire:model="loginEmail" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="exemplo@email.com" />
-                    @error('loginEmail') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Endereço de Email</label>
+                    <input type="email" wire:model="loginEmail" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="exemplo@email.com" />
+                    @error('loginEmail') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Palavra-passe</label>
-                    <input type="password" wire:model="loginPassword" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="******" />
-                    @error('loginPassword') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Palavra-passe</label>
+                    <input type="password" wire:model="loginPassword" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="******" />
+                    @error('loginPassword') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
@@ -73,33 +73,38 @@
             <!-- Registration Form -->
             <form wire:submit.prevent="register" class="space-y-4">
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Nome Completo</label>
-                    <input type="text" wire:model="name" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="Ex: Luis Flores" />
-                    @error('name') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Nome Completo</label>
+                    <input type="text" wire:model="name" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: Luis Flores" />
+                    @error('name') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Nome de Utilizador (Público)</label>
-                    <input type="text" wire:model="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="Ex: luisflores" />
-                    @error('username') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Nome de Utilizador (Público)</label>
+                    <input type="text" wire:model="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: luisflores" />
+                    @error('username') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Endereço de Email</label>
-                    <input type="email" wire:model="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="exemplo@email.com" />
-                    @error('email') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Endereço de Email</label>
+                    <input type="email" wire:model="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="exemplo@email.com" />
+                    @error('email') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Palavra-passe</label>
-                    <input type="password" wire:model="password" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="Mínimo 6 caracteres" />
-                    @error('password') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Palavra-passe</label>
+                    <input type="password" wire:model="password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Mínimo 6 caracteres" />
+                    @error('password') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider block">Código de Convite (Opcional)</label>
-                    <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm" placeholder="Ex: ABC123XYZ" />
-                    @error('referralCodeInput') <span class="text-[10px] text-rose-400 block">{{ $message }}</span> @enderror
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Confirmar Palavra-passe</label>
+                    <input type="password" wire:model="password_confirmation" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Repete a palavra-passe" />
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Código de Convite (Opcional)</label>
+                    <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: ABC123XYZ" />
+                    @error('referralCodeInput') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                 </div>
 
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">

@@ -48,13 +48,16 @@ class Rankings extends Component
             });
 
         // Filter users who reported in the specific district (optional)
-        if ($this->district) {
-            $users = $users->filter(function ($user) {
-                return $user->reports()
-                    ->whereHas('beach', function ($q) {
-                        $q->where(DB::raw('lower(district)'), strtolower($this->district));
-                    })->exists();
-            });
+        if ($this->district && $users->isNotEmpty()) {
+            $userIds = $users->pluck('id');
+            $districtUserIds = DB::table('flag_reports')
+                ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
+                ->whereIn('flag_reports.user_id', $userIds)
+                ->where(DB::raw('lower(beaches.district)'), strtolower($this->district))
+                ->distinct()
+                ->pluck('flag_reports.user_id');
+
+            $users = $users->whereIn('id', $districtUserIds)->values();
         }
 
         // Sort descending and reset indices

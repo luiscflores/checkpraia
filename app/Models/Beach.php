@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
 #[Fillable([
-    'external_id', 'name', 'slug', 'region', 'district', 'municipality', 'island',
+    'type', 'external_id', 'name', 'slug', 'region', 'district', 'municipality', 'island',
     'latitude', 'longitude', 'is_active', 'is_supervised', 'season_start', 'season_end',
     'lifeguard_start', 'lifeguard_end', 'image_path', 'blue_flag', 'accessible',
     'tide_station_id', 'weather_zone', 'ocean_zone'

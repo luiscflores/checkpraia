@@ -9,13 +9,23 @@ use App\Models\FlagPrediction;
 use App\Models\OfficialAlert;
 use App\Models\ScoreTransaction;
 use App\Models\AdminScoreAdjustment;
-use App\Models\AdCampaign;
 use App\Models\Beach;
+use App\Models\OceanForecast;
+use App\Models\WeatherForecast;
+use App\Models\WaterQualitySnapshot;
+use App\Models\TideForecast;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class Dashboard extends Component
 {
+    public function mount()
+    {
+        if (!Auth::check() || !Auth::user()->is_admin) {
+            abort(403, 'Acesso restrito a administradores.');
+        }
+    }
+
     // Search users
     public $searchUser = '';
 
@@ -32,16 +42,6 @@ class Dashboard extends Component
     public $selectedUser;
     public $adjustmentPoints;
     public $justification;
-
-    // Campaign form
-    public $clientName;
-    public $campaignType = 'banner';
-    public $campaignTitle;
-    public $campaignLink;
-    public $placementType = 'home';
-    public $campaignStartsAt;
-    public $campaignEndsAt;
-    public $campaignBeachId;
 
     public function selectBeachForEdit($beachId)
     {
@@ -145,39 +145,6 @@ class Dashboard extends Component
         $this->justification = '';
     }
 
-    public function createCampaign()
-    {
-        $this->validate([
-            'clientName' => 'required|string|max:255',
-            'campaignTitle' => 'required|string|max:255',
-            'campaignLink' => 'required|url',
-            'campaignStartsAt' => 'required|date',
-            'campaignEndsAt' => 'required|date|after_or_equal:campaignStartsAt',
-            'campaignBeachId' => 'nullable|exists:beaches,id',
-        ]);
-
-        AdCampaign::create([
-            'client_name' => $this->clientName,
-            'type' => $this->campaignType,
-            'title' => $this->campaignTitle,
-            'image_path' => 'ads/placeholder.jpg',
-            'link' => $this->campaignLink,
-            'placement_type' => $this->placementType,
-            'beach_id' => $this->campaignBeachId,
-            'starts_at' => $this->campaignStartsAt,
-            'ends_at' => $this->campaignEndsAt,
-            'is_active' => true,
-        ]);
-
-        session()->flash('campaign_success', 'Campanha publicitária agendada com sucesso!');
-        $this->clientName = '';
-        $this->campaignTitle = '';
-        $this->campaignLink = '';
-        $this->campaignStartsAt = null;
-        $this->campaignEndsAt = null;
-        $this->campaignBeachId = null;
-    }
-
     public function toggleSuspension($userId)
     {
         $user = User::find($userId);
@@ -237,7 +204,7 @@ class Dashboard extends Component
             ->get();
 
         // 4. Query beaches for campaign dropdown
-        $beaches = Beach::all();
+        $beaches = Beach::orderBy('name')->get();
 
         return view('livewire.admin.dashboard', [
             'totalUsers' => $totalUsers,

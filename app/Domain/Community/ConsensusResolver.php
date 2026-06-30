@@ -7,29 +7,39 @@ use App\Models\FlagReport;
 use App\Models\BeachCurrentStatus;
 use App\Models\FlagPrediction;
 use App\Models\OfficialAlert;
-use App\Models\User;
 use App\Domain\Gamification\ScoreManager;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ConsensusResolver
 {
-    protected $scoreManager;
+    private const REPORT_WINDOW_MINUTES = 60;
+    private const COMMUNITY_MIN_USERS = 2;
+    private const COMMUNITY_CONFIDENCE = 95;
+    private const PREDICTION_MAX_AGE_HOURS = 24;
+    private const PENALIZATION_MIN_USERS = 3;
+    private const PENALIZATION_THRESHOLD_PERCENT = 75.0;
+
+    // Reason thresholds (duplicated from PredictionEngine for self-contained reasons)
+    private const RED_WAVE_HEIGHT = 2.0;
+    private const RED_WIND_SPEED = 22.0;
+    private const SHORT_WAVE_PERIOD = 8.0;
+    private const YELLOW_WAVE_HEIGHT = 1.2;
+    private const YELLOW_WIND_SPEED = 14.0;
+    private const ESTUARY_CURRENT_HOURS = 4.0;
+
+    protected ScoreManager $scoreManager;
 
     public function __construct()
     {
         $this->scoreManager = new ScoreManager();
     }
 
-    /**
-     * Update the current active flag cache for a beach based on alerts, community consensus, or forecasts.
-     */
     public function resolveCurrentStatus(Beach $beach): BeachCurrentStatus
     {
         $status = BeachCurrentStatus::firstOrNew(['beach_id' => $beach->id]);
         $status->updated_at = now();
 
-        // 1. Check for official alerts (takes absolute priority)
+        // 1. Official alerts (absolute priority)
         $alert = OfficialAlert::where('beach_id', $beach->id)
             ->orWhereNull('beach_id')
             ->where('started_at', '<=', now())
@@ -49,8 +59,8 @@ class ConsensusResolver
             return $status;
         }
 
-        // 2. Check for active community reports in the last 60 minutes
-        $oneHourAgo = now()->subMinutes(60);
+        // 2. Community consensus (≥ 2 distinct users in the last 60 minutes)
+        $oneHourAgo = now()->subMinutes(self::REPORT_WINDOW_MINUTES);
         $activeReports = FlagReport::where('beach_id', $beach->id)
             ->where('reported_at', '>=', $oneHourAgo)
             ->where('status', '!=', 'cancelled')
@@ -58,22 +68,20 @@ class ConsensusResolver
 
         $distinctUsersCount = $activeReports->pluck('user_id')->unique()->count();
 
-        // Community flag overrides prediction if there are at least 2 distinct users
-        if ($distinctUsersCount >= 2) {
+        if ($distinctUsersCount >= self::COMMUNITY_MIN_USERS) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             $latestReportTime = null;
             $latestReportFlag = null;
 
             foreach ($activeReports as $report) {
                 $votes[$report->flag] += $report->vote_weight;
-                
+
                 if (is_null($latestReportTime) || $report->reported_at->gt($latestReportTime)) {
                     $latestReportTime = $report->reported_at;
                     $latestReportFlag = $report->flag;
                 }
             }
 
-            // Find the winning flag color
             $maxVotes = max($votes);
             $winners = [];
             foreach ($votes as $color => $count) {
@@ -85,27 +93,17 @@ class ConsensusResolver
             $winningFlag = null;
             if (count($winners) === 1) {
                 $winningFlag = $winners[0];
+            } elseif (in_array($latestReportFlag, $winners)) {
+                $winningFlag = $latestReportFlag;
             } else {
-                // Tie breaker:
-                // 1. Use the most recent report color if it is in the winners list
-                if (in_array($latestReportFlag, $winners)) {
-                    $winningFlag = $latestReportFlag;
-                } else {
-                    // 2. Use the most conservative color (red > yellow > green)
-                    if (in_array('red', $winners)) {
-                        $winningFlag = 'red';
-                    } elseif (in_array('yellow', $winners)) {
-                        $winningFlag = 'yellow';
-                    } else {
-                        $winningFlag = 'green';
-                    }
-                }
+                $winningFlag = in_array('red', $winners) ? 'red'
+                    : (in_array('yellow', $winners) ? 'yellow' : 'green');
             }
 
             $status->fill([
                 'source' => 'community',
                 'flag' => $winningFlag,
-                'confidence' => 95,
+                'confidence' => self::COMMUNITY_CONFIDENCE,
                 'consensus_reports_count' => $activeReports->count(),
                 'reason' => 'Confirmado por utilizadores locais (' . $distinctUsersCount . ' votos na última hora).',
             ]);
@@ -115,58 +113,8 @@ class ConsensusResolver
 
         // 3. Fallback to automatic prediction
         $prediction = FlagPrediction::where('beach_id', $beach->id)->orderBy('calculated_at', 'desc')->first();
-        if ($prediction && \Carbon\Carbon::parse($prediction->calculated_at)->isAfter(now()->subHours(24))) {
-            $reason = 'Condições favoráveis de vento, ondulação e qualidade da água.';
-            
-            $ocean = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-            $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-            $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
-            
-            if ($prediction->selected_flag === 'gray') {
-                $reason = 'Dados insuficientes ou obsoletos para previsão.';
-            } elseif ($prediction->selected_flag === 'red') {
-                if ($quality && strtolower($quality->quality_class) === 'poor') {
-                    $reason = 'Qualidade da água imprópria para banhos.';
-                } elseif ($ocean && $ocean->wave_height_max > 2.0) {
-                    $period = $ocean->wave_period_max ?: $ocean->wave_period_min;
-                    $periodNote = $period && $period < 8.0 ? ' com período curto de ' . round($period, 1) . 's (rebentação intensa)' : '';
-                    $reason = 'Ondulação muito forte com ondas de ' . $ocean->wave_height_max . 'm' . $periodNote . ' — banhos proibidos.';
-                } elseif ($weather && $weather->wind_speed > 22.0) {
-                    $reason = 'Vento extremamente forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h (Perigo de correntes).';
-                } else {
-                    $reason = 'Condições marítimas perigosas. Entrada na água proibida.';
-                }
-            } elseif ($prediction->selected_flag === 'yellow') {
-                $nextTide = \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)
-                    ->where('tide_time', '>=', now())
-                    ->orderBy('tide_time', 'asc')
-                    ->first();
-
-                if ($quality && strtolower($quality->quality_class) === 'sufficient') {
-                    $reason = 'Qualidade da água apenas aceitável para banhos.';
-                } elseif ($nextTide && $nextTide->tide_type === 'low' && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence)) && round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1) < 4.0) {
-                    $hours = round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1);
-                    $reason = 'Corrente de vazante forte no estuário (' . $hours . 'h para a maré baixa).';
-                } elseif ($ocean && $ocean->wave_height_max > 1.2) {
-                    $reason = 'Ondulação moderada com ondas de até ' . $ocean->wave_height_max . 'm (Recomenda-se precaução).';
-                } elseif ($weather && $weather->wind_speed > 14.0) {
-                    $reason = 'Vento moderado a forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h.';
-                } elseif ($nextTide && $nextTide->tide_type === 'low' && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence))) {
-                    $reason = 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
-                } elseif ($nextTide && $nextTide->tide_type === 'low' && $nextTide->tide_height < 1.0) {
-                    $reason = 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
-                } elseif ($beach->features && $beach->features->current_risk === 'high') {
-                    $reason = 'Risco elevado de correntes permanentes nesta praia.';
-                } else {
-                    $reason = 'Condições marítimas requerem atenção reforçada.';
-                }
-            } else {
-                if ($ocean && $ocean->wave_height_max < 0.6) {
-                    $reason = 'Mar calmo (' . $ocean->wave_height_max . 'm) e vento fraco.';
-                } else {
-                    $reason = 'Condições favoráveis de vento, ondulação e qualidade da água.';
-                }
-            }
+        if ($prediction && $prediction->calculated_at->isAfter(now()->subHours(self::PREDICTION_MAX_AGE_HOURS))) {
+            $reason = $this->buildPredictionReason($beach, $prediction);
 
             $status->fill([
                 'source' => 'prediction',
@@ -176,7 +124,6 @@ class ConsensusResolver
                 'reason' => $reason,
             ]);
         } else {
-            // No prediction, show gray (no info)
             $status->fill([
                 'source' => 'prediction',
                 'flag' => 'gray',
@@ -186,11 +133,11 @@ class ConsensusResolver
             ]);
         }
 
-        // 4. Out of season check (if current date is outside season_start to season_end)
+        // 4. Out of season check
         $today = now()->toDateString();
         if ($beach->season_start && $beach->season_end) {
             if ($today < $beach->season_start->toDateString() || $today > $beach->season_end->toDateString()) {
-                $status->flag = 'blue_or_neutral'; // Out of season flag color
+                $status->flag = 'blue_or_neutral';
                 $status->reason = 'Fora da época balnear oficial.';
             }
         }
@@ -199,9 +146,70 @@ class ConsensusResolver
         return $status;
     }
 
-    /**
-     * Resolve a report after its 60-minute window has closed to determine reward or penalization.
-     */
+    private function buildPredictionReason(Beach $beach, FlagPrediction $prediction): string
+    {
+        if ($prediction->selected_flag === 'gray') {
+            return 'Dados insuficientes ou obsoletos para previsão.';
+        }
+
+        $ocean   = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
+
+        if ($prediction->selected_flag === 'red') {
+            if ($quality && strtolower($quality->quality_class) === 'poor') {
+                return 'Qualidade da água imprópria para banhos.';
+            }
+            if ($ocean && $ocean->wave_height_max > self::RED_WAVE_HEIGHT) {
+                $period = $ocean->wave_period_max ?: $ocean->wave_period_min;
+                $periodNote = $period && $period < self::SHORT_WAVE_PERIOD
+                    ? ' com período curto de ' . round($period, 1) . 's (rebentação intensa)'
+                    : '';
+                return 'Ondulação muito forte com ondas de ' . $ocean->wave_height_max . 'm' . $periodNote . ' — banhos proibidos.';
+            }
+            if ($weather && $weather->wind_speed > self::RED_WIND_SPEED) {
+                return 'Vento extremamente forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h (Perigo de correntes).';
+            }
+            return 'Condições marítimas perigosas. Entrada na água proibida.';
+        }
+
+        if ($prediction->selected_flag === 'yellow') {
+            $nextTide = \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)
+                ->where('tide_time', '>=', now())
+                ->orderBy('tide_time', 'asc')
+                ->first();
+
+            if ($quality && strtolower($quality->quality_class) === 'sufficient') {
+                return 'Qualidade da água apenas aceitável para banhos.';
+            }
+            if ($nextTide && $nextTide->tide_type === 'low'
+                && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence))
+                && now()->diffInMinutes($nextTide->tide_time) / 60.0 < self::ESTUARY_CURRENT_HOURS) {
+                $hours = round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1);
+                return 'Corrente de vazante forte no estuário (' . $hours . 'h para a maré baixa).';
+            }
+            if ($ocean && $ocean->wave_height_max > self::YELLOW_WAVE_HEIGHT) {
+                return 'Ondulação moderada com ondas de até ' . $ocean->wave_height_max . 'm (Recomenda-se precaução).';
+            }
+            if ($weather && $weather->wind_speed > self::YELLOW_WIND_SPEED) {
+                return 'Vento moderado a forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h.';
+            }
+            if ($nextTide && $nextTide->tide_type === 'low') {
+                return 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
+            }
+            if ($beach->features && $beach->features->current_risk === 'high') {
+                return 'Risco elevado de correntes permanentes nesta praia.';
+            }
+            return 'Condições marítimas requerem atenção reforçada.';
+        }
+
+        // Green
+        if ($ocean && $ocean->wave_height_max < 0.6) {
+            return 'Mar calmo (' . $ocean->wave_height_max . 'm) e vento fraco.';
+        }
+        return 'Condições favoráveis de vento, ondulação e qualidade da água.';
+    }
+
     public function resolveReport(FlagReport $report): void
     {
         if ($report->status !== 'pending') {
@@ -210,9 +218,8 @@ class ConsensusResolver
 
         $beach = $report->beach;
         $windowStart = $report->reported_at;
-        $windowEnd = $report->reported_at->copy()->addMinutes(60);
+        $windowEnd = $report->reported_at->copy()->addMinutes(self::REPORT_WINDOW_MINUTES);
 
-        // Fetch other user reports submitted during this report's active lifetime [T, T + 60]
         $concurrentReports = FlagReport::where('beach_id', $beach->id)
             ->whereBetween('reported_at', [$windowStart, $windowEnd])
             ->where('status', '!=', 'cancelled')
@@ -220,8 +227,7 @@ class ConsensusResolver
 
         $distinctUsersCount = $concurrentReports->pluck('user_id')->unique()->count();
 
-        // Rule: Penalization only occurs if there are at least 3 distinct users in the window
-        if ($distinctUsersCount >= 3) {
+        if ($distinctUsersCount >= self::PENALIZATION_MIN_USERS) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             foreach ($concurrentReports as $r) {
                 $votes[$r->flag] += $r->vote_weight;
@@ -229,12 +235,9 @@ class ConsensusResolver
 
             $totalWeight = array_sum($votes);
             $opposingWeight = $totalWeight - $votes[$report->flag];
-
-            // Penalize if 75% or more of the weighted votes are contrary
             $opposingPercentage = ($opposingWeight / max(1, $totalWeight)) * 100;
 
-            if ($opposingPercentage >= 75.0) {
-                // Penalized!
+            if ($opposingPercentage >= self::PENALIZATION_THRESHOLD_PERCENT) {
                 $report->status = 'rejected';
                 $report->resolved_at = now();
                 $report->save();
@@ -244,7 +247,6 @@ class ConsensusResolver
             }
         }
 
-        // Accepted (either consensus agreed, or there weren't enough votes/majority to penalize)
         $report->status = 'confirmed';
         $report->resolved_at = now();
         $report->save();

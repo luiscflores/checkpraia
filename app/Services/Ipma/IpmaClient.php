@@ -50,7 +50,7 @@ class IpmaClient
                         'visibility' => $visibility,
                         'temp' => (float) ($current['temperature_2m'] ?? 20.0),
                         'uv_index' => $uv,
-                        'jellyfish_risk' => $windSpeedKt > 18.0 ? 'Alto' : ($windSpeedKt > 12.0 ? 'Moderado' : 'Baixo'),
+                        'jellyfish_risk' => null,
                         'forecasted_at' => now(),
                     ];
                 }

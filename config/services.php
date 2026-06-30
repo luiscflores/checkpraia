@@ -41,4 +41,12 @@ return [
         ],
     ],
 
+    'tripadvisor' => [
+        'key' => env('TRIPADVISOR_API_KEY'),
+    ],
+
+    'thefork' => [
+        'key' => env('THEFORK_API_KEY'),
+    ],
+
 ];

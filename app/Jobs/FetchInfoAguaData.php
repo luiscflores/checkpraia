@@ -53,11 +53,13 @@ class FetchInfoAguaData implements ShouldQueue
 
         $class = $infoAgua->getWaterQuality($beach->external_id ?: (string)$beach->id);
 
-        WaterQualitySnapshot::create([
-            'beach_id' => $beach->id,
-            'quality_class' => $class,
-            'sampled_at' => now(),
-        ]);
+        if ($class) {
+            WaterQualitySnapshot::create([
+                'beach_id' => $beach->id,
+                'quality_class' => $class,
+                'sampled_at' => now(),
+            ]);
+        }
 
         // Recalculate automatic prediction using the new water quality data
         $prediction = $engine->calculate($beach);
