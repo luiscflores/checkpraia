@@ -8,12 +8,17 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libzip-dev \
     libicu-dev \
-    libonig-dev
+    libonig-dev \
+    libpq-dev \
+    dos2unix \
+    nodejs \
+    npm
 
 # EXTENSÕES PHP (IMPORTANTE para Laravel + Filament)
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
+    pdo_pgsql \
     intl \
     mbstring \
     zip \
@@ -27,11 +32,18 @@ WORKDIR /var/www/html
 
 COPY . .
 
+RUN npm install && npm run build && rm -rf node_modules
+
 RUN composer install --no-dev --optimize-autoloader
 
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN dos2unix /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 80
 
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+ENTRYPOINT ["docker-entrypoint.sh"]
