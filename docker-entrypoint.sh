@@ -9,9 +9,9 @@ php artisan key:generate --no-interaction
 
 php artisan storage:link --no-interaction 2>/dev/null || true
 
-php artisan config:cache --no-interaction --force
-php artisan route:cache --no-interaction --force
-php artisan view:cache --no-interaction --force
+php artisan config:cache --no-interaction
+php artisan route:cache --no-interaction
+php artisan view:cache --no-interaction
 
 php artisan migrate --no-interaction --force
 
