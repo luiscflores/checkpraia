@@ -1,5 +1,7 @@
 <div class="space-y-8" x-data="{
     locating: false,
+    mapInstance: null,
+
     triggerReport(flagColor) {
         this.locating = true;
         if (!navigator.geolocation) {
@@ -18,6 +20,33 @@
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
+    },
+
+    initMap(lat, lng, color, name) {
+        this.$nextTick(() => {
+            if (this.mapInstance) {
+                this.mapInstance.remove();
+            }
+            const el = document.getElementById('beach-map');
+            if (!el) return;
+            this.mapInstance = L.map('beach-map').setView([lat, lng], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(this.mapInstance);
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+            const markerBorder = isDark ? '#070a13' : '#ffffff';
+            const icon = L.divIcon({
+                className: 'detail-div-icon',
+                html: `<div style=\"width:20px;height:20px;background:${color};border:3.5px solid ${markerBorder};border-radius:50%;box-shadow:0 0 16px ${color};\"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            L.marker([lat, lng], { icon })
+                .addTo(this.mapInstance)
+                .bindPopup('<strong>' + name + '</strong>')
+                .openPopup();
+        });
     }
 }">
     @section('title', $beach->name . ' - Bandeira e Condições do Mar')
@@ -426,27 +455,7 @@
     <div class="glass-card p-4 rounded-3xl border border-theme-medium">
         <h3 class="text-sm font-bold text-theme uppercase tracking-wider mb-3"><span aria-hidden="true">📍</span> Localização Geográfica</h3>
         <div id="beach-map" class="w-full h-80 rounded-2xl border border-theme-subtle overflow-hidden z-0"
-             x-init="
-                const map = L.map('beach-map').setView([{{ $beach->latitude }}, {{ $beach->longitude }}], 14);
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: '&copy; <a href=\"https://www.esri.com/\">Esri</a>',
-                    maxZoom: 19
-                }).addTo(map);
-                
-                const markerColor = '{{ $markerColorHex }}';
-                const markerBorder = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? '#070a13' : '#ffffff';
-                const icon = L.divIcon({
-                    className: 'detail-div-icon',
-                    html: `<div style='width: 20px; height: 20px; background-color: ${markerColor}; border: 3.5px solid ${markerBorder}; border-radius: 50%; box-shadow: 0 0 16px ${markerColor};'></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                });
-                
-                L.marker([{{ $beach->latitude }}, {{ $beach->longitude }}], { icon: icon })
-                    .addTo(map)
-                    .bindPopup('<strong>{{ $beach->name }}</strong>')
-                    .openPopup();
-             "
+             x-init="initMap(@json($beach->latitude), @json($beach->longitude), @json($markerColorHex), @json($beach->name))"
              role="application"
              aria-label="Mapa de localização da {{ $beach->name }}">
         </div>
