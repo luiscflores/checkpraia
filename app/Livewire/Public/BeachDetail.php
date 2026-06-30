@@ -115,12 +115,19 @@ class BeachDetail extends Component
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
             })->get();
 
+        $tides = \App\Models\TideForecast::where('tide_station_id', $this->beach->tide_station_id)
+            ->where('tide_time', '>=', now()->startOfDay())
+            ->where('tide_time', '<=', now()->endOfDay()->addHours(12))
+            ->orderBy('tide_time', 'asc')
+            ->get();
+
         return view('livewire.public.beach-detail', [
             'ocean' => $latestOcean,
             'weather' => $latestWeather,
             'quality' => $latestQuality,
             'alerts' => $activeAlerts,
             'prediction' => $latestPrediction,
+            'tides' => $tides,
         ])->layout('components.layouts.app');
     }
 }

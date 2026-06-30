@@ -114,7 +114,7 @@
                         </span>
                     </p>
                     <p class="text-xs text-slate-400">Grau de Confiança: <span class="font-bold text-white">{{ $confidence }}%</span></p>
-                    <p class="text-[10px] text-slate-500">Última atualização: {{ $beach->updated_at->format('H:i') }}</p>
+                    <p class="text-[10px] text-slate-500">Última atualização: {{ $beach->currentStatus ? $beach->currentStatus->updated_at->format('H:i') : $beach->updated_at->format('H:i') }}</p>
                 </div>
 
                 @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
@@ -235,7 +235,7 @@
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Intensidade Vento</span>
-                    <span class="text-xl font-bold text-white block">{{ $weather && $weather->wind_speed !== null ? (int)$weather->wind_speed . ' kt' : 'Sem Dados' }}</span>
+                    <span class="text-xl font-bold text-white block">{{ $weather && $weather->wind_speed !== null ? (int)round($weather->wind_speed * 1.852) . ' km/h' : 'Sem Dados' }}</span>
                     @if($weather && $weather->wind_direction)
                         <span class="text-[10px] text-slate-500 block">Dir: {{ $weather->wind_direction }}</span>
                     @endif
@@ -307,6 +307,28 @@
                     <span class="text-xl font-bold block {{ $jellyClass }}">{{ $jellyLabel }}</span>
                     <span class="text-[10px] text-slate-500 block">GelAvista</span>
                 </div>
+            </div>
+
+            <!-- Tide Information Card -->
+            <div class="glass-card p-6 rounded-3xl space-y-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    🌊 Tabela de Marés (Previsão OGC-IH)
+                </h3>
+                @if($tides && count($tides) > 0)
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        @foreach($tides->take(4) as $tide)
+                            <div class="bg-white/5 border border-white/5 p-3 rounded-2xl text-center space-y-1">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold block">
+                                    {{ $tide->tide_type === 'high' ? '📈 Preia-mar' : '📉 Baixa-mar' }}
+                                </span>
+                                <span class="text-base font-bold text-white block">{{ $tide->tide_height }}m</span>
+                                <span class="text-[10px] text-slate-500 block">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-xs text-slate-500">Sem previsões de marés disponíveis para hoje.</p>
+                @endif
             </div>
 
             <!-- Description & Services -->

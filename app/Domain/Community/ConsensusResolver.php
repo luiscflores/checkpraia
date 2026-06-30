@@ -27,6 +27,7 @@ class ConsensusResolver
     public function resolveCurrentStatus(Beach $beach): BeachCurrentStatus
     {
         $status = BeachCurrentStatus::firstOrNew(['beach_id' => $beach->id]);
+        $status->updated_at = now();
 
         // 1. Check for official alerts (takes absolute priority)
         $alert = OfficialAlert::where('beach_id', $beach->id)
@@ -127,19 +128,33 @@ class ConsensusResolver
                 if ($quality && strtolower($quality->quality_class) === 'poor') {
                     $reason = 'Qualidade da água imprópria para banhos.';
                 } elseif ($ocean && $ocean->wave_height_max > 2.0) {
-                    $reason = 'Ondulação muito forte com ondas superiores a ' . $ocean->wave_height_max . 'm (Mar perigoso).';
+                    $period = $ocean->wave_period_max ?: $ocean->wave_period_min;
+                    $periodNote = $period && $period < 8.0 ? ' com período curto de ' . round($period, 1) . 's (rebentação intensa)' : '';
+                    $reason = 'Ondulação muito forte com ondas de ' . $ocean->wave_height_max . 'm' . $periodNote . ' — banhos proibidos.';
                 } elseif ($weather && $weather->wind_speed > 22.0) {
-                    $reason = 'Vento extremamente forte de ' . $weather->wind_speed . ' nós (Perigo de correntes).';
+                    $reason = 'Vento extremamente forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h (Perigo de correntes).';
                 } else {
-                    $reason = 'Previsão automática indica condições gerais perigosas.';
+                    $reason = 'Condições marítimas perigosas. Entrada na água proibida.';
                 }
             } elseif ($prediction->selected_flag === 'yellow') {
+                $nextTide = \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)
+                    ->where('tide_time', '>=', now())
+                    ->orderBy('tide_time', 'asc')
+                    ->first();
+
                 if ($quality && strtolower($quality->quality_class) === 'sufficient') {
                     $reason = 'Qualidade da água apenas aceitável para banhos.';
+                } elseif ($nextTide && $nextTide->tide_type === 'low' && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence)) && round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1) < 4.0) {
+                    $hours = round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1);
+                    $reason = 'Corrente de vazante forte no estuário (' . $hours . 'h para a maré baixa).';
                 } elseif ($ocean && $ocean->wave_height_max > 1.2) {
                     $reason = 'Ondulação moderada com ondas de até ' . $ocean->wave_height_max . 'm (Recomenda-se precaução).';
                 } elseif ($weather && $weather->wind_speed > 14.0) {
-                    $reason = 'Vento moderado a forte de ' . $weather->wind_speed . ' nós.';
+                    $reason = 'Vento moderado a forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h.';
+                } elseif ($nextTide && $nextTide->tide_type === 'low' && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence))) {
+                    $reason = 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
+                } elseif ($nextTide && $nextTide->tide_type === 'low' && $nextTide->tide_height < 1.0) {
+                    $reason = 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
                 } elseif ($beach->features && $beach->features->current_risk === 'high') {
                     $reason = 'Risco elevado de correntes permanentes nesta praia.';
                 } else {

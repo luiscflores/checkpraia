@@ -1,7 +1,5 @@
 <?php
 
-namespace App\App\Livewire\Admin; // Wait, path is App\Livewire\Admin
-
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
@@ -193,22 +191,22 @@ class Dashboard extends Component
     public function syncIpmaData()
     {
         try {
-            \App\Jobs\FetchIpmaForecasts::dispatchSync();
-            session()->flash('sync_success', 'Dados de previsão (IPMA/Open-Meteo) sincronizados com sucesso!');
+            \App\Jobs\FetchIpmaForecasts::dispatch();
+            session()->flash('sync_success', 'Sincronização de dados de previsão (IPMA/Open-Meteo) iniciada em segundo plano!');
         } catch (\Exception $e) {
             logger()->error('Ipma manual sync failed: ' . $e->getMessage());
-            session()->flash('sync_error', 'Falha na sincronização do IPMA: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao iniciar a sincronização do IPMA: ' . $e->getMessage());
         }
     }
 
     public function syncWaterQualityData()
     {
         try {
-            \App\Jobs\FetchInfoAguaData::dispatchSync();
-            session()->flash('sync_success', 'Dados de qualidade da água (InfoÁgua) sincronizados com sucesso!');
+            \App\Jobs\FetchInfoAguaData::dispatch();
+            session()->flash('sync_success', 'Sincronização de dados de qualidade da água (InfoÁgua) iniciada em segundo plano!');
         } catch (\Exception $e) {
             logger()->error('InfoAgua manual sync failed: ' . $e->getMessage());
-            session()->flash('sync_error', 'Falha na sincronização do InfoÁgua: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao iniciar a sincronização do InfoÁgua: ' . $e->getMessage());
         }
     }
 

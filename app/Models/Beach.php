@@ -40,6 +40,11 @@ class Beach extends Model
         return $translation ? $translation->description : '';
     }
 
+    public function getTimezoneAttribute()
+    {
+        return ((float) $this->longitude) < -20.0 ? 'Atlantic/Azores' : 'Europe/Lisbon';
+    }
+
     public function getUrlAttribute()
     {
         $locale = app()->getLocale();
