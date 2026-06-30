@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::pattern('locale', 'pt|en|es|fr');
 
+Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirect'])->name('auth.google');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
 Route::prefix('{locale}')->group(function () {
     Route::get('/', \App\Livewire\Public\Home::class)->name('home');
     Route::get('/rankings', \App\Livewire\Public\Rankings::class)->name('rankings');

@@ -24,6 +24,7 @@ class SetLocale
             $request->is('livewire/*') || 
             $request->is('filament/*') || 
             $request->is('_debugbar/*') || 
+            $request->is('auth/*') || 
             str_contains($path, '.') // skips files like favicon.ico, manifest.json
         ) {
             return $next($request);
