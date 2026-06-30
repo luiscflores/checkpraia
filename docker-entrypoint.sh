@@ -1,24 +1,18 @@
 #!/bin/bash
 set -e
 
-# Cria .env vazio se não existir (as vars vêm do ambiente do Render)
 if [ ! -f .env ]; then
     touch .env
 fi
 
-# Gera APP_KEY apenas se não estiver definida nas env vars do Render
-php artisan key:generate
+php artisan key:generate --no-interaction
 
-# Cria link storage
-php artisan storage:link --force 2>/dev/null || true
+php artisan storage:link --no-interaction 2>/dev/null || true
 
-# Cache de config, rotas e views
-php artisan config:cache --force
-php artisan route:cache --force
-php artisan view:cache --force
+php artisan config:cache --no-interaction --force
+php artisan route:cache --no-interaction --force
+php artisan view:cache --no-interaction --force
 
-# Corre migrações
-php artisan migrate --force
+php artisan migrate --no-interaction --force
 
-# Inicia o Apache
 exec apache2-foreground
