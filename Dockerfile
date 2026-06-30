@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libzip-dev \
-    libicu-dev
+    libicu-dev \
+    libonig-dev
 
 # EXTENSÕES PHP (IMPORTANTE para Laravel + Filament)
 RUN docker-php-ext-install \
