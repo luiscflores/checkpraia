@@ -1,6 +1,18 @@
 <div class="space-y-8" x-data="beachDetailHandler()">
     @section('title', $beach->name . ' - Bandeira e Condições do Mar')
 
+    @if(session()->has('favorite_success'))
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium">
+            {{ session('favorite_success') }}
+        </div>
+    @endif
+
+    @if(session()->has('favorite_error'))
+        <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs rounded-xl font-medium">
+            {{ session('favorite_error') }}
+        </div>
+    @endif
+
     <!-- Beach Header Banner -->
     <div class="glass-card p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -20,9 +32,15 @@
         </div>
 
         <div class="flex gap-3">
+            <button type="button"
+                    wire:click="toggleFavorite"
+                    class="px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 {{ $isFavorited ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-600' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white hover:text-white' }}"
+                    aria-label="{{ $isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
+                <span>{{ $isFavorited ? '⭐' : '☆' }}</span>
+            </button>
             <a href="https://www.google.com/maps/dir/?api=1&destination={{ $beach->latitude }},{{ $beach->longitude }}" 
                target="_blank" 
-               class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2"
+               class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2"
                aria-label="Obter direções de GPS para {{ $beach->name }}">
                 <span aria-hidden="true">🗺️</span> Direções de GPS
             </a>
@@ -363,7 +381,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse($beach->restaurants as $restaurant)
                         <div class="glass-card p-4 rounded-2xl flex flex-col justify-between gap-3 relative group">
-                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20' }}">
+                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20' }}">
                                 {{ $restaurant->source }}
                             </span>
 
@@ -386,7 +404,7 @@
                                         Reservar Mesa
                                     </a>
                                 @endif
-                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700" aria-label="Ver ficha do {{ $restaurant->name }}">
+                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700" aria-label="Ver ficha do {{ $restaurant->name }}">
                                     Ver Ficha
                                 </a>
                             </div>

@@ -12,6 +12,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="color-scheme" content="dark light">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
     <title>@yield('title', 'CheckPraia - Bandeiras das Praias em Tempo Real')</title>
     <meta name="description" content="@yield('meta_description', 'Consulta a bandeira mais provável das praias marítimas vigiadas de Portugal antes de saíres de casa. Previsões automáticas e confirmações da comunidade.')">

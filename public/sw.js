@@ -1,4 +1,4 @@
-const CACHE_NAME = 'checkpraia-cache-v1';
+const CACHE_NAME = 'checkpraia-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/favicon.ico',
@@ -36,32 +36,41 @@ self.addEventListener('activate', event => {
 
 // Fetch Request Interception
 self.addEventListener('fetch', event => {
-  // Only cache GET requests and non-Livewire update paths
   if (event.request.method !== 'GET' || event.request.url.includes('/livewire/')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then(response => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          // Clone the response to store it in cache
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
+  const isNavigation = event.request.mode === 'navigate';
+  const isStatic = event.request.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2?)$/);
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
           return response;
-        }).catch(() => {
-          // Offline fallback
-          return caches.match('/');
-        });
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/')))
+    );
+  } else if (isStatic) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        const fetchAndUpdate = fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
+          }
+          return response;
+        }).catch(() => cached);
+        return cached || fetchAndUpdate;
       })
-  );
+    );
+  } else {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => response)
+        .catch(() => caches.match(event.request))
+    );
+  }
 });

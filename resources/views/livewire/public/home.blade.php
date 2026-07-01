@@ -4,7 +4,7 @@
     <h1 class="sr-only">CheckPraia - Mapa das Praias</h1>
 
     @if(session()->has('favorite_success'))
-        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs rounded-xl font-medium">
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium">
             {{ session('favorite_success') }}
         </div>
     @endif
@@ -75,10 +75,10 @@
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <h2 class="font-bold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate">{{ $beach['name'] }}</h2>
                             @if($beach['blue_flag'])
-                                <span class="bg-blue-500/15 text-blue-300/90 border border-blue-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
+                                <span class="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
                             @endif
                             @if($beach['accessible'])
-                                <span class="bg-teal-500/15 text-teal-300/90 border border-teal-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
+                                <span class="bg-teal-600 text-white text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
                             @endif
                         </div>
                         <p class="text-xs sm:text-sm text-theme-secondary truncate">
@@ -89,7 +89,7 @@
                     <!-- Flag Badge -->
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
                         <button type="button"
-                                @click.stop="$wire.toggleFavorite({{ $beach['id'] }})"
+                                @click.prevent.stop="$wire.toggleFavorite({{ $beach['id'] }})"
                                 class="text-sm transition-all hover:scale-110 active:scale-90 mb-0.5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]' : 'opacity-40 hover:opacity-80' }}"
                                 title="{{ $beach['is_favorited'] ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
                             <span class="{{ $beach['is_favorited'] ? '' : 'grayscale' }}">⭐</span>
