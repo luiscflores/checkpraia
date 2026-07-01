@@ -224,6 +224,12 @@
                         <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-2 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[80px] sm:max-w-none" aria-label="Área pessoal de {{ auth()->user()->name }}">
                             <span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 5, '') }}
                         </a>
+                        <form method="POST" action="{{ route('logout') }}" class="inline">
+                            @csrf
+                            <button type="submit" class="theme-toggle-btn touch-target" title="Terminar sessão">
+                                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+                            </button>
+                        </form>
                     @else
                         <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center">
                             Entrar

@@ -30,4 +30,10 @@ Route::prefix('{locale}')->group(function () {
     Route::get('/admin-dashboard', Dashboard::class)->name('admin.dashboard');
 });
 
+Route::post('/logout', function (\Illuminate\Http\Request $request) {
+    $logout = new \App\Livewire\Actions\Logout();
+    $logout();
+    return redirect()->route('home');
+})->name('logout')->middleware('auth');
+
 require __DIR__.'/auth.php';
