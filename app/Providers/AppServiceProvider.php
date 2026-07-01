@@ -26,9 +26,11 @@ class AppServiceProvider extends ServiceProvider
                 $artisanTime = file_exists($artisanPath) ? filemtime($artisanPath) : time();
                 
                 $deployIdentifier = md5($composerTime . '-' . $artisanTime);
-                $cacheKey = 'last_deploy_id';
+                $lockFile = storage_path('app/deployed_version.txt');
 
-                if (cache()->get($cacheKey) !== $deployIdentifier) {
+                $lastDeploy = file_exists($lockFile) ? file_get_contents($lockFile) : '';
+
+                if ($lastDeploy !== $deployIdentifier) {
                     // 1. Run migrations safely
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     
@@ -64,16 +66,16 @@ class AppServiceProvider extends ServiceProvider
                             try {
                                 \App\Jobs\FetchIpmaForecasts::dispatchSync($beach);
                                 \App\Jobs\FetchInfoAguaData::dispatchSync($beach);
-                            } catch (\Exception $ex) {
+                            } catch (\Throwable $ex) {
                                 logger()->error('Auto-sync failed for beach ' . $beach->name . ': ' . $ex->getMessage());
                             }
                         }
                     }
 
-                    // 4. Save deploy identifier to prevent re-running
-                    cache()->forever($cacheKey, $deployIdentifier);
+                    // 4. Save deploy identifier to lock file
+                    @file_put_contents($lockFile, $deployIdentifier);
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 logger()->error('Auto-bootstrap database and import failed: ' . $e->getMessage());
             }
         }
