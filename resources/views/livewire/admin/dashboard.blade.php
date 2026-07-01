@@ -247,16 +247,51 @@
                     </div>
                 </div>
 
+                <!-- Database Operations -->
                 <div class="pt-4 border-t border-theme-subtle space-y-2">
-                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">Ações de Sincronização Manual</span>
+                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">Operações de Base de Dados</span>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <button wire:click="syncIpmaData" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
-                            <span wire:loading wire:target="syncIpmaData" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                            <span>🔄 Sincronizar IPMA</span>
+                        <button wire:click="runMigrations" wire:loading.attr="disabled" class="bg-teal-600 hover:bg-teal-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="runMigrations" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>⚙️ Executar Migrações</span>
                         </button>
-                        <button wire:click="syncWaterQualityData" wire:loading.attr="disabled" class="bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
-                            <span wire:loading wire:target="syncWaterQualityData" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                            <span>🔄 Sincronizar InfoÁgua</span>
+                        <button wire:click="runSeeders" wire:loading.attr="disabled" class="bg-teal-600 hover:bg-teal-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="runSeeders" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>🌱 Executar Sementeiras (Seed)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Async Background Sync -->
+                <div class="pt-4 border-t border-theme-subtle space-y-2">
+                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">Sincronização em Segundo Plano (Fila)</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button wire:click="syncIpmaData" wire:loading.attr="disabled" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold py-3 sm:py-2 rounded-xl text-sm border border-blue-500/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="syncIpmaData" class="animate-spin inline-block h-3 w-3 border-2 border-blue-300 border-t-transparent rounded-full"></span>
+                            <span>🔄 Agendar IPMA (Fila)</span>
+                        </button>
+                        <button wire:click="syncWaterQualityData" wire:loading.attr="disabled" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold py-3 sm:py-2 rounded-xl text-sm border border-blue-500/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="syncWaterQualityData" class="animate-spin inline-block h-3 w-3 border-2 border-blue-300 border-t-transparent rounded-full"></span>
+                            <span>🔄 Agendar InfoÁgua (Fila)</span>
+                        </button>
+                    </div>
+                    <button wire:click="processQueue" wire:loading.attr="disabled" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                        <span wire:loading wire:target="processQueue" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                        <span>⚙️ Executar Fila (Queue Worker)</span>
+                    </button>
+                </div>
+
+                <!-- Direct Sync -->
+                <div class="pt-4 border-t border-theme-subtle space-y-2">
+                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider text-amber-400">Sincronização Direta / Síncrona</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button wire:click="syncIpmaDataSync" wire:loading.attr="disabled" class="bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="syncIpmaDataSync" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>⚡ Importar IPMA Agora</span>
+                        </button>
+                        <button wire:click="syncWaterQualityDataSync" wire:loading.attr="disabled" class="bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
+                            <span wire:loading wire:target="syncWaterQualityDataSync" class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                            <span>⚡ Importar InfoÁgua Agora</span>
                         </button>
                     </div>
                 </div>

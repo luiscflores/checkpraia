@@ -155,6 +155,30 @@ class Dashboard extends Component
         }
     }
 
+    public function runMigrations()
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            session()->flash('sync_success', 'Migrações executadas com sucesso: ' . nl2br(e($output)));
+        } catch (\Exception $e) {
+            logger()->error('Admin migrations run failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao executar migrações: ' . $e->getMessage());
+        }
+    }
+
+    public function runSeeders()
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            session()->flash('sync_success', 'Sementeiras (Seeders) executadas com sucesso: ' . nl2br(e($output)));
+        } catch (\Exception $e) {
+            logger()->error('Admin seeders run failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao executar sementeiras: ' . $e->getMessage());
+        }
+    }
+
     public function syncIpmaData()
     {
         try {
@@ -166,6 +190,20 @@ class Dashboard extends Component
         }
     }
 
+    public function syncIpmaDataSync()
+    {
+        try {
+            $beaches = Beach::where('is_active', true)->get();
+            foreach ($beaches as $beach) {
+                \App\Jobs\FetchIpmaForecasts::dispatchSync($beach);
+            }
+            session()->flash('sync_success', 'Previsões IPMA/Open-Meteo para ' . $beaches->count() . ' praias sincronizadas com sucesso (Modo Síncrono)!');
+        } catch (\Exception $e) {
+            logger()->error('Ipma manual sync sync failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao sincronizar IPMA: ' . $e->getMessage());
+        }
+    }
+
     public function syncWaterQualityData()
     {
         try {
@@ -174,6 +212,32 @@ class Dashboard extends Component
         } catch (\Exception $e) {
             logger()->error('InfoAgua manual sync failed: ' . $e->getMessage());
             session()->flash('sync_error', 'Falha ao iniciar a sincronização do InfoÁgua: ' . $e->getMessage());
+        }
+    }
+
+    public function syncWaterQualityDataSync()
+    {
+        try {
+            $beaches = Beach::where('is_active', true)->get();
+            foreach ($beaches as $beach) {
+                \App\Jobs\FetchInfoAguaData::dispatchSync($beach);
+            }
+            session()->flash('sync_success', 'Dados InfoÁgua para ' . $beaches->count() . ' praias sincronizados com sucesso (Modo Síncrono)!');
+        } catch (\Exception $e) {
+            logger()->error('InfoAgua manual sync sync failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao sincronizar InfoÁgua: ' . $e->getMessage());
+        }
+    }
+
+    public function processQueue()
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('queue:work', ['--stop-when-empty' => true]);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            session()->flash('sync_success', 'Fila processada com sucesso: ' . nl2br(e($output)));
+        } catch (\Exception $e) {
+            logger()->error('Admin queue:work failed: ' . $e->getMessage());
+            session()->flash('sync_error', 'Falha ao processar fila: ' . $e->getMessage());
         }
     }
 

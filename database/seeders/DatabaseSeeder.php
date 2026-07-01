@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
         ]);
 
-        $this->call(BeachSeeder::class);
+        $this->call([
+            BeachSeeder::class,
+            RestaurantSeeder::class,
+        ]);
     }
 }
