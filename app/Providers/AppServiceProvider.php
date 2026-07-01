@@ -32,8 +32,27 @@ class AppServiceProvider extends ServiceProvider
                     // 1. Run migrations safely
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     
-                    // 2. Run seeders only if the beaches table is empty
-                    if (\Illuminate\Support\Facades\Schema::hasTable('beaches') && \App\Models\Beach::count() === 0) {
+                    // 2. Wipe beach data and run seeders on every deployment
+                    if (\Illuminate\Support\Facades\Schema::hasTable('beaches')) {
+                        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+                        
+                        \App\Models\FlagReport::truncate();
+                        \App\Models\FlagPrediction::truncate();
+                        \App\Models\OceanForecast::truncate();
+                        \App\Models\WeatherForecast::truncate();
+                        \App\Models\TideForecast::truncate();
+                        \App\Models\WaterQualitySnapshot::truncate();
+                        \App\Models\OfficialAlert::truncate();
+                        \App\Models\BeachTranslation::truncate();
+                        \App\Models\BeachService::truncate();
+                        \App\Models\BeachFeature::truncate();
+                        \App\Models\BeachPredictionProfile::truncate();
+                        \App\Models\Restaurant::truncate();
+                        \Illuminate\Support\Facades\DB::table('beach_restaurants')->truncate();
+                        \App\Models\Beach::truncate();
+                        
+                        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+
                         \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
                     }
 
