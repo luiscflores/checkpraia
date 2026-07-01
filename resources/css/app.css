@@ -22,7 +22,7 @@
 
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-muted: #8293a8;
 
     --border-subtle: rgba(255, 255, 255, 0.05);
     --border-default: rgba(255, 255, 255, 0.08);
@@ -137,4 +137,12 @@
 }
 @utility bg-theme-card {
     background: var(--bg-card);
+}
+
+/* Custom styling for Leaflet Popup Close button to guarantee contrast WCAG compliance */
+.leaflet-popup-close-button {
+    color: var(--text-muted) !important;
+}
+.leaflet-popup-close-button:hover {
+    color: var(--text-primary) !important;
 }

@@ -102,26 +102,26 @@
                 @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
                     <div class="mt-4 w-full max-w-xs space-y-2">
                         <span class="text-xs text-slate-400 uppercase font-bold tracking-wider block">Distribuição de Probabilidades</span>
-                        <div class="h-4 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[2px]">
+                        <div class="h-8 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[2px]">
                             @if($prediction->green_probability > 0)
-                                <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[16px] font-black text-slate-950" 
                                      style="width: {{ $prediction->green_probability }}%" 
                                      title="Verde: {{ $prediction->green_probability }}%">
-                                    @if($prediction->green_probability >= 20) {{ $prediction->green_probability }}% @endif
+                                    {{ $prediction->green_probability }}%
                                 </div>
                             @endif
                             @if($prediction->yellow_probability > 0)
-                                <div class="bg-amber-500 transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                <div class="bg-amber-500 transition-all duration-300 flex items-center justify-center text-[16px] font-black text-slate-950" 
                                      style="width: {{ $prediction->yellow_probability }}%" 
                                      title="Amarela: {{ $prediction->yellow_probability }}%">
-                                    @if($prediction->yellow_probability >= 20) {{ $prediction->yellow_probability }}% @endif
+                                    {{ $prediction->yellow_probability }}%
                                 </div>
                             @endif
                             @if($prediction->red_probability > 0)
-                                <div class="bg-rose-500 rounded-r-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-white" 
+                                <div class="bg-rose-500 rounded-r-full transition-all duration-300 flex items-center justify-center text-[16px] font-black text-white" 
                                      style="width: {{ $prediction->red_probability }}%" 
                                      title="Vermelha: {{ $prediction->red_probability }}%">
-                                    @if($prediction->red_probability >= 20) {{ $prediction->red_probability }}% @endif
+                                    {{ $prediction->red_probability }}%
                                 </div>
                             @endif
                         </div>
@@ -157,7 +157,7 @@
                 <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     <span aria-hidden="true">📢</span> Confirmar Bandeira no Local
                 </h3>
-                <p class="text-xs text-slate-400 leading-relaxed">
+                <p class="text-l text-slate-400 leading-relaxed">
                     Ajuda a comunidade! Se estás fisicamente nesta praia, reporta a cor da bandeira hasteada. A tua localização será validada.
                 </p>
 
@@ -182,13 +182,13 @@
 
                     <div class="grid grid-cols-3 gap-3" x-show="!locating" role="group" aria-label="Selecionar cor da bandeira">
                         <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-emerald-500/20" aria-label="Reportar bandeira Verde">
-                            <span aria-hidden="true">🟢</span> Verde
+                             Verde
                         </button>
                         <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-amber-500/20" aria-label="Reportar bandeira Amarela">
-                            <span aria-hidden="true">🟡</span> Amarela
+                             Amarela
                         </button>
                         <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl text-xs transition-all shadow shadow-rose-500/20" aria-label="Reportar bandeira Vermelha">
-                            <span aria-hidden="true">🔴</span> Vermelha
+                             Vermelha
                         </button>
                     </div>
                 @else
@@ -448,10 +448,29 @@
                         scrollWheelZoom: true
                     }).setView([lat, lng], 14);
 
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    this.mapInstance.on('popupopen', function(e) {
+                        const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
+                        if (closeBtn) {
+                            closeBtn.removeAttribute('href');
+                            closeBtn.setAttribute('role', 'button');
+                        }
+                    });
+
+                    let tileCounter = 0;
+                    const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19
-                    }).addTo(this.mapInstance);
+                        maxZoom: 19,
+                        alt: 'Mapa'
+                    });
+                    layer.on('tileload', function(e) {
+                        if (e.tile) {
+                            tileCounter++;
+                            e.tile.setAttribute('role', 'presentation');
+                            e.tile.setAttribute('aria-hidden', 'true');
+                            e.tile.setAttribute('alt', `Mapa Bloco ${tileCounter}`);
+                        }
+                    });
+                    layer.addTo(this.mapInstance);
 
                     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
                     const markerBorder = isDark ? '#070a13' : '#ffffff';
@@ -461,10 +480,14 @@
                         iconSize: [20, 20],
                         iconAnchor: [10, 10]
                     });
-                    L.marker([lat, lng], { icon })
+                    const marker = L.marker([lat, lng], { icon })
                         .addTo(this.mapInstance)
                         .bindPopup('<strong>' + name + '</strong>')
                         .openPopup();
+                    const markerEl = marker.getElement();
+                    if (markerEl) {
+                        markerEl.setAttribute('aria-label', `Marcador de ${name}`);
+                    }
 
                     this.mapReady = true;
                 },

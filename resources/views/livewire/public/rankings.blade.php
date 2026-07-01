@@ -75,7 +75,7 @@
                     </div>
                 </div>
                 @if($userItem->accepted_confirmations_count >= 50 && ($userItem->accepted_confirmations_count / max(1, $userItem->confirmations_count)) >= 0.9)
-                    <span class="text-[9px] uppercase tracking-wide px-1.5 py-0.5 bg-teal-500/10 text-teal-300 border border-teal-500/20 rounded font-black shrink-0">
+                    <span class="text-[11px] uppercase tracking-wide px-1.5 py-0.5 bg-teal-500/10 text-teal-300 border border-teal-500/20 rounded font-black shrink-0">
                         Voto Reforçado ⚡
                     </span>
                 @endif

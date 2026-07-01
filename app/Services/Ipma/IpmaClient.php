@@ -12,8 +12,8 @@ class IpmaClient
     public function getWeatherForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo for high-resolution coordinate weather, requesting knots directly for wind speed unit
-            $response = Http::timeout(5)->get('https://api.open-meteo.com/v1/forecast', [
+            // Query Open-Meteo for weather, with 3 retries (150ms gap) and 6s timeout
+            $response = Http::retry(3, 150)->timeout(6)->get('https://api.open-meteo.com/v1/forecast', [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index,visibility',
@@ -68,8 +68,8 @@ class IpmaClient
     public function getOceanForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo Marine API for wave heights, period and sea surface temp at exact coordinates
-            $response = Http::timeout(5)->get('https://marine-api.open-meteo.com/v1/marine', [
+            // Query Open-Meteo Marine API with 3 retries (150ms gap) and 6s timeout
+            $response = Http::retry(3, 150)->timeout(6)->get('https://marine-api.open-meteo.com/v1/marine', [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'current' => 'wave_height,wave_period,wave_direction,sea_surface_temperature',
