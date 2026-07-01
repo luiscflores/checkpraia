@@ -1,6 +1,14 @@
 <div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($beachesList))">
     @section('title', 'CheckPraia')
 
+    <h1 class="sr-only">CheckPraia - Mapa das Praias</h1>
+
+    @if(session()->has('favorite_success'))
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs rounded-xl font-medium">
+            {{ session('favorite_success') }}
+        </div>
+    @endif
+
     @if(session()->has('favorite_error'))
         <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs rounded-xl font-medium">
             {{ session('favorite_error') }}
@@ -12,13 +20,15 @@
         <!-- Search bar + GPS -->
         <div class="flex items-stretch gap-2">
             <div class="w-full relative flex-1">
+                <label for="beach-search" class="sr-only">Pesquisar praia ou município</label>
                 <input 
+                    id="beach-search"
                     type="text" 
                     wire:model.live.debounce.300ms="search" 
                     placeholder="Pesquisar praia ou município..." 
                     class="w-full bg-theme-input border border-theme-subtle px-4 py-3.5 pl-10 rounded-xl text-base sm:text-sm text-theme placeholder:text-theme-muted focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
                 />
-                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
             </div>
@@ -65,10 +75,10 @@
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <h3 class="font-bold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate">{{ $beach['name'] }}</h3>
                             @if($beach['blue_flag'])
-                                <span class="bg-blue-500/15 text-blue-300/90 border border-blue-500/20 text-[10px] sm:text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
+                                <span class="bg-blue-500/15 text-blue-300/90 border border-blue-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
                             @endif
                             @if($beach['accessible'])
-                                <span class="bg-teal-500/15 text-teal-300/90 border border-teal-500/20 text-[10px] sm:text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
+                                <span class="bg-teal-500/15 text-teal-300/90 border border-teal-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
                             @endif
                         </div>
                         <p class="text-xs sm:text-sm text-theme-secondary truncate">
@@ -78,7 +88,8 @@
 
                     <!-- Flag Badge -->
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
-                        <button wire:click.stop="toggleFavorite({{ $beach['id'] }})" 
+                        <button type="button"
+                                @click.stop="$wire.toggleFavorite({{ $beach['id'] }})"
                                 class="text-sm transition-all hover:scale-110 active:scale-90 mb-0.5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]' : 'opacity-40 hover:opacity-80' }}"
                                 title="{{ $beach['is_favorited'] ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
                             <span class="{{ $beach['is_favorited'] ? '' : 'grayscale' }}">⭐</span>
@@ -109,7 +120,7 @@
                                 <span>Sem Info</span>
                             </span>
                         @endif
-                        <span class="text-[10px] text-theme-secondary uppercase tracking-wider font-medium">
+                        <span class="text-xs text-theme-secondary uppercase tracking-wider font-medium">
                             {{ $beach['source'] === 'community' ? 'Comunidade' : 'Previsão' }}
                         </span>
                     </div>
@@ -127,22 +138,22 @@
 
             <!-- Main Map - Continental Portugal -->
             <div class="flex-1 rounded-xl sm:rounded-2xl overflow-hidden border border-theme-medium relative min-h-[240px] sm:min-h-[280px]">
-                <div id="map-continente" class="w-full h-full absolute inset-0 z-0"></div>
+                <div id="map-continente" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="Mapa de praias de Portugal Continental"></div>
             </div>
 
             <!-- Island Maps Row -->
             <div class="grid grid-cols-2 gap-2 sm:gap-3 h-28 sm:h-36 shrink-0">
                 <!-- Azores -->
                 <div class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative">
-                    <div id="map-acores" class="w-full h-full absolute inset-0 z-0"></div>
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10">
+                    <div id="map-acores" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="Mapa de praias dos Açores"></div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10" aria-hidden="true">
                         <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase">Açores</span>
                     </div>
                 </div>
                 <!-- Madeira -->
                 <div class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative">
-                    <div id="map-madeira" class="w-full h-full absolute inset-0 z-0"></div>
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10">
+                    <div id="map-madeira" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="Mapa de praias da Madeira"></div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10" aria-hidden="true">
                         <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase">Madeira</span>
                     </div>
                 </div>
@@ -233,7 +244,9 @@
             createTileLayer() {
                 return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
-                    maxZoom: 19
+                    maxZoom: 19,
+                    // Empty alt on tile <img> elements — decorative map tiles per WCAG 1.1.1
+                    alt: ''
                 });
             },
 

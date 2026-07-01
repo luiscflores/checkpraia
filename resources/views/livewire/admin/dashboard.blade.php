@@ -105,13 +105,13 @@
                         <div class="space-y-1">
                                     <label for="adjust-points" class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">Nova Pontuação</label>
                             <input id="adjust-points" type="number" wire:model="adjustmentPoints" class="w-full glass-input px-3 py-2 rounded-xl text-sm" />
-                            @error('adjustmentPoints') <span class="text-[10px] text-rose-400 block" role="alert">{{ $message }}</span> @enderror
+                            @error('adjustmentPoints') <span class="text-xs text-rose-400 block" role="alert">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="space-y-1">
                                     <label for="adjust-justification" class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">Justificação</label>
                             <input id="adjust-justification" type="text" wire:model="justification" placeholder="Ex: Correção de falsa penalização..." class="w-full glass-input px-3 py-2 rounded-xl text-sm" />
-                            @error('justification') <span class="text-[10px] text-rose-400 block" role="alert">{{ $message }}</span> @enderror
+                            @error('justification') <span class="text-xs text-rose-400 block" role="alert">{{ $message }}</span> @enderror
                         </div>
 
                         <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl text-xs transition-colors">
@@ -131,7 +131,7 @@
                                 <span class="font-bold text-theme block">Ajuste de {{ $adj->difference > 0 ? '+' : '' }}{{ $adj->difference }} pontos</span>
                                 <span class="text-xs text-theme-secondary block">Utilizador: @ {{ $adj->target->username }} &bull; Justificação: "{{ $adj->justification }}"</span>
                             </div>
-                            <div class="text-[10px] text-theme-muted sm:text-right">
+                            <div class="text-xs text-theme-muted sm:text-right">
                                 <span>Por: @ {{ $adj->admin->username }}</span>
                                 <span class="block">{{ $adj->created_at->format('d/m/Y H:i') }}</span>
                             </div>

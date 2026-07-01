@@ -1,58 +1,8 @@
-<div class="space-y-8" x-data="{
-    locating: false,
-    mapInstance: null,
-
-    triggerReport(flagColor) {
-        this.locating = true;
-        if (!navigator.geolocation) {
-            this.$dispatch('notify', { message: 'O teu navegador não suporta geolocalização.', type: 'error' });
-            this.locating = false;
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                @this.call('submitReport', flagColor, position.coords.latitude, position.coords.longitude, position.coords.accuracy);
-                this.locating = false;
-            },
-            (error) => {
-                this.$dispatch('notify', { message: 'Erro de GPS: A permissão de localização é obrigatória para confirmar a bandeira.', type: 'error' });
-                this.locating = false;
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    },
-
-    initMap(lat, lng, color, name) {
-        this.$nextTick(() => {
-            if (this.mapInstance) {
-                this.mapInstance.remove();
-            }
-            const el = document.getElementById('beach-map');
-            if (!el) return;
-            this.mapInstance = L.map('beach-map').setView([lat, lng], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a> contributors',
-                maxZoom: 19
-            }).addTo(this.mapInstance);
-            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-            const markerBorder = isDark ? '#070a13' : '#ffffff';
-            const icon = L.divIcon({
-                className: 'detail-div-icon',
-                html: `<div style=\"width:20px;height:20px;background:${color};border:3.5px solid ${markerBorder};border-radius:50%;box-shadow:0 0 16px ${color};\"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-            L.marker([lat, lng], { icon })
-                .addTo(this.mapInstance)
-                .bindPopup('<strong>' + name + '</strong>')
-                .openPopup();
-        });
-    }
-}">
+<div class="space-y-8" x-data="beachDetailHandler()">
     @section('title', $beach->name . ' - Bandeira e Condições do Mar')
 
     <!-- Beach Header Banner -->
-    <div class="glass-card p-6 md:p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="glass-card p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <div class="flex items-center gap-3 flex-wrap">
                 <span class="text-xs uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-bold">
@@ -65,7 +15,7 @@
                     <span class="text-xs uppercase font-bold text-white bg-teal-600 px-2 py-0.5 rounded-md border border-white/10"><span aria-hidden="true">♿</span> Praia Acessível</span>
                 @endif
             </div>
-            <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight mt-2">{{ $beach->name }}</h1>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-theme tracking-tight mt-2">{{ $beach->name }}</h1>
             <p class="text-slate-400 text-sm mt-1"><span aria-hidden="true">📍</span> {{ $beach->municipality }}, {{ $beach->district ?: $beach->region }}</p>
         </div>
 
@@ -145,14 +95,14 @@
                             {{ $source === 'community' ? 'Confirmação Comunitária' : ($source === 'alert' ? 'Aviso Oficial' : 'Previsão Automática') }}
                         </span>
                     </p>
-                    <p class="text-xs text-slate-400">Grau de Confiança: <span class="font-bold text-white">{{ $confidence }}%</span></p>
-                    <p class="text-[10px] text-slate-500">Última atualização: {{ $beach->currentStatus ? $beach->currentStatus->updated_at->format('H:i') : $beach->updated_at->format('H:i') }}</p>
+                    <p class="text-xs text-slate-400">Grau de Confiança: <span class="font-bold text-theme">{{ $confidence }}%</span></p>
+                    <p class="text-xs text-slate-500">Última atualização: {{ $beach->currentStatus ? $beach->currentStatus->updated_at->format('H:i') : $beach->updated_at->format('H:i') }}</p>
                 </div>
 
                 @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
                     <div class="mt-4 w-full max-w-xs space-y-2">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Distribuição de Probabilidades</span>
-                        <div class="h-4 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-white/5 p-[2px]">
+                        <span class="text-xs text-slate-400 uppercase font-bold tracking-wider block">Distribuição de Probabilidades</span>
+                        <div class="h-4 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[2px]">
                             @if($prediction->green_probability > 0)
                                 <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
                                      style="width: {{ $prediction->green_probability }}%" 
@@ -189,12 +139,12 @@
                                 $helperText = 'Condições meteorológicas e marítimas voláteis.';
                             }
                         @endphp
-                        <span class="text-[10px] text-slate-400 block leading-tight font-medium">💡 {{ $helperText }}</span>
+                        <span class="text-xs text-slate-400 block leading-tight font-medium">💡 {{ $helperText }}</span>
                     </div>
                 @endif
 
                 @if($beach->currentStatus && $beach->currentStatus->reason)
-                    <div class="mt-4 p-3 rounded-xl border border-white/5 bg-slate-900/60 max-w-xs text-center">
+                    <div class="mt-4 p-3 rounded-xl border border-theme-subtle bg-theme-card max-w-xs text-center">
                         <p class="text-xs text-slate-300 font-medium leading-relaxed">
                             <span aria-hidden="true">🔍</span> {{ $beach->currentStatus->reason }}
                         </p>
@@ -204,7 +154,7 @@
 
             <!-- GPS Confirmation Reporter -->
             <div class="glass-card p-6 rounded-3xl space-y-4">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     <span aria-hidden="true">📢</span> Confirmar Bandeira no Local
                 </h3>
                 <p class="text-xs text-slate-400 leading-relaxed">
@@ -254,29 +204,29 @@
         <div class="lg:col-span-7 space-y-6">
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Ondulação Máxima</span>
-                    <span class="text-xl font-bold text-white block">{{ $ocean && $ocean->wave_height_max !== null ? $ocean->wave_height_max . 'm' : 'Sem Dados' }}</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Ondulação Máxima</span>
+                    <span class="text-xl font-bold text-theme block">{{ $ocean && $ocean->wave_height_max !== null ? $ocean->wave_height_max . 'm' : 'Sem Dados' }}</span>
                     @if($ocean && $ocean->wave_direction)
-                        <span class="text-[10px] text-slate-500 block">Dir: {{ $ocean->wave_direction }}</span>
+                        <span class="text-xs text-slate-500 block">Dir: {{ $ocean->wave_direction }}</span>
                     @endif
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Temp. da Água</span>
-                    <span class="text-xl font-bold text-white block">{{ $ocean && $ocean->water_temp !== null ? $ocean->water_temp . '°C' : 'Sem Dados' }}</span>
-                    <span class="text-[10px] text-slate-500 block">SST Média</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Temp. da Água</span>
+                    <span class="text-xl font-bold text-theme block">{{ $ocean && $ocean->water_temp !== null ? $ocean->water_temp . '°C' : 'Sem Dados' }}</span>
+                    <span class="text-xs text-slate-500 block">SST Média</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Intensidade Vento</span>
-                    <span class="text-xl font-bold text-white block">{{ $weather && $weather->wind_speed !== null ? (int)round($weather->wind_speed * 1.852) . ' km/h' : 'Sem Dados' }}</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Intensidade Vento</span>
+                    <span class="text-xl font-bold text-theme block">{{ $weather && $weather->wind_speed !== null ? (int)round($weather->wind_speed * 1.852) . ' km/h' : 'Sem Dados' }}</span>
                     @if($weather && $weather->wind_direction)
-                        <span class="text-[10px] text-slate-500 block">Dir: {{ $weather->wind_direction }}</span>
+                        <span class="text-xs text-slate-500 block">Dir: {{ $weather->wind_direction }}</span>
                     @endif
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Qualidade Água</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Qualidade Água</span>
                     @php
                         $qualityVal = $quality && $quality->quality_class && $quality->quality_class !== 'Desconhecido' ? $quality->quality_class : 'Sem Dados';
                         $qualityColor = match($qualityVal) {
@@ -295,11 +245,11 @@
                         };
                     @endphp
                     <span class="text-xl font-bold block {{ $qualityColor }}">{{ $qualityText }}</span>
-                    <span class="text-[10px] text-slate-500 block">Amostra recente</span>
+                    <span class="text-xs text-slate-500 block">Amostra recente</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Índice UV</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Índice UV</span>
                     @php
                         $uv = $weather && $weather->uv_index !== null ? (float) $weather->uv_index : null;
                         $uvClass = 'text-slate-400';
@@ -320,11 +270,11 @@
                         }
                     @endphp
                     <span class="text-xl font-bold block {{ $uvClass }}">{{ $uv !== null ? $uv : 'Sem Dados' }}</span>
-                    <span class="text-[10px] text-slate-500 block">{{ $uvLabel }}</span>
+                    <span class="text-xs text-slate-500 block">{{ $uvLabel }}</span>
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Alforrecas</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Alforrecas</span>
                     @php
                         $jelly = $weather && $weather->jellyfish_risk ? $weather->jellyfish_risk : null;
                         $jellyClass = 'text-slate-400';
@@ -339,24 +289,24 @@
                         }
                     @endphp
                     <span class="text-xl font-bold block {{ $jellyClass }}">{{ $jellyLabel }}</span>
-                    <span class="text-[10px] text-slate-500 block">GelAvista</span>
+                    <span class="text-xs text-slate-500 block">GelAvista</span>
                 </div>
             </div>
 
             <!-- Tide Information Card -->
             <div class="glass-card p-6 rounded-3xl space-y-4">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     🌊 Tabela de Marés (Previsão OGC-IH)
                 </h3>
                 @if($tides && count($tides) > 0)
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         @foreach($tides->take(4) as $tide)
-                            <div class="bg-white/5 border border-white/5 p-3 rounded-2xl text-center space-y-1">
-                                <span class="text-[10px] text-slate-400 uppercase font-bold block">
+                            <div class="bg-theme-card border border-theme-subtle p-3 rounded-2xl text-center space-y-1">
+                                <span class="text-xs text-slate-400 uppercase font-bold block">
                                     {{ $tide->tide_type === 'high' ? '📈 Preia-mar' : '📉 Baixa-mar' }}
                                 </span>
-                                <span class="text-base font-bold text-white block">{{ $tide->tide_height }}m</span>
-                                <span class="text-[10px] text-slate-500 block">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                                <span class="text-base font-bold text-theme block">{{ $tide->tide_height }}m</span>
+                                <span class="text-xs text-slate-500 block">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -368,7 +318,7 @@
             <!-- Description & Services -->
             <div class="glass-card p-6 rounded-3xl space-y-6">
                 <div class="space-y-2">
-                    <h3 class="text-lg font-bold text-white">Sobre a Praia</h3>
+                    <h3 class="text-lg font-bold text-theme">Sobre a Praia</h3>
                     <p class="text-sm text-slate-300 leading-relaxed">
                         {{ $beach->description ?: 'Esta praia oficial vigiada apresenta uma excelente época balnear e águas com classificações periódicas ótimas.' }}
                     </p>
@@ -377,7 +327,7 @@
                 <div class="space-y-3">
                     <h3 class="text-sm uppercase tracking-wide text-slate-400 font-bold">Serviços Disponíveis</h3>
                     @if($beach->services)
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-200">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-theme">
                             @foreach([
                                 'parking' => '🚗 Estacionamento',
                                 'bathrooms' => '🚻 Casas de Banho',
@@ -392,7 +342,7 @@
                                 'equipment_rental' => '🛶 Aluguer de Equipamento',
                             ] as $field => $label)
                                 @if($beach->services->$field)
-                                    <div class="bg-white/5 border border-white/5 px-2.5 py-2 rounded-lg flex items-center gap-1.5 font-medium">
+                                    <div class="bg-theme-card border border-theme-subtle px-2.5 py-2 rounded-lg flex items-center gap-1.5 font-medium">
                                         {{ $label }}
                                     </div>
                                 @endif
@@ -406,31 +356,31 @@
 
             <!-- TripAdvisor & TheFork Dining integrations -->
             <div class="space-y-4">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     🍴 Onde Comer por Perto
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse($beach->restaurants as $restaurant)
-                        <div class="glass-card p-4 rounded-2xl border border-white/10 flex flex-col justify-between gap-3 relative group">
-                            <span class="absolute top-3 right-3 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20' }}">
+                        <div class="glass-card p-4 rounded-2xl flex flex-col justify-between gap-3 relative group">
+                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20' }}">
                                 {{ $restaurant->source }}
                             </span>
 
                             <div class="space-y-1">
-                                <h4 class="font-bold text-white group-hover:text-blue-400 transition-colors text-sm pr-16">{{ $restaurant->name }}</h4>
+                                <h4 class="font-bold text-theme group-hover:text-blue-400 transition-colors text-sm pr-16">{{ $restaurant->name }}</h4>
                                 <p class="text-xs text-slate-400">{{ $restaurant->cuisine_type }}</p>
                                 <div class="flex items-center gap-2 text-xs">
                                     <span class="text-yellow-400">★ {{ $restaurant->rating }}</span>
                                     <span class="text-slate-500">({{ $restaurant->reviews_count }} avaliações)</span>
                                 </div>
                                 @if($restaurant->average_price)
-                                    <p class="text-xs text-slate-300">Preço Médio: <span class="font-bold text-white">{{ $restaurant->average_price }} €</span></p>
+                                    <p class="text-xs text-slate-300">Preço Médio: <span class="font-bold text-theme">{{ $restaurant->average_price }} €</span></p>
                                 @endif
-                                <p class="text-[10px] text-slate-500">Distância da praia: {{ round($restaurant->pivot->distance, 2) }} km</p>
+                                <p class="text-xs text-slate-500">Distância da praia: {{ round($restaurant->pivot->distance, 2) }} km</p>
                             </div>
 
-                            <div class="flex gap-2 pt-2 border-t border-white/5">
+                            <div class="flex gap-2 pt-2 border-t border-theme-subtle">
                                 @if($restaurant->booking_url)
                                     <a href="{{ $restaurant->booking_url }}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors" aria-label="Reservar mesa no {{ $restaurant->name }}">
                                         Reservar Mesa
@@ -442,7 +392,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="col-span-2 glass-card p-6 rounded-xl border border-white/10 text-center text-slate-500 text-xs">
+                        <div class="col-span-2 glass-card p-6 rounded-xl border border-theme-medium text-center text-theme-muted text-xs">
                             Sem recomendações de restaurantes disponíveis na cache do TripAdvisor ou TheFork para esta praia.
                         </div>
                     @endforelse
@@ -454,10 +404,91 @@
     <!-- Leaflet single location map section -->
     <div class="glass-card p-4 rounded-3xl border border-theme-medium">
         <h3 class="text-sm font-bold text-theme uppercase tracking-wider mb-3"><span aria-hidden="true">📍</span> Localização Geográfica</h3>
-        <div id="beach-map" class="w-full h-80 rounded-2xl border border-theme-subtle overflow-hidden z-0"
-             x-init="initMap(@json($beach->latitude), @json($beach->longitude), @json($markerColorHex), @json($beach->name))"
+        <div id="beach-map"
+             data-lat="{{ $beach->latitude }}"
+             data-lng="{{ $beach->longitude }}"
+             data-color="{{ $markerColorHex }}"
+             data-name="{{ $beach->name }}"
+             class="w-full h-80 rounded-2xl border border-theme-subtle overflow-hidden z-0"
              role="application"
              aria-label="Mapa de localização da {{ $beach->name }}">
         </div>
     </div>
+
+    @script
+        <script>
+            Alpine.data('beachDetailHandler', () => ({
+                locating: false,
+                mapInstance: null,
+                mapReady: false,
+
+                init() {
+                    this.$nextTick(() => this.loadMap());
+                },
+
+                loadMap() {
+                    const el = document.getElementById('beach-map');
+                    if (!el || typeof L === 'undefined') {
+                        setTimeout(() => this.loadMap(), 100);
+                        return;
+                    }
+                    const lat = parseFloat(el.dataset.lat);
+                    const lng = parseFloat(el.dataset.lng);
+                    const color = el.dataset.color;
+                    const name = el.dataset.name;
+                    if (isNaN(lat) || isNaN(lng)) return;
+
+                    if (this.mapInstance) {
+                        this.mapInstance.remove();
+                        this.mapInstance = null;
+                    }
+
+                    this.mapInstance = L.map(el, {
+                        zoomControl: true,
+                        scrollWheelZoom: true
+                    }).setView([lat, lng], 14);
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }).addTo(this.mapInstance);
+
+                    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+                    const markerBorder = isDark ? '#070a13' : '#ffffff';
+                    const icon = L.divIcon({
+                        className: 'detail-div-icon',
+                        html: `<div style="width:20px;height:20px;background:${color};border:3.5px solid ${markerBorder};border-radius:50%;box-shadow:0 0 16px ${color};"></div>`,
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    });
+                    L.marker([lat, lng], { icon })
+                        .addTo(this.mapInstance)
+                        .bindPopup('<strong>' + name + '</strong>')
+                        .openPopup();
+
+                    this.mapReady = true;
+                },
+
+                triggerReport(flagColor) {
+                    this.locating = true;
+                    if (!navigator.geolocation) {
+                        this.$dispatch('notify', { message: 'O teu navegador não suporta geolocalização.', type: 'error' });
+                        this.locating = false;
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            $wire.call('submitReport', flagColor, position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+                            this.locating = false;
+                        },
+                        (error) => {
+                            this.$dispatch('notify', { message: 'Erro de GPS: A permissão de localização é obrigatória para confirmar a bandeira.', type: 'error' });
+                            this.locating = false;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                }
+            }));
+        </script>
+    @endscript
 </div>

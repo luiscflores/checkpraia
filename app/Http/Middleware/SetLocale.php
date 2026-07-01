@@ -32,25 +32,16 @@ class SetLocale
 
         if (in_array($firstSegment, $supportedLocales)) {
             $locale = $firstSegment;
-            App::setLocale($locale);
-            URL::defaults(['locale' => $locale]);
-            session(['locale' => $locale]);
         } else {
-            // Check session locale or browser preference
             $locale = session('locale');
             if (!$locale || !in_array($locale, $supportedLocales)) {
                 $locale = $request->getPreferredLanguage($supportedLocales) ?: 'pt';
             }
-
-            App::setLocale($locale);
-            URL::defaults(['locale' => $locale]);
-
-            // Redirect to URL with locale prefix
-            $segments = $request->segments();
-            array_unshift($segments, $locale);
-            
-            return redirect()->to(implode('/', $segments) . ($request->getQueryString() ? '?' . $request->getQueryString() : ''));
         }
+
+        App::setLocale($locale);
+        URL::defaults(['locale' => $locale]);
+        session(['locale' => $locale]);
 
         return $next($request);
     }

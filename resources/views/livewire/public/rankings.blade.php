@@ -81,7 +81,7 @@
                 @endif
                 <div class="text-right shrink-0">
                     <div class="font-extrabold text-blue-400 text-sm">{{ $userItem->rank_score }}</div>
-                    <div class="text-[10px] text-theme-muted font-normal uppercase tracking-wide">pts</div>
+                    <div class="text-xs text-theme-muted font-normal uppercase tracking-wide">pts</div>
                 </div>
             </div>
         @empty
@@ -126,7 +126,7 @@
                         <td class="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-theme text-xs sm:text-sm">
                             {{ $userItem->username }}
                             @if($userItem->accepted_confirmations_count >= 50 && ($userItem->accepted_confirmations_count / max(1, $userItem->confirmations_count)) >= 0.9)
-                                <span class="ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 bg-teal-500/10 text-teal-300 border border-teal-500/20 rounded font-black">
+                                <span class="ml-2 text-xs uppercase tracking-wide px-1.5 py-0.5 bg-teal-500/10 text-teal-300 border border-teal-500/20 rounded font-black">
                                     Voto Reforçado <span aria-hidden="true">⚡</span>
                                 </span>
                             @endif

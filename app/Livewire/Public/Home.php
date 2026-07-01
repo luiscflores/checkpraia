@@ -31,12 +31,12 @@ class Home extends Component
         if (in_array($beachId, $this->favoriteIds)) {
             $user->favorites()->detach($beachId);
             $this->favoriteIds = array_values(array_filter($this->favoriteIds, fn($id) => (int)$id !== (int)$beachId));
+            session()->flash('favorite_success', 'Praia removida dos favoritos.');
         } else {
             $user->favorites()->attach($beachId);
             $this->favoriteIds[] = (int)$beachId;
+            session()->flash('favorite_success', 'Praia adicionada aos favoritos! ⭐');
         }
-
-        $this->dispatch('favorites-updated');
     }
 
     public function render()

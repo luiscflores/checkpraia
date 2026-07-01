@@ -185,7 +185,7 @@
                         <div class="bg-theme-card border border-theme-subtle p-3 rounded-2xl flex items-center justify-between text-xs">
                             <div class="space-y-1">
                                 <span class="font-bold text-theme block">{{ $report->beach->name }}</span>
-                                <span class="text-[10px] text-theme-muted block">{{ $report->reported_at->format('d/m/Y H:i') }} &bull; GPS: {{ round($report->distance_to_beach, 2) }} km</span>
+                                <span class="text-xs text-theme-muted block">{{ $report->reported_at->format('d/m/Y H:i') }} &bull; GPS: {{ round($report->distance_to_beach, 2) }} km</span>
                             </div>
 
                             <div class="flex items-center gap-3">
@@ -212,7 +212,7 @@
                                     Bandeira {{ match($report->flag) { 'green' => 'Verde', 'yellow' => 'Amarela', default => 'Vermelha' } }}
                                 </span>
 
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider {{ $statusBadge }}">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider {{ $statusBadge }}">
                                     {{ $statusName }}
                                 </span>
                             </div>
@@ -234,7 +234,7 @@
                         <div class="bg-theme-card border border-theme-subtle p-3 rounded-2xl flex items-center justify-between text-xs">
                             <div class="space-y-1">
                                 <span class="font-bold text-theme block">{{ $tx->description }}</span>
-                                <span class="text-[10px] text-theme-muted block">{{ $tx->created_at->format('d/m/Y H:i') }}</span>
+                                <span class="text-xs text-theme-muted block">{{ $tx->created_at->format('d/m/Y H:i') }}</span>
                             </div>
 
                             <span class="font-black text-sm {{ $tx->points > 0 ? 'text-emerald-400' : 'text-rose-400' }}">

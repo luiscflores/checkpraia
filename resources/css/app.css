@@ -41,35 +41,35 @@
 }
 
 [data-theme="light"] {
-    --bg-base: #f0f4f8;
-    --bg-base-gradient: radial-gradient(120% 120% at 50% 10%, #e8edf4 0%, #f0f4f8 100%);
-    --bg-card: rgba(255, 255, 255, 0.92);
+    --bg-base: #dee4ec;
+    --bg-base-gradient: radial-gradient(120% 120% at 50% 10%, #d4dae3 0%, #dee4ec 100%);
+    --bg-card: #ffffff;
     --bg-elevated: #ffffff;
-    --bg-header: rgba(255, 255, 255, 0.92);
-    --bg-nav: rgba(255, 255, 255, 0.95);
-    --bg-input: rgba(255, 255, 255, 0.9);
-    --bg-glass-bg: rgba(255, 255, 255, 0.85);
-    --bg-glass-border: rgba(0, 0, 0, 0.1);
-    --bg-glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+    --bg-header: rgba(255, 255, 255, 0.95);
+    --bg-nav: #ffffff;
+    --bg-input: #ffffff;
+    --bg-glass-bg: #ffffff;
+    --bg-glass-border: rgba(0, 0, 0, 0.18);
+    --bg-glass-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.10);
 
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
+    --text-primary: #0b1221;
+    --text-secondary: #1e293b;
+    --text-muted: #475569;
 
-    --border-subtle: rgba(0, 0, 0, 0.08);
-    --border-default: rgba(0, 0, 0, 0.12);
-    --border-medium: rgba(0, 0, 0, 0.16);
-    --border-strong: rgba(0, 0, 0, 0.2);
+    --border-subtle: rgba(0, 0, 0, 0.12);
+    --border-default: rgba(0, 0, 0, 0.18);
+    --border-medium: rgba(0, 0, 0, 0.22);
+    --border-strong: rgba(0, 0, 0, 0.28);
 
     --scrollbar-track: #e2e8f0;
-    --scrollbar-thumb: #94a3b8;
-    --scrollbar-thumb-hover: #64748b;
+    --scrollbar-thumb: #64748b;
+    --scrollbar-thumb-hover: #475569;
 
-    --popup-bg: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    --popup-border: rgba(0,0,0,0.12);
-    --popup-shadow: 0 8px 32px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+    --popup-bg: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+    --popup-border: rgba(0,0,0,0.18);
+    --popup-shadow: 0 8px 32px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.8);
 
-    --marker-border: #e2e8f0;
+    --marker-border: #94a3b8;
 }
 
 /* Safe area padding for notched mobile devices */

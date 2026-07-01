@@ -150,6 +150,24 @@
         [data-theme="dark"] .theme-toggle-light-icon { display: none; }
         [data-theme="light"] .theme-toggle-light-icon { display: block; }
         [data-theme="dark"] .theme-toggle-dark-icon { display: block; }
+
+        /* Light theme: fix contrast for hardcoded Tailwind classes */
+        [data-theme="light"] .text-slate-400 { color: #64748b; }
+        [data-theme="light"] .text-slate-500 { color: #475569; }
+        [data-theme="light"] .bg-white\/5,
+        [data-theme="light"] .bg-white\/\[5\%\] { background: rgba(0, 0, 0, 0.04); }
+        [data-theme="light"] .bg-slate-900\/60 { background: rgba(226, 232, 240, 0.8); }
+        [data-theme="light"] .bg-slate-800\/80 { background: rgba(203, 213, 225, 0.8); }
+        [data-theme="light"] .glass-card .text-slate-300,
+        [data-theme="light"] .bg-theme-card .text-slate-300 { color: #475569; }
+        [data-theme="light"] .glass-card .text-slate-200 { color: #334155; }
+        [data-theme="light"] .bg-rose-950\/20 { background: rgba(254, 202, 202, 0.3); }
+        [data-theme="light"] .text-rose-200 { color: #c53030; }
+        [data-theme="light"] .text-red-300 { color: #c53030; }
+        [data-theme="light"] .text-red-400 { color: #dc2626; }
+        [data-theme="light"] .bg-red-950\/10 { background: rgba(254, 202, 202, 0.2); }
+        [data-theme="light"] .bg-blue-950\/10 { background: rgba(219, 234, 254, 0.4); }
+        [data-theme="light"] .text-blue-300 { color: #2563eb; }
     </style>
 
     <!-- Tailwind build -->
@@ -171,13 +189,13 @@
 
                 <!-- Desktop Navigation Menu -->
                 <nav class="hidden md:flex items-center gap-6" aria-label="Navegação principal">
-                    <a href="{{ route('home') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('home') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('home') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('home') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('home*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('home*') ? 'aria-current="page"' : '' }}>
                         <span aria-hidden="true">🗺️</span> Mapa
                     </a>
-                    <a href="{{ route('rankings') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('rankings') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('rankings') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('rankings') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('rankings*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
                         <span aria-hidden="true">🏆</span> Rankings
                     </a>
-                    <a href="{{ route('profile') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('profile') || request()->routeIs('account.*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('profile') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('profile') }}" class="text-xs font-bold uppercase tracking-wider transition-colors {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
                         <span aria-hidden="true">👤</span> Perfil
                     </a>
                     @auth
@@ -237,15 +255,15 @@
 
         <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
         <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1.5 px-4 pb-safe md:hidden" aria-label="Navegação móvel">
-            <a href="{{ route('home') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('home') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('home') ? 'aria-current="page"' : '' }}>
+            <a href="{{ route('home') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('home*') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('home*') ? 'aria-current="page"' : '' }}>
                 <span class="text-xl leading-none mb-0.5" aria-hidden="true">🗺️</span>
                 <span>Mapa</span>
             </a>
-            <a href="{{ route('rankings') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('rankings') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('rankings') ? 'aria-current="page"' : '' }}>
+            <a href="{{ route('rankings') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('rankings*') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
                 <span class="text-xl leading-none mb-0.5" aria-hidden="true">🏆</span>
                 <span>Rankings</span>
             </a>
-            <a href="{{ route('profile') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('profile') || request()->routeIs('account.*') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('profile') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
+            <a href="{{ route('profile') }}" class="flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400 font-bold' : 'text-theme-secondary' }}" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
                 <span class="text-xl leading-none mb-0.5" aria-hidden="true">👤</span>
                 <span>Perfil</span>
             </a>
