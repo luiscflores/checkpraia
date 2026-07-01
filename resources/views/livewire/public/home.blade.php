@@ -4,7 +4,7 @@
     <h1 class="sr-only">CheckPraia - Mapa das Praias</h1>
 
     @if(session()->has('favorite_success'))
-        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs rounded-xl font-medium">
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium">
             {{ session('favorite_success') }}
         </div>
     @endif
@@ -73,12 +73,12 @@
                    class="glass-card p-2.5 sm:p-3 rounded-xl border border-theme-medium hover:border-blue-500/40 transition-all flex items-center justify-between group active:scale-[0.99] relative">
                     <div class="space-y-1 min-w-0 flex-1 mr-2">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <h3 class="font-bold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate">{{ $beach['name'] }}</h3>
+                            <h2 class="font-bold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate">{{ $beach['name'] }}</h2>
                             @if($beach['blue_flag'])
-                                <span class="bg-blue-500/15 text-blue-300/90 border border-blue-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
+                                <span class="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Bandeira Azul</span>
                             @endif
                             @if($beach['accessible'])
-                                <span class="bg-teal-500/15 text-teal-300/90 border border-teal-500/20 text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
+                                <span class="bg-teal-600 text-white text-xs px-1.5 py-0.5 rounded font-semibold leading-none">Acessível</span>
                             @endif
                         </div>
                         <p class="text-xs sm:text-sm text-theme-secondary truncate">
@@ -89,7 +89,7 @@
                     <!-- Flag Badge -->
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
                         <button type="button"
-                                @click.stop="$wire.toggleFavorite({{ $beach['id'] }})"
+                                @click.prevent.stop="$wire.toggleFavorite({{ $beach['id'] }})"
                                 class="text-sm transition-all hover:scale-110 active:scale-90 mb-0.5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]' : 'opacity-40 hover:opacity-80' }}"
                                 title="{{ $beach['is_favorited'] ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
                             <span class="{{ $beach['is_favorited'] ? '' : 'grayscale' }}">⭐</span>
@@ -111,18 +111,15 @@
                             </span>
                         @elseif($beach['flag'] === 'blue_or_neutral')
                             <span class="bg-blue-600/80 text-white font-bold px-3 py-1 rounded-full text-xs sm:text-sm leading-none flex items-center gap-1.5">
-                                <span class="text-[10px]">❄️</span>
+                                <span class="text-xs">❄️</span>
                                 <span>Fora de Época</span>
                             </span>
                         @else
                             <span class="bg-slate-600/80 text-slate-300 font-bold px-3 py-1 rounded-full text-xs sm:text-sm leading-none flex items-center gap-1.5">
-                                <span class="text-[10px]">—</span>
+                                <span class="text-xs">—</span>
                                 <span>Sem Info</span>
                             </span>
                         @endif
-                        <span class="text-xs text-theme-secondary uppercase tracking-wider font-medium">
-                            {{ $beach['source'] === 'community' ? 'Comunidade' : 'Previsão' }}
-                        </span>
                     </div>
                 </a>
             @empty
@@ -193,11 +190,20 @@
             init() {
                 if (this.mapContinente) return;
 
+                const removePopupHref = (e) => {
+                    const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
+                    if (closeBtn) {
+                        closeBtn.removeAttribute('href');
+                        closeBtn.setAttribute('role', 'button');
+                    }
+                };
+
                 this.mapContinente = L.map('map-continente', {
                     zoomControl: true,
                     maxZoom: 18,
                     minZoom: 6
                 }).fitBounds([[36.95, -9.5], [42.15, -6.2]], { padding: [20, 20] });
+                this.mapContinente.on('popupopen', removePopupHref);
 
                 this.tileLayers.continente = this.createTileLayer();
                 this.tileLayers.continente.addTo(this.mapContinente);
@@ -210,6 +216,7 @@
                     dragging: true,
                     scrollWheelZoom: true
                 }).fitBounds([[36.7, -28.9], [38.8, -24.7]], { padding: [10, 10] });
+                this.mapAcores.on('popupopen', removePopupHref);
 
                 this.tileLayers.acores = this.createTileLayer();
                 this.tileLayers.acores.addTo(this.mapAcores);
@@ -222,6 +229,7 @@
                     dragging: true,
                     scrollWheelZoom: true
                 }).fitBounds([[32.4, -17.4], [33.3, -16.1]], { padding: [10, 10] });
+                this.mapMadeira.on('popupopen', removePopupHref);
 
                 this.tileLayers.madeira = this.createTileLayer();
                 this.tileLayers.madeira.addTo(this.mapMadeira);
@@ -242,12 +250,21 @@
             },
 
             createTileLayer() {
-                return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                const layer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
                     maxZoom: 19,
-                    // Empty alt on tile <img> elements — decorative map tiles per WCAG 1.1.1
-                    alt: ''
+                    alt: 'Mapa'
                 });
+                let tileCounter = 0;
+                layer.on('tileload', function(e) {
+                    if (e.tile) {
+                        tileCounter++;
+                        e.tile.setAttribute('role', 'presentation');
+                        e.tile.setAttribute('aria-hidden', 'true');
+                        e.tile.setAttribute('alt', `Mapa Bloco ${tileCounter}`);
+                    }
+                });
+                return layer;
             },
 
             renderMarkers() {
@@ -280,13 +297,18 @@
                         .bindPopup(`
                             <div class="beach-popup-inner">
                                 <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;box-shadow:0 0 6px ${color};"></span>
+                                     <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;box-shadow:0 0 6px ${color};"></span>
                                     <span class="beach-popup-name">${beach.name}</span>
                                 </div>
                                 <div class="beach-popup-location">📍 ${beach.municipality}</div>
                                 <a href="${beach.url}" class="beach-popup-btn">Ver Detalhes →</a>
                             </div>
                         `, { className: 'beach-popup', closeButton: false, maxWidth: 260, minWidth: 160 });
+                    
+                    const markerEl = marker.getElement();
+                    if (markerEl) {
+                        markerEl.setAttribute('aria-label', `Marcador de ${beach.name}`);
+                    }
                     store[beach.id] = marker;
                 });
                 if (beaches.length) {

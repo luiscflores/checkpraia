@@ -27,6 +27,9 @@ class DatabaseSeeder extends Seeder
             'referral_code' => strtoupper(Str::random(8)),
         ]);
 
-        $this->call(BeachSeeder::class);
+        $this->call([
+            BeachSeeder::class,
+            RestaurantSeeder::class,
+        ]);
     }
 }

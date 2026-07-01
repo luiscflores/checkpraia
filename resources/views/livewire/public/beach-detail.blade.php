@@ -1,6 +1,18 @@
 <div class="space-y-8" x-data="beachDetailHandler()">
     @section('title', $beach->name . ' - Bandeira e Condições do Mar')
 
+    @if(session()->has('favorite_success'))
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium">
+            {{ session('favorite_success') }}
+        </div>
+    @endif
+
+    @if(session()->has('favorite_error'))
+        <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs rounded-xl font-medium">
+            {{ session('favorite_error') }}
+        </div>
+    @endif
+
     <!-- Beach Header Banner -->
     <div class="glass-card p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -20,9 +32,15 @@
         </div>
 
         <div class="flex gap-3">
+            <button type="button"
+                    wire:click="toggleFavorite"
+                    class="px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 {{ $isFavorited ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-600' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white hover:text-white' }}"
+                    aria-label="{{ $isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}">
+                <span>{{ $isFavorited ? '⭐' : '☆' }}</span>
+            </button>
             <a href="https://www.google.com/maps/dir/?api=1&destination={{ $beach->latitude }},{{ $beach->longitude }}" 
                target="_blank" 
-               class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2"
+               class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold transition-all flex items-center gap-2"
                aria-label="Obter direções de GPS para {{ $beach->name }}">
                 <span aria-hidden="true">🗺️</span> Direções de GPS
             </a>
@@ -102,26 +120,26 @@
                 @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
                     <div class="mt-4 w-full max-w-xs space-y-2">
                         <span class="text-xs text-slate-400 uppercase font-bold tracking-wider block">Distribuição de Probabilidades</span>
-                        <div class="h-4 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[2px]">
+                        <div class="h-8 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[2px]">
                             @if($prediction->green_probability > 0)
-                                <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                <div class="bg-emerald-500 rounded-l-full transition-all duration-300 flex items-center justify-center text-[16px] font-black text-slate-950" 
                                      style="width: {{ $prediction->green_probability }}%" 
                                      title="Verde: {{ $prediction->green_probability }}%">
-                                    @if($prediction->green_probability >= 20) {{ $prediction->green_probability }}% @endif
+                                    {{ $prediction->green_probability }}%
                                 </div>
                             @endif
                             @if($prediction->yellow_probability > 0)
-                                <div class="bg-amber-500 transition-all duration-300 flex items-center justify-center text-[9px] font-black text-slate-950" 
+                                <div class="bg-amber-500 transition-all duration-300 flex items-center justify-center text-[16px] font-black text-slate-950" 
                                      style="width: {{ $prediction->yellow_probability }}%" 
                                      title="Amarela: {{ $prediction->yellow_probability }}%">
-                                    @if($prediction->yellow_probability >= 20) {{ $prediction->yellow_probability }}% @endif
+                                    {{ $prediction->yellow_probability }}%
                                 </div>
                             @endif
                             @if($prediction->red_probability > 0)
-                                <div class="bg-rose-500 rounded-r-full transition-all duration-300 flex items-center justify-center text-[9px] font-black text-white" 
+                                <div class="bg-rose-500 rounded-r-full transition-all duration-300 flex items-center justify-center text-[16px] font-black text-white" 
                                      style="width: {{ $prediction->red_probability }}%" 
                                      title="Vermelha: {{ $prediction->red_probability }}%">
-                                    @if($prediction->red_probability >= 20) {{ $prediction->red_probability }}% @endif
+                                    {{ $prediction->red_probability }}%
                                 </div>
                             @endif
                         </div>
@@ -157,7 +175,7 @@
                 <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     <span aria-hidden="true">📢</span> Confirmar Bandeira no Local
                 </h3>
-                <p class="text-xs text-slate-400 leading-relaxed">
+                <p class="text-l text-slate-400 leading-relaxed">
                     Ajuda a comunidade! Se estás fisicamente nesta praia, reporta a cor da bandeira hasteada. A tua localização será validada.
                 </p>
 
@@ -182,13 +200,13 @@
 
                     <div class="grid grid-cols-3 gap-3" x-show="!locating" role="group" aria-label="Selecionar cor da bandeira">
                         <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-emerald-500/20" aria-label="Reportar bandeira Verde">
-                            <span aria-hidden="true">🟢</span> Verde
+                             Verde
                         </button>
                         <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow shadow-amber-500/20" aria-label="Reportar bandeira Amarela">
-                            <span aria-hidden="true">🟡</span> Amarela
+                             Amarela
                         </button>
                         <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 rounded-xl text-xs transition-all shadow shadow-rose-500/20" aria-label="Reportar bandeira Vermelha">
-                            <span aria-hidden="true">🔴</span> Vermelha
+                             Vermelha
                         </button>
                     </div>
                 @else
@@ -363,7 +381,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse($beach->restaurants as $restaurant)
                         <div class="glass-card p-4 rounded-2xl flex flex-col justify-between gap-3 relative group">
-                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20' }}">
+                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20' }}">
                                 {{ $restaurant->source }}
                             </span>
 
@@ -386,7 +404,7 @@
                                         Reservar Mesa
                                     </a>
                                 @endif
-                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700" aria-label="Ver ficha do {{ $restaurant->name }}">
+                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700" aria-label="Ver ficha do {{ $restaurant->name }}">
                                     Ver Ficha
                                 </a>
                             </div>
@@ -448,10 +466,29 @@
                         scrollWheelZoom: true
                     }).setView([lat, lng], 14);
 
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    this.mapInstance.on('popupopen', function(e) {
+                        const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
+                        if (closeBtn) {
+                            closeBtn.removeAttribute('href');
+                            closeBtn.setAttribute('role', 'button');
+                        }
+                    });
+
+                    let tileCounter = 0;
+                    const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19
-                    }).addTo(this.mapInstance);
+                        maxZoom: 19,
+                        alt: 'Mapa'
+                    });
+                    layer.on('tileload', function(e) {
+                        if (e.tile) {
+                            tileCounter++;
+                            e.tile.setAttribute('role', 'presentation');
+                            e.tile.setAttribute('aria-hidden', 'true');
+                            e.tile.setAttribute('alt', `Mapa Bloco ${tileCounter}`);
+                        }
+                    });
+                    layer.addTo(this.mapInstance);
 
                     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
                     const markerBorder = isDark ? '#070a13' : '#ffffff';
@@ -461,10 +498,14 @@
                         iconSize: [20, 20],
                         iconAnchor: [10, 10]
                     });
-                    L.marker([lat, lng], { icon })
+                    const marker = L.marker([lat, lng], { icon })
                         .addTo(this.mapInstance)
                         .bindPopup('<strong>' + name + '</strong>')
                         .openPopup();
+                    const markerEl = marker.getElement();
+                    if (markerEl) {
+                        markerEl.setAttribute('aria-label', `Marcador de ${name}`);
+                    }
 
                     this.mapReady = true;
                 },
