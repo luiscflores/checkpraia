@@ -72,7 +72,6 @@
     --marker-border: #94a3b8;
 }
 
-/* Safe area padding for notched mobile devices */
 @utility pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -86,7 +85,6 @@
     padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Hide scrollbar utility */
 @utility scrollbar-none {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -95,13 +93,11 @@
     }
 }
 
-/* Touch-friendly minimum size */
 @utility touch-target {
     min-height: 44px;
     min-width: 44px;
 }
 
-/* Theme-aware utility classes */
 @utility bg-theme {
     background: var(--bg-base);
 }

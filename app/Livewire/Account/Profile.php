@@ -8,102 +8,23 @@ use App\Models\FlagReport;
 use App\Models\Referral;
 use App\Models\ScoreTransaction;
 use App\Models\Beach;
+use App\Livewire\Actions\Logout;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class Profile extends Component
 {
-    // Auth Forms properties
-    public $isRegister = false;
-    public $name;
-    public $email;
-    public $username;
-    public $password;
-    public $password_confirmation;
-    public $referralCodeInput;
-
-    // Login properties
-    public $loginEmail;
-    public $loginPassword;
-
-    // Profile Settings edit
     public $editName;
     public $editUsername;
 
     public function mount()
     {
-        if (Auth::check()) {
-            $user = Auth::user();
-            $this->editName = $user->name;
-            $this->editUsername = $user->username;
-        }
-    }
-
-    public function login()
-    {
-        $this->validate([
-            'loginEmail' => 'required|email',
-            'loginPassword' => 'required',
-        ]);
-
-        if (Auth::attempt(['email' => $this->loginEmail, 'password' => $this->loginPassword])) {
-            $user = Auth::user();
-            $this->editName = $user->name;
-            $this->editUsername = $user->username;
-            session()->flash('auth_success', 'Sessão iniciada com sucesso!');
-        } else {
-            $this->addError('login', 'As credenciais fornecidas estão incorretas.');
-        }
-    }
-
-    public function register()
-    {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'username' => 'required|string|alpha_dash|unique:users,username|min:3',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
-
-        // Validate referral code manually (case-insensitive lookup)
-        if ($this->referralCodeInput && !User::where('referral_code', strtoupper($this->referralCodeInput))->exists()) {
-            $this->addError('referralCodeInput', 'O código de convite inserido não é válido.');
-            return;
+        if (!Auth::check()) {
+            return redirect()->route('login');
         }
 
-        $user = User::create([
-            'name' => $this->name,
-            'email' => $this->email,
-            'username' => $this->username,
-            'password' => Hash::make($this->password),
-            'referral_code' => strtoupper(Str::random(8)),
-            'score' => 0,
-        ]);
-
-        // Process referral invitation if entered
-        if ($this->referralCodeInput) {
-            $referrer = User::where('referral_code', strtoupper($this->referralCodeInput))->first();
-            if ($referrer) {
-                Referral::create([
-                    'referrer_user_id' => $referrer->id,
-                    'invited_user_id' => $user->id,
-                    'code' => strtoupper($this->referralCodeInput),
-                    'status' => 'pending',
-                ]);
-            }
-        }
-
-        Auth::login($user);
+        $user = Auth::user();
         $this->editName = $user->name;
         $this->editUsername = $user->username;
-        session()->flash('auth_success', 'Conta criada com sucesso!');
-    }
-
-    public function logout()
-    {
-        Auth::logout();
-        return redirect()->to('/' . app()->getLocale() . '/area-pessoal');
     }
 
     public function updateProfile()
@@ -131,6 +52,12 @@ class Profile extends Component
         session()->flash('favorite_removed', 'Praia removida dos favoritos.');
     }
 
+    public function logout(Logout $logout)
+    {
+        $logout();
+        return redirect()->route('home');
+    }
+
     public function deleteAccount()
     {
         if (!Auth::check()) { return; }
@@ -141,15 +68,11 @@ class Profile extends Component
         $user->favorites()->detach();
         Auth::logout();
         $user->delete();
-        return redirect()->to('/' . app()->getLocale());
+        return redirect()->route('home');
     }
 
     public function render()
     {
-        if (!Auth::check()) {
-            return view('livewire.account.profile-auth')->layout('components.layouts.app');
-        }
-
         $user = Auth::user();
 
         // Fetch score transactions

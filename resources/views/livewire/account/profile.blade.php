@@ -1,6 +1,12 @@
 <div class="space-y-8">
     @section('title', 'Área Pessoal - CheckPraia')
 
+    @if (session()->has('auth_success'))
+        <div class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl font-medium">
+            ✔️ {{ session('auth_success') }}
+        </div>
+    @endif
+
     <!-- Stats Header Dashboard Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <!-- Score Card -->

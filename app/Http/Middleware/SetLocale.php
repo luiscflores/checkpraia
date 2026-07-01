@@ -27,6 +27,12 @@ class SetLocale
             $request->is('auth/*') || 
             str_contains($path, '.') // skips files like favicon.ico, manifest.json
         ) {
+            $locale = session('locale');
+            if (!$locale || !in_array($locale, $supportedLocales)) {
+                $locale = $request->getPreferredLanguage($supportedLocales) ?: 'pt';
+            }
+            App::setLocale($locale);
+            URL::defaults(['locale' => $locale]);
             return $next($request);
         }
 

@@ -24,7 +24,10 @@ class GoogleAuthController
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user) {
-                $user->update(['google_id' => $googleUser->getId()]);
+                $user->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                ]);
             } else {
                 $baseUsername = Str::slug($googleUser->getName(), '_');
                 $username = $baseUsername;
@@ -40,14 +43,20 @@ class GoogleAuthController
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
                     'username' => $username,
+                    'password' => Str::random(24),
                     'referral_code' => strtoupper(Str::random(8)),
                     'score' => 0,
                 ]);
             }
         }
 
+        if ($user->is_suspended) {
+            Auth::logout();
+            return redirect()->route('profile')->with('error', 'A tua conta está suspensa.');
+        }
+
         Auth::login($user);
 
-        return redirect()->to('/' . app()->getLocale() . '/area-pessoal');
+        return redirect()->route('profile');
     }
 }
