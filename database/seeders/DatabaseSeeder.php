@@ -18,14 +18,16 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Luis Flores',
-            'email' => 'luis@checkpraia.pt',
-            'username' => 'luisflores',
-            'password' => 'password',
-            'is_admin' => true,
-            'referral_code' => strtoupper(Str::random(8)),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'luis@checkpraia.pt'],
+            [
+                'name' => 'Luis Flores',
+                'username' => 'luisflores',
+                'password' => bcrypt('password'),
+                'is_admin' => true,
+                'referral_code' => strtoupper(Str::random(8)),
+            ]
+        );
 
         $this->call([
             BeachSeeder::class,

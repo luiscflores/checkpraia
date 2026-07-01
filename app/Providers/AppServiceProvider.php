@@ -28,10 +28,13 @@ class AppServiceProvider extends ServiceProvider
                 $lastDeploy = file_exists($lockFile) ? file_get_contents($lockFile) : '';
 
                 if ($lastDeploy !== $deployIdentifier) {
-                    // 1. Run migrations safely
+                    // 1. Save deploy identifier to lock file FIRST to prevent concurrent stampedes
+                    @file_put_contents($lockFile, $deployIdentifier);
+
+                    // 2. Run migrations safely
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     
-                    // 2. Wipe beach data and run seeders on every deployment
+                    // 3. Wipe beach data and run seeders on every deployment
                     if (\Illuminate\Support\Facades\Schema::hasTable('beaches')) {
                         \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
                         
@@ -55,22 +58,11 @@ class AppServiceProvider extends ServiceProvider
                         \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
                     }
 
-                    // 3. Synchronously import weather, tides, and water quality to calculate flags immediately
+                    // 4. Dispatch data sync jobs to the queue (very fast, <100ms)
                     if (\Illuminate\Support\Facades\Schema::hasTable('beaches')) {
-                        @set_time_limit(300);
-                        $beaches = \App\Models\Beach::where('is_active', true)->get();
-                        foreach ($beaches as $beach) {
-                            try {
-                                \App\Jobs\FetchIpmaForecasts::dispatchSync($beach);
-                                \App\Jobs\FetchInfoAguaData::dispatchSync($beach);
-                            } catch (\Throwable $ex) {
-                                logger()->error('Auto-sync failed for beach ' . $beach->name . ': ' . $ex->getMessage());
-                            }
-                        }
+                        \App\Jobs\FetchIpmaForecasts::dispatch();
+                        \App\Jobs\FetchInfoAguaData::dispatch();
                     }
-
-                    // 4. Save deploy identifier to lock file
-                    @file_put_contents($lockFile, $deployIdentifier);
                 }
             } catch (\Throwable $e) {
                 logger()->error('Auto-bootstrap database and import failed: ' . $e->getMessage());
