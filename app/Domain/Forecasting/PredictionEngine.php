@@ -119,6 +119,11 @@ class PredictionEngine
         $rawRed    = max($P_wave_red, $P_wind_red);
         $rawYellow = max(0.0, 1.0 - $rawGreen - $rawRed);
 
+        // Ignore quality data if it's too old
+        if ($quality && $quality->sampled_at && $quality->sampled_at->diffInDays(now()) > $this->cfg('quality.max_age_days')) {
+            $quality = null;
+        }
+
         // Environmental modifiers
         $result = $this->applyEnvironmentalModifiers($beach, $profile, $quality, $weather, $rawGreen, $rawYellow, $rawRed);
 

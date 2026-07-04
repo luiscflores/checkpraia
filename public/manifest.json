@@ -1,17 +1,19 @@
 {
-  "name": "CheckPraia - Bandeiras das Praias em Tempo Real",
+  "name": "CheckPraia - Bandeira das Praias em Tempo Real",
   "short_name": "CheckPraia",
-  "description": "Consulta a bandeira mais provável das praias de Portugal antes de saíres de casa.",
-  "start_url": "/pt",
+  "description": "Bandeira das praias em tempo real. Previsões automáticas, confirmações da comunidade, condições do mar e qualidade da água.",
+  "start_url": "/?utm_source=pwa",
   "display": "standalone",
   "background_color": "#070a13",
-  "theme_color": "#0d1527",
+  "theme_color": "#070a13",
   "orientation": "portrait-primary",
+  "categories": ["weather", "travel", "utilities", "navigation"],
+  "screenshots": [],
   "icons": [
-    {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ]
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" },
+    { "src": "/icon-192.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "lang": "pt-PT",
+  "scope": "/",
+  "prefer_related_applications": false
 }

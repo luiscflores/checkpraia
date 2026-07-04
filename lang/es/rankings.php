@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'title' => 'Tabla de Liderazgo Nacional',
+    'page_title' => 'CheckPraia - Clasificación',
+    'subtitle' => 'Gana puntos confirmando banderas en las playas vigiladas e invitando amigos.',
+    'filter_district' => 'Filtrar por distrito',
+    'all_districts' => 'Todos los Distritos',
+    'period' => 'Período de clasificación',
+    'general' => 'General',
+    'monthly' => 'Mensual',
+    'weekly' => 'Semanal',
+    'daily' => 'Diario',
+    'confirmations_count' => ':count aceptadas',
+    'boosted_vote' => 'Voto Reforzado',
+    'pts' => 'pts',
+    'no_activity' => 'Ningún usuario registró actividad en este período.',
+    'table_aria' => 'Tabla de clasificación',
+    'table_caption' => 'Clasificación de usuarios por puntuación',
+    'position' => 'Posición',
+    'user' => 'Usuario',
+    'confirmations' => 'Confirmaciones',
+    'score' => 'Puntuación',
+    'position_aria' => 'Posición :position',
+];

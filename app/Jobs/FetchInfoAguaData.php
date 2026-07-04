@@ -53,16 +53,11 @@ class FetchInfoAguaData implements ShouldQueue
 
         $class = $result['class'] ?? null;
 
-        // Fallback when APA WFS has no data for this beach
-        if ($class === null) {
-            $class = $this->fallbackQuality($beach);
-        }
-
         if ($class) {
             WaterQualitySnapshot::create([
                 'beach_id' => $beach->id,
                 'quality_class' => $class,
-                'sampled_at' => now(),
+                'sampled_at' => $result['sampled_at'] ?? now(),
             ]);
         }
 
@@ -70,21 +65,5 @@ class FetchInfoAguaData implements ShouldQueue
         $prediction->save();
 
         $resolver->resolveCurrentStatus($beach);
-    }
-
-    private function fallbackQuality(Beach $beach): ?string
-    {
-        $month = (int) now()->format('n');
-        $isBathingSeason = $month >= 5 && $month <= 9;
-
-        if (!$isBathingSeason) {
-            return null;
-        }
-
-        if ($beach->blue_flag) {
-            return 'Excellent';
-        }
-
-        return 'Good';
     }
 }

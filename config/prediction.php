@@ -74,6 +74,7 @@ return [
         'poor_quality_red' => (float) env('POOR_QUALITY_RED', 1.0),
         'sufficient_yellow_floor' => (float) env('SUFFICIENT_QUALITY_YELLOW_FLOOR', 0.7),
         'sufficient_green_ceiling' => (float) env('SUFFICIENT_QUALITY_GREEN_CEILING', 0.2),
+        'max_age_days' => (int) env('QUALITY_MAX_AGE_DAYS', 21),
     ],
 
     'defaults' => [

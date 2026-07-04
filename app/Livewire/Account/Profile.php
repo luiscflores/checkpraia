@@ -49,7 +49,7 @@ class Profile extends Component
         if (!Auth::check()) { return; }
         $user = Auth::user();
         $user->favorites()->detach($beachId);
-        session()->flash('favorite_removed', 'Praia removida dos favoritos.');
+        session()->flash('favorite_removed', __('common.favorite_removed'));
     }
 
     public function logout(Logout $logout)

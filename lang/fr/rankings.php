@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'title' => 'Classement National',
+    'page_title' => 'CheckPraia - Classement',
+    'subtitle' => 'Gagnez des points en confirmant les drapeaux sur les plages surveillées et en invitant des amis.',
+    'filter_district' => 'Filtrer par district',
+    'all_districts' => 'Tous les Districts',
+    'period' => 'Période de classement',
+    'general' => 'Général',
+    'monthly' => 'Mensuel',
+    'weekly' => 'Hebdomadaire',
+    'daily' => 'Quotidien',
+    'confirmations_count' => ':count acceptées',
+    'boosted_vote' => 'Vote Renforcé',
+    'pts' => 'pts',
+    'no_activity' => 'Aucun utilisateur n\'a enregistré d\'activité sur cette période.',
+    'table_aria' => 'Tableau de classement',
+    'table_caption' => 'Classement des utilisateurs par score',
+    'position' => 'Position',
+    'user' => 'Utilisateur',
+    'confirmations' => 'Confirmations',
+    'score' => 'Score',
+    'position_aria' => 'Position :position',
+];

@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'title' => 'Tabela de Liderança Nacional',
+    'page_title' => 'Rankings CheckPraia - Tabela de Liderança',
+    'subtitle' => 'Ganha pontos confirmando bandeiras nas praias vigiadas e convidando amigos.',
+    'filter_district' => 'Filtrar por distrito',
+    'all_districts' => 'Todos os Distritos',
+    'period' => 'Período do ranking',
+    'general' => 'Geral',
+    'monthly' => 'Mensal',
+    'weekly' => 'Semanal',
+    'daily' => 'Diário',
+    'confirmations_count' => ':count aceites',
+    'boosted_vote' => 'Voto Reforçado',
+    'pts' => 'pts',
+    'no_activity' => 'Nenhum utilizador registou atividade neste período.',
+    'table_aria' => 'Tabela de classificação',
+    'table_caption' => 'Classificação dos utilizadores por pontuação',
+    'position' => 'Posição',
+    'user' => 'Utilizador',
+    'confirmations' => 'Confirmações',
+    'score' => 'Pontuação',
+    'position_aria' => 'Posição :position',
+];

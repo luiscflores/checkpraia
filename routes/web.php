@@ -10,8 +10,19 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 
 Route::pattern('locale', 'pt|en|es|fr');
 
+Route::post('/locale/{locale}', function ($locale) {
+    if (!in_array($locale, ['pt', 'en', 'es', 'fr'])) {
+        $locale = 'pt';
+    }
+    session(['locale' => $locale]);
+    app()->setLocale($locale);
+    return redirect()->back();
+})->name('locale.switch');
+
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
+Route::view('/offline', 'public.offline')->name('offline');
 
 Route::get('/', Home::class)->name('home');
 Route::get('/rankings', Rankings::class)->name('rankings');

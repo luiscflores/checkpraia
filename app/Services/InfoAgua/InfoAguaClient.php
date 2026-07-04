@@ -2,13 +2,14 @@
 
 namespace App\Services\InfoAgua;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 class InfoAguaClient
 {
-    private function wfsUrl(): string
+    private function arcgisUrl(): string
     {
-        return config('services.infoagua.wfs_url', 'https://sniambgeoogc.apambiente.pt/getogc/services/SNIAmb/Praias/MapServer/WFSServer');
+        return config('services.infoagua.arcgis_url', 'https://sniambgeoogc.apambiente.pt/getogc/rest/services/Visualizador/snirh_balneares_classificacoes_app/MapServer/0/query');
     }
 
     private ?array $allBeaches = null;
@@ -37,25 +38,29 @@ class InfoAguaClient
 
             if ($match !== null) {
                 $props = $match['properties'];
-                $qualityDesc = $props['qualidade_agua_balnear_dsc'] ?? null;
-                $classification = $props['classificacao_agua_balnear'] ?? null;
+                $classification = $props['ultima_classificacao'] ?? null;
 
-                if ($qualityDesc || $classification !== null) {
-                    $class = $this->mapQuality($qualityDesc, $classification);
+                $class = $this->mapQuality($classification);
 
-                    return [
-                        'class' => $class,
-                        'beach_name' => $props['nome_praia'] ?? 'Desconhecida',
-                        'beach_code' => $props['codigo_praia'] ?? null,
-                        'description' => $qualityDesc,
-                        'source' => 'apa_wfs',
-                    ];
+                if ($class === null) {
+                    return null;
                 }
+
+                return [
+                    'class' => $class,
+                    'beach_name' => $props['nome_agua_balnear'],
+                    'beach_code' => $props['codigo_agua_balnear'],
+                    'description' => $props['ultima_classificacao_desc'],
+                    'sampled_at' => isset($props['data_ultima_analise'])
+                        ? Carbon::createFromTimestampMs($props['data_ultima_analise'])
+                        : null,
+                    'source' => 'apa_arcgis',
+                ];
             }
 
             return null;
         } catch (\Exception $e) {
-            logger()->error('APA WFS water quality fetch failed: ' . $e->getMessage());
+            logger()->error('APA ArcGIS water quality fetch failed: ' . $e->getMessage());
             return null;
         }
     }
@@ -66,17 +71,17 @@ class InfoAguaClient
             return $this->allBeaches;
         }
 
-        $response = Http::timeout(10)->get($this->wfsUrl(), [
-            'service' => 'WFS',
-            'version' => '2.0.0',
-            'request' => 'GetFeature',
-            'typeName' => 'SNIAmb_Praias:Praia',
-            'count' => 100,
-            'outputFormat' => 'GEOJSON',
+        $response = Http::timeout(15)->get($this->arcgisUrl(), [
+            'where' => '1=1',
+            'outFields' => '*',
+            'returnGeometry' => 'true',
+            'f' => 'geojson',
+            'resultRecordCount' => 1000,
         ]);
 
         if (!$response->successful()) {
-            return [];
+            $this->allBeaches = [];
+            return $this->allBeaches;
         }
 
         $data = $response->json();
@@ -94,15 +99,15 @@ class InfoAguaClient
 
         foreach ($features as $feature) {
             $props = $feature['properties'] ?? [];
-            $wfsName = $props['nome_praia'] ?? '';
+            $arcgisName = $props['nome_agua_balnear'] ?? '';
 
-            if (empty($wfsName)) {
+            if (empty($arcgisName)) {
                 continue;
             }
 
-            $wfsNormalized = $this->normalizeName($wfsName);
+            $arcgisNormalized = $this->normalizeName($arcgisName);
 
-            similar_text($normalized, $wfsNormalized, $score);
+            similar_text($normalized, $arcgisNormalized, $score);
 
             if ($score > $bestScore) {
                 $bestScore = $score;
@@ -119,14 +124,13 @@ class InfoAguaClient
         $nearestDist = PHP_FLOAT_MAX;
 
         foreach ($features as $feature) {
-            $geom = $feature['geometry'] ?? null;
-            if (!$geom || !isset($geom['coordinates'])) {
+            $props = $feature['properties'] ?? [];
+            $beachLat = isset($props['latitude_wgs84']) ? (float) $props['latitude_wgs84'] : null;
+            $beachLon = isset($props['longitude_wgs84']) ? (float) $props['longitude_wgs84'] : null;
+
+            if ($beachLat === null || $beachLon === null) {
                 continue;
             }
-
-            $coords = $geom['coordinates'];
-            $beachLon = (float) $coords[0];
-            $beachLat = (float) $coords[1];
 
             $dist = $this->haversine($latitude, $longitude, $beachLat, $beachLon);
 
@@ -148,38 +152,17 @@ class InfoAguaClient
         return trim($name);
     }
 
-    private function mapQuality(?string $description, ?int $classification): string
+    private function mapQuality(?int $classification): ?string
     {
-        if ($description !== null) {
-            $desc = mb_strtolower(trim($description));
-
-            if (str_contains($desc, 'imprópria') || str_contains($desc, 'má') || str_contains($desc, 'desaconselhada')) {
-                return 'Poor';
-            }
-
-            if (str_contains($desc, 'adequada') || str_contains($desc, 'própria') || str_contains($desc, 'boa')) {
-                return 'Good';
-            }
-
-            if (str_contains($desc, 'excelente')) {
-                return 'Excellent';
-            }
-
-            if (str_contains($desc, 'suficiente')) {
-                return 'Sufficient';
-            }
+        if ($classification === null || $classification === 0) {
+            return null;
         }
 
-        if ($classification !== null) {
-            return match ($classification) {
-                1 => 'Good',
-                2 => 'Sufficient',
-                3 => 'Poor',
-                default => 'Good',
-            };
-        }
-
-        return 'Good';
+        return match ($classification) {
+            1 => 'Good',
+            2 => 'Poor',
+            default => null,
+        };
     }
 
     private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float

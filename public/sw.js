@@ -1,76 +1,82 @@
-const CACHE_NAME = 'checkpraia-cache-v2';
-const ASSETS_TO_CACHE = [
+const CACHE = 'checkpraia-v2';
+const STATIC_ASSETS = [
   '/',
-  '/favicon.ico',
+  '/offline',
   '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
-// Install Service Worker
-self.addEventListener('install', event => {
+const TILE_CACHE = 'checkpraia-tiles-v2';
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
 });
 
-// Activate Service Worker
-self.addEventListener('activate', event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE && key !== TILE_CACHE)
+          .map((key) => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+function isTileRequest(url) {
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname === 'tile.openstreetmap.org' ||
+      u.hostname === 'server.arcgisonline.com' ||
+      u.pathname.includes('/tile/') ||
+      u.pathname.includes('/maps/tile')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isApiRequest(url) {
+  const path = new URL(url).pathname;
+  return path.includes('/livewire/') || path.includes('/up');
+}
+
+self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+
+  if (isTileRequest(url)) {
+    event.respondWith(
+      caches.open(TILE_CACHE).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          const fetched = fetch(event.request).then((response) => {
+            if (response.ok) cache.put(event.request, response.clone());
+            return response;
+          });
+          return cached || fetched;
         })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Fetch Request Interception
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || event.request.url.includes('/livewire/')) {
+      )
+    );
     return;
   }
 
-  const isNavigation = event.request.mode === 'navigate';
-  const isStatic = event.request.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2?)$/);
-
-  if (isNavigation) {
+  if (isApiRequest(url)) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/')))
+      fetch(event.request).catch(() => new Response(null, { status: 503 }))
     );
-  } else if (isStatic) {
-    event.respondWith(
-      caches.match(event.request).then(cached => {
-        const fetchAndUpdate = fetch(event.request).then(response => {
-          if (response && response.status === 200) {
-            const cloned = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
-          }
-          return response;
-        }).catch(() => cached);
-        return cached || fetchAndUpdate;
-      })
-    );
-  } else {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => response)
-        .catch(() => caches.match(event.request))
-    );
+    return;
   }
+
+  // Network-first for pages: online → always fresh, offline → cached fallback
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+      return response;
+    }).catch(() => caches.match(event.request))
+  );
 });

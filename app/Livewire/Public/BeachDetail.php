@@ -50,7 +50,7 @@ class BeachDetail extends Component
     public function toggleFavorite()
     {
         if (!auth()->check()) {
-            session()->flash('favorite_error', 'Precisas de iniciar sessão para guardar favoritos.');
+            session()->flash('favorite_error', __('common.favorite_login_required'));
             return;
         }
 
@@ -59,31 +59,31 @@ class BeachDetail extends Component
         if ($this->isFavorited) {
             $user->favorites()->detach($this->beach->id);
             $this->isFavorited = false;
-            session()->flash('favorite_success', 'Praia removida dos favoritos.');
+            session()->flash('favorite_success', __('common.favorite_removed'));
         } else {
             $user->favorites()->attach($this->beach->id);
             $this->isFavorited = true;
-            session()->flash('favorite_success', 'Praia adicionada aos favoritos! ⭐');
+            session()->flash('favorite_success', __('common.favorite_added'));
         }
     }
 
     public function submitReport($flag, $lat, $lon, $accuracy = null)
     {
         if (!auth()->check()) {
-            $this->addError('report', 'Precisas de iniciar sessão para confirmar a bandeira.');
+            $this->addError('report', __('common.favorite_login_required'));
             return;
         }
 
         $user = auth()->user();
         if ($user->is_suspended) {
-            $this->addError('report', 'A tua conta está suspensa e não pode enviar relatórios.');
+            $this->addError('report', __('beach.report_error'));
             return;
         }
 
         $throttleKey = 'report:' . $user->id;
         if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-            $this->addError('report', 'Muitas tentativas. Aguarda ' . $seconds . ' segundos.');
+            $this->addError('report', __('beach.report_rate_limit'));
             return;
         }
         RateLimiter::hit($throttleKey, 60);
@@ -100,7 +100,7 @@ class BeachDetail extends Component
 
         $distance = $this->calculateDistance((float)$lat, (float)$lon, (float)$this->beach->latitude, (float)$this->beach->longitude);
         if ($distance > $this->maxDistanceKm()) {
-            $this->addError('report', 'Deves estar a menos de ' . $this->maxDistanceKm() . ' km da praia para confirmar (distância atual: ' . round($distance, 2) . ' km).');
+            $this->addError('report', __('common.gps_unavailable'));
             return;
         }
 
@@ -128,7 +128,7 @@ class BeachDetail extends Component
         // Reload beach relation to refresh view
         $this->beach->load('currentStatus');
 
-        session()->flash('report_success', 'Bandeira confirmada! Os teus pontos estão pendentes até ao fecho da janela.');
+        session()->flash('report_success', __('beach.report_success'));
     }
 
     private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float

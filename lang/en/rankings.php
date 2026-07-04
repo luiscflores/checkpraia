@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'title' => 'National Leaderboard',
+    'page_title' => 'CheckPraia - Leaderboard',
+    'subtitle' => 'Earn points by confirming flags at supervised beaches and inviting friends.',
+    'filter_district' => 'Filter by district',
+    'all_districts' => 'All Districts',
+    'period' => 'Ranking period',
+    'general' => 'General',
+    'monthly' => 'Monthly',
+    'weekly' => 'Weekly',
+    'daily' => 'Daily',
+    'confirmations_count' => ':count accepted',
+    'boosted_vote' => 'Boosted Vote',
+    'pts' => 'pts',
+    'no_activity' => 'No users registered activity in this period.',
+    'table_aria' => 'Leaderboard table',
+    'table_caption' => 'User ranking by score',
+    'position' => 'Position',
+    'user' => 'User',
+    'confirmations' => 'Confirmations',
+    'score' => 'Score',
+    'position_aria' => 'Position :position',
+];

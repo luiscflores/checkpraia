@@ -142,6 +142,10 @@ class ConsensusResolver
         $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
         $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
 
+        if ($quality && $quality->sampled_at && $quality->sampled_at->diffInDays(now()) > config('prediction.quality.max_age_days')) {
+            $quality = null;
+        }
+
         if ($prediction->selected_flag === 'red') {
             if ($quality && strtolower($quality->quality_class) === 'poor') {
                 return 'Qualidade da água imprópria para banhos.';

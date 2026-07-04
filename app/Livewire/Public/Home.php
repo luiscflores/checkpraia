@@ -5,7 +5,6 @@ namespace App\Livewire\Public;
 use Livewire\Component;
 use App\Models\Beach;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 
 class Home extends Component
 {
@@ -23,7 +22,7 @@ class Home extends Component
     public function toggleFavorite($beachId)
     {
         if (!auth()->check()) {
-            session()->flash('favorite_error', 'Precisas de iniciar sessão para guardar favoritos.');
+            session()->flash('favorite_error', __('common.favorite_login_required'));
             return;
         }
 
@@ -32,11 +31,11 @@ class Home extends Component
         if (in_array($beachId, $this->favoriteIds)) {
             $user->favorites()->detach($beachId);
             $this->favoriteIds = array_values(array_filter($this->favoriteIds, fn($id) => (int)$id !== (int)$beachId));
-            session()->flash('favorite_success', 'Praia removida dos favoritos.');
+            session()->flash('favorite_success', __('common.favorite_removed'));
         } else {
             $user->favorites()->attach($beachId);
             $this->favoriteIds[] = (int)$beachId;
-            session()->flash('favorite_success', 'Praia adicionada aos favoritos!');
+            session()->flash('favorite_success', __('common.favorite_added'));
         }
     }
 
@@ -94,13 +93,26 @@ class Home extends Component
                 'wave_direction' => $ocean ? $ocean->wave_direction : null,
                 'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
                 'wind_direction' => $weather ? $weather->wind_direction : null,
+                'jellyfish_risk' => $weather ? $weather->jellyfish_risk : null,
             ];
         });
 
-        $this->dispatch('beaches-updated', beaches: $beaches);
+        $mapBeaches = $beaches->map(fn ($b) => [
+            'id' => $b['id'],
+            'name' => $b['name'],
+            'latitude' => $b['latitude'],
+            'longitude' => $b['longitude'],
+            'flag' => $b['flag'],
+            'region' => $b['region'],
+            'municipality' => $b['municipality'],
+            'url' => $b['url'],
+        ])->values();
+
+        $this->dispatch('beaches-updated', beaches: $mapBeaches);
 
         return view('livewire.public.home', [
             'beachesList' => $beaches,
+            'mapBeaches' => $mapBeaches,
             'flagFilters' => config('flags.labels'),
             'flagIcons' => config('flags.icons'),
         ])->layout('components.layouts.app');

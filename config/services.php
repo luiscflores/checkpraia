@@ -66,8 +66,8 @@ return [
 
     'infoagua' => [
         'wfs_url' => env('INFOAGUA_WFS_URL', 'https://sniambgeoogc.apambiente.pt/getogc/services/SNIAmb/Praias/MapServer/WFSServer'),
-        'timeout' => (int) env('INFOAGUA_TIMEOUT', 10),
-        'max_results' => (int) env('INFOAGUA_MAX_RESULTS', 100),
+        'arcgis_url' => env('INFOAGUA_ARCGIS_URL', 'https://sniambgeoogc.apambiente.pt/getogc/rest/services/Visualizador/snirh_balneares_classificacoes_app/MapServer/0/query'),
+        'timeout' => (int) env('INFOAGUA_TIMEOUT', 15),
     ],
 
     'tides' => [

@@ -28,7 +28,7 @@ new #[Layout('components.layouts.app')] class extends Component
         ]);
 
         if ($this->referralCodeInput && !User::where('referral_code', strtoupper($this->referralCodeInput))->exists()) {
-            $this->addError('referralCodeInput', 'O código de convite inserido não é válido.');
+            $this->addError('referralCodeInput', __('auth.register.referral_invalid'));
             return;
         }
 
@@ -60,19 +60,19 @@ new #[Layout('components.layouts.app')] class extends Component
 
         Auth::login($user);
 
-        session()->flash('auth_success', 'Conta criada com sucesso!');
+        session()->flash('auth_success', __('auth.register.success'));
 
         $this->redirect(route('profile', absolute: false));
     }
 }; ?>
 
 <div class="max-w-md mx-auto my-12">
-    @section('title', 'Registar - CheckPraia')
+    @section('title', __('auth.register.page_title'))
 
-    <div class="glass-card p-5 sm:p-8 rounded-3xl border border-theme-medium space-y-6 relative overflow-hidden">
-        <div class="absolute w-32 h-32 rounded-full blur-3xl opacity-20 -top-12 -right-12 bg-blue-500"></div>
+    <div class="glass-card p-5 sm:p-8 rounded-3xl border border-theme-medium space-y-6 relative overflow-hidden animate-scale-in">
+        <div class="absolute w-32 h-32 rounded-full blur-3xl opacity-20 -top-12 -right-12 bg-blue-500 animate-float"></div>
 
-        <h2 class="text-xl font-bold text-theme text-center">Criar Nova Conta</h2>
+        <h2 class="text-xl font-bold text-theme text-center">{{ __('auth.register.heading') }}</h2>
 
         <form wire:submit="register" class="space-y-4">
             @if (session()->has('auth_success'))
@@ -82,47 +82,47 @@ new #[Layout('components.layouts.app')] class extends Component
             @endif
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Nome Completo</label>
-                <input type="text" wire:model="name" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: Luís Flores" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.name_label') }}</label>
+                <input type="text" wire:model="name" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.name_placeholder') }}" />
                 @error('name') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Nome de Utilizador (Público)</label>
-                <input type="text" wire:model="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: luisflores" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.username_label') }}</label>
+                <input type="text" wire:model="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.username_placeholder') }}" />
                 @error('username') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Endereço de Email</label>
-                <input type="email" wire:model="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="exemplo@email.com" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.email_label') }}</label>
+                <input type="email" wire:model="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.email_placeholder') }}" />
                 @error('email') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Palavra-passe</label>
-                <input type="password" wire:model="password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Mínimo 6 caracteres" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.password_label') }}</label>
+                <input type="password" wire:model="password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_placeholder') }}" />
                 @error('password') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Confirmar Palavra-passe</label>
-                <input type="password" wire:model="password_confirmation" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Repete a palavra-passe" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.password_confirm_label') }}</label>
+                <input type="password" wire:model="password_confirmation" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_confirm_placeholder') }}" />
             </div>
 
             <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">Código de Convite (Opcional)</label>
-                <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="Ex: ABC123XYZ" />
+                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.referral_label') }}</label>
+                <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.referral_placeholder') }}" />
                 @error('referralCodeInput') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
-                Registar Nova Conta &rarr;
+                {{ __('auth.register.submit') }} &rarr;
             </button>
 
             <p class="text-xs text-center text-theme-muted pt-2">
-                Já tens conta?
-                <a href="{{ route('login') }}" class="text-blue-400 hover:underline font-semibold" wire:navigate>Entrar</a>
+                {{ __('auth.register.has_account') }}
+                <a href="{{ route('login') }}" class="text-blue-400 hover:underline font-semibold" wire:navigate>{{ __('auth.register.login_link') }}</a>
             </p>
         </form>
     </div>
