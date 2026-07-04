@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+
+#[Fillable([
+    'beach_id', 'flag', 'source', 'confidence',
+    'wave_height', 'wind_speed', 'water_temp', 'air_temp',
+    'water_quality', 'captured_at'
+])]
+class BeachHourlySnapshot extends Model
+{
+    protected function casts(): array
+    {
+        return [
+            'confidence' => 'integer',
+            'wave_height' => 'decimal:2',
+            'wind_speed' => 'decimal:2',
+            'water_temp' => 'decimal:1',
+            'air_temp' => 'decimal:1',
+            'captured_at' => 'datetime',
+        ];
+    }
+
+    public function beach()
+    {
+        return $this->belongsTo(Beach::class);
+    }
+}

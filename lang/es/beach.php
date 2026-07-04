@@ -14,6 +14,7 @@ return [
     'flag_off_season' => 'Playa fuera de temporada de baño.',
     'flag_verified_by' => 'Verificado por :count usuarios',
     'today_votes_title' => 'Confirmaciones de Hoy',
+    'history_title' => 'Evolución Hoy',
     'flag_report' => 'Reportar Bandera',
 
     // Weather

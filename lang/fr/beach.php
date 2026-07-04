@@ -14,6 +14,7 @@ return [
     'flag_off_season' => 'Plage hors saison de baignade.',
     'flag_verified_by' => 'Vérifié par :count utilisateurs',
     'today_votes_title' => 'Confirmations d\'Aujourd\'hui',
+    'history_title' => 'Évolution Aujourd\'hui',
     'flag_report' => 'Signaler le Drapeau',
 
     // Weather

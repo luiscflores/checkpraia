@@ -11,7 +11,7 @@ return [
     'map_madeira_label' => 'Carte des plages de Madère',
     'marker_label' => 'Marqueur de :name',
     'beach_detail_link' => 'Voir Détails →',
-    'green_nearby_title' => 'Plages vertes près de chez vous',
+    'green_nearby_title' => 'Plages avec drapeau vert près de chez vous',
     'green_nearby_count' => 'proches',
     'green_nearby_empty' => 'Aucune plage avec drapeau vert dans un rayon de 30 km de votre position.',
 ];

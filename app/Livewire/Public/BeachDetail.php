@@ -189,6 +189,11 @@ class BeachDetail extends Component
             ->orderBy('calculated_at', 'desc')
             ->first();
 
+        $todaySnapshots = \App\Models\BeachHourlySnapshot::where('beach_id', $this->beach->id)
+            ->where('captured_at', '>=', now()->startOfDay())
+            ->orderBy('captured_at')
+            ->get();
+
         $activeAlerts = OfficialAlert::where(function ($q) {
             $q->where('beach_id', $this->beach->id)
               ->orWhereNull('beach_id');
@@ -267,6 +272,7 @@ class BeachDetail extends Component
             'tideCurvePoints' => $tideCurvePoints,
             'moonPhase' => TideForecast::moonPhase(),
             'upcomingMoonPhases' => TideForecast::upcomingMoonPhases(),
+            'todaySnapshots' => $todaySnapshots,
         ])->layout('components.layouts.app');
     }
 }

@@ -6,7 +6,7 @@
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
@@ -40,6 +40,9 @@
     --popup-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
 
     --marker-border: #070a13;
+
+    --skeleton-from: rgba(255,255,255,0.04);
+    --skeleton-to: rgba(255,255,255,0.08);
 }
 
 [data-theme="light"] {
@@ -72,6 +75,9 @@
     --popup-shadow: 0 8px 32px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.8);
 
     --marker-border: #94a3b8;
+
+    --skeleton-from: rgba(0,0,0,0.04);
+    --skeleton-to: rgba(0,0,0,0.08);
 }
 
 @utility pb-safe {
@@ -273,10 +279,14 @@
 
 .glass-card {
     background: var(--bg-glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* Reduced from 12px to 6px — same visual, ~50% less GPU cost on mobile */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border: 1px solid var(--bg-glass-border);
     box-shadow: var(--bg-glass-shadow);
+    /* Isolate each card as its own compositing layer to reduce global repaints */
+    contain: layout style;
+    will-change: auto;
 }
 
 .glass-card:hover {
@@ -364,21 +374,25 @@
 .pull-indicator {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
+    left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    background: var(--bg-header);
-    backdrop-filter: blur(12px);
-    transform: translateY(-100%);
-    transition: transform 0.2s ease-out;
+    padding: 8px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: 9999px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .pull-indicator.visible {
-    transform: translateY(0);
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 /* Safe area for bottom sheets */

@@ -140,7 +140,7 @@
          x-transition:enter-end="opacity-100 translate-y-0">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-extrabold text-theme flex items-center gap-2">
-                <span aria-hidden="true">🌿</span>
+                <span aria-hidden="true">🚩</span>
                 <span>{{ __('home.green_nearby_title') }}</span>
             </h2>
             <span x-show="nearbyGreen.length > 0"
@@ -184,6 +184,29 @@
         <div class="lg:col-span-5 flex flex-col gap-4.5 max-h-[calc(100vh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
             <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
 
+            <!-- Skeleton placeholders shown while Livewire is loading -->
+            <div wire:loading.block class="space-y-3">
+                @for($s = 0; $s < 5; $s++)
+                    <div class="skeleton-box p-4 rounded-3xl border border-theme-subtle/50 h-28 flex flex-col justify-between">
+                        <div class="flex justify-between">
+                            <div>
+                                <div class="skeleton h-4 w-36 mb-2"></div>
+                                <div class="skeleton h-3 w-24"></div>
+                            </div>
+                            <div class="skeleton h-6 w-16 rounded-full"></div>
+                        </div>
+                        <div class="flex gap-3 mt-4">
+                            <div class="skeleton h-3 w-12 rounded"></div>
+                            <div class="skeleton h-3 w-12 rounded"></div>
+                            <div class="skeleton h-3 w-12 rounded"></div>
+                            <div class="skeleton h-3 w-12 rounded"></div>
+                        </div>
+                    </div>
+                @endfor
+            </div>
+
+            <div wire:loading.remove>
+
             @forelse($beachesList as $i => $beach)
                 @if($i > 0 && $i % 3 === 0)
                     <x-ads.slot slot="home_between_cards" className="col-span-full" />
@@ -197,11 +220,6 @@
                     @if($beach['is_favorited'])
                         <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-yellow-500 shadow-md shadow-amber-500/30"></div>
                     @endif
-
-                    <!-- Shimmer on hover -->
-                    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent animate-shimmer"></div>
-                    </div>
 
                     <div class="flex items-start justify-between gap-2.5 relative z-10">
                         <div class="min-w-0 flex-1">
@@ -337,6 +355,7 @@
                     <p class="text-sm text-theme-muted">{{ __('common.no_results_hint') }}</p>
                 </div>
             @endforelse
+            </div><!-- end wire:loading.remove -->
 
             <x-ads.slot slot="home_bottom" className="col-span-full" />
         </div>
@@ -391,16 +410,14 @@
             mapMadeira: null,
             markers: { continente: {}, acores: {}, madeira: {} },
             beaches: initialBeaches,
-            viewState: 'map',
+            viewState: window.innerWidth < 1024 ? 'list' : 'map',
             userCircle: null,
             tileLayers: { continente: null, acores: null, madeira: null },
-            nearbyGreen: null,
+            nearbyGreen: [],
+            _initialRender: true,
 
             init() {
                 if (this.mapContinente) return;
-                window.addEventListener('nearby-green-updated', (event) => {
-                    this.nearbyGreen = event.detail.nearbyGreen;
-                });
 
                 const removePopupHref = (e) => {
                     const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
@@ -410,30 +427,41 @@
                     }
                 };
 
+                // Init main continental map immediately
                 this.mapContinente = L.map('map-continente', {
                     zoomControl: true,
                     maxZoom: 18,
                     minZoom: 6
-                }).fitBounds([[36.95, -9.5], [42.15, -6.2]], { padding: [20, 20] });
+                }).setView([39.6, -8.2], 7);
                 this.mapContinente.on('popupopen', removePopupHref);
 
                 this.tileLayers.continente = this.createTileLayer();
                 this.tileLayers.continente.addTo(this.mapContinente);
 
-                this.lazyLoadMap('map-acores', 'acores', [[36.7, -28.9], [38.8, -24.7]], removePopupHref);
-                this.lazyLoadMap('map-madeira', 'madeira', [[32.4, -17.4], [33.3, -16.1]], removePopupHref);
+                // Island maps: defer via requestIdleCallback to keep main thread free
+                const initIslands = () => {
+                    this.lazyLoadMap('map-acores', 'acores', [[36.7, -28.9], [38.8, -24.7]], removePopupHref);
+                    this.lazyLoadMap('map-madeira', 'madeira', [[32.4, -17.4], [33.3, -16.1]], removePopupHref);
+                };
+
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(initIslands, { timeout: 2000 });
+                } else {
+                    setTimeout(initIslands, 500);
+                }
 
                 this.renderMarkers();
+                this._initialRender = false;
 
-                this.$watch('beaches', (newBeaches) => {
-                    this.beaches = newBeaches;
-                    this.renderMarkers();
+                window.addEventListener('nearby-green-updated', (event) => {
+                    this.nearbyGreen = event.detail.nearbyGreen;
                 });
 
                 window.addEventListener('beaches-updated', (event) => {
                     this.beaches = event.detail.beaches;
                     this.invalidateAllMaps();
                     this.renderMarkers();
+                    this._fitBeaches();
                 });
 
             },
@@ -457,6 +485,7 @@
             },
 
             initIslandMap(elementId, region, bounds, removePopupHref) {
+                const center = bounds.reduce((acc, b) => [acc[0] + b[0]/2, acc[1] + b[1]/2], [0,0]);
                 const map = L.map(elementId, {
                     zoomControl: false,
                     attributionControl: false,
@@ -464,7 +493,7 @@
                     minZoom: 6,
                     dragging: true,
                     scrollWheelZoom: true
-                }).fitBounds(bounds, { padding: [10, 10] });
+                }).setView(center, 7);
                 map.on('popupopen', removePopupHref);
                 const layer = this.createTileLayer();
                 layer.addTo(map);
@@ -520,6 +549,7 @@
             },
 
             renderRegionMarkers(map, store, beaches) {
+                if (!map) return;
                 beaches.forEach(beach => {
                     const color = this.getMarkerColor(beach.flag);
                     const size = window.innerWidth < 640 ? 12 : 14;
@@ -548,7 +578,7 @@
                     }
                     store[beach.id] = marker;
                 });
-                if (beaches.length) {
+                if (beaches.length && !this._initialRender) {
                     const coords = beaches.map(b => [b.latitude, b.longitude]);
                     map.fitBounds(coords, { padding: [10, 10], maxZoom: 12 });
                 }
@@ -557,7 +587,7 @@
             clearMarkers() {
                 ['continente', 'acores', 'madeira'].forEach(key => {
                     const map = key === 'continente' ? this.mapContinente : key === 'acores' ? this.mapAcores : this.mapMadeira;
-                    Object.values(this.markers[key]).forEach(m => map.removeLayer(m));
+                    if (map) Object.values(this.markers[key]).forEach(m => map.removeLayer(m));
                     this.markers[key] = {};
                 });
             },
@@ -670,6 +700,24 @@
                 if (this.mapContinente) this.mapContinente.invalidateSize();
                 if (this.mapAcores) this.mapAcores.invalidateSize();
                 if (this.mapMadeira) this.mapMadeira.invalidateSize();
+            },
+
+            _fitBeaches() {
+                const byRegion = { Continental: [], Madeira: [], Açores: [] };
+                this.beaches.forEach(beach => {
+                    const r = beach.region || 'Continental';
+                    if (byRegion[r]) byRegion[r].push(beach);
+                    else byRegion.Continental.push(beach);
+                });
+                if (byRegion.Continental.length && this.mapContinente) {
+                    this.mapContinente.fitBounds(byRegion.Continental.map(b => [b.latitude, b.longitude]), { padding: [10, 10], maxZoom: 12 });
+                }
+                if (byRegion.Açores.length && this.mapAcores) {
+                    this.mapAcores.fitBounds(byRegion.Açores.map(b => [b.latitude, b.longitude]), { padding: [10, 10], maxZoom: 12 });
+                }
+                if (byRegion.Madeira.length && this.mapMadeira) {
+                    this.mapMadeira.fitBounds(byRegion.Madeira.map(b => [b.latitude, b.longitude]), { padding: [10, 10], maxZoom: 12 });
+                }
             }
         }));
     </script>

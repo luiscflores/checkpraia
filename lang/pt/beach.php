@@ -14,6 +14,7 @@ return [
     'flag_off_season' => 'Praia fora da época balnear.',
     'flag_verified_by' => 'Verificado por :count utilizadores',
     'today_votes_title' => 'Confirmações de Hoje',
+    'history_title' => 'Evolução Hoje',
     'flag_report' => 'Reportar Bandeira',
 
     // Weather

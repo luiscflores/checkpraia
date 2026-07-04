@@ -94,13 +94,57 @@ class Home extends Component
         $this->dispatch('nearby-green-updated', nearbyGreen: $all);
     }
 
+    public function updatedSearch()
+    {
+        $this->dispatchBeachesUpdated();
+    }
+
+    public function updatedSelectedRegion()
+    {
+        $this->dispatchBeachesUpdated();
+    }
+
+    public function updatedSelectedFlag()
+    {
+        $this->dispatchBeachesUpdated();
+    }
+
+    private function dispatchBeachesUpdated()
+    {
+        $mapBeaches = $this->buildMapBeaches();
+        $this->dispatch('beaches-updated', beaches: $mapBeaches);
+    }
+
     public function render()
     {
         $this->favoriteIds = auth()->check()
             ? auth()->user()->favorites()->pluck('beach_id')->map(fn($id) => (int)$id)->toArray()
             : [];
 
-        $query = Beach::with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
+        // Build list ONCE and derive map beaches from same result — avoids double DB round-trip
+        $beaches = $this->buildBeachesList();
+        $mapBeaches = collect($beaches)->map(fn ($b) => [
+            'id' => $b['id'],
+            'name' => $b['name'],
+            'latitude' => $b['latitude'],
+            'longitude' => $b['longitude'],
+            'flag' => $b['flag'],
+            'region' => $b['region'],
+            'municipality' => $b['municipality'],
+            'url' => $b['url'],
+        ])->values()->toArray();
+
+        return view('livewire.public.home', [
+            'beachesList' => $beaches,
+            'mapBeaches' => $mapBeaches,
+            'flagFilters' => config('flags.labels'),
+            'flagIcons' => config('flags.icons'),
+        ])->layout('components.layouts.app');
+    }
+
+    private function buildBeachesList(): array
+    {
+        $query = Beach::with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true);
 
         if ($this->search) {
@@ -123,7 +167,7 @@ class Home extends Component
             });
         }
 
-        $beaches = $query->get()->sortByDesc(function ($beach) {
+        return $query->get()->sortByDesc(function ($beach) {
             return in_array((int)$beach->id, $this->favoriteIds);
         })->map(function ($beach) {
             $status = $beach->currentStatus;
@@ -150,11 +194,13 @@ class Home extends Component
                 'wave_direction' => $ocean ? $ocean->wave_direction : null,
                 'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
                 'wind_direction' => $weather ? $weather->wind_direction : null,
-                'jellyfish_risk' => $weather ? $weather->jellyfish_risk : null,
             ];
-        });
+        })->toArray();
+    }
 
-        $mapBeaches = $beaches->map(fn ($b) => [
+    private function buildMapBeaches(): array
+    {
+        return collect($this->buildBeachesList())->map(fn ($b) => [
             'id' => $b['id'],
             'name' => $b['name'],
             'latitude' => $b['latitude'],
@@ -163,15 +209,6 @@ class Home extends Component
             'region' => $b['region'],
             'municipality' => $b['municipality'],
             'url' => $b['url'],
-        ])->values();
-
-        $this->dispatch('beaches-updated', beaches: $mapBeaches);
-
-        return view('livewire.public.home', [
-            'beachesList' => $beaches,
-            'mapBeaches' => $mapBeaches,
-            'flagFilters' => config('flags.labels'),
-            'flagIcons' => config('flags.icons'),
-        ])->layout('components.layouts.app');
+        ])->values()->toArray();
     }
 }

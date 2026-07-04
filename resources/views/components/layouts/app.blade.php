@@ -54,18 +54,20 @@
     <meta name="twitter:description" content="@yield('og_description', __('common.meta_description'))">
     <meta name="twitter:image" content="@yield('og_image', asset('storage/logo.png'))">
 
-    <!-- Fonts -->
+    <!-- Fonts: Plus Jakarta Sans with display=swap to never block rendering -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
-    <!-- Preconnect for map tiles -->
+    <!-- Preconnect for map tiles (non-blocking) -->
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://unpkg.com">
     <link rel="preconnect" href="https://server.arcgisonline.com">
     <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+    <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 
-    <!-- Leaflet Map CSS (non-blocking) -->
+    <!-- Leaflet CSS: non-blocking preload, only needed when map is shown -->
     <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
 
@@ -631,6 +633,77 @@
                     return output;
                 },
             }));
+
+            Alpine.data('appShareHandler', () => ({
+                async share() {
+                    const url = '{{ url('/') }}';
+                    const title = '{{ __('profile.share_app_title') }}';
+                    const text = '{{ __('profile.share_app_text') }}';
+                    const result = await shareViaAPI({ title, text, url });
+                    if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+                },
+                async downloadCard() {
+                    const c = document.createElement('canvas'); c.width = 600; c.height = 314;
+                    drawShareCard(c, {
+                        tagline: '{{ __('common.site_description') }}',
+                        body: '{{ __('profile.share_app_text') }}',
+                    });
+                    const a = document.createElement('a');
+                    a.download = 'checkpraia-card.png';
+                    a.href = c.toDataURL('image/png');
+                    a.click();
+                }
+            }));
+
+            Alpine.data('rankingShareHandler', () => ({
+                position: null,
+                score: null,
+                username: null,
+                showCard: false,
+                init() {
+                    const el = this.$el;
+                    this.position = el.dataset.position;
+                    this.score = el.dataset.score;
+                    this.username = el.dataset.username;
+                },
+                async share() {
+                    const url = '{{ url('/rankings') }}';
+                    const title = '{{ __('rankings.share_ranking_title', ['position' => '']) }}'.replace(':position', this.position);
+                    const text = '{{ __('rankings.share_ranking_text', ['position' => '', 'score' => '']) }}'
+                        .replace(':position', this.position)
+                        .replace(':score', this.score);
+                    const result = await shareViaAPI({ title, text, url });
+                    if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+                },
+                toggleCard() {
+                    this.showCard = !this.showCard;
+                    if (this.showCard) this.$nextTick(() => this.renderPreview());
+                },
+                renderPreview() {
+                    const c = document.getElementById('share-card-preview');
+                    if (!c) return;
+                    const orig = c.getAttribute('width') === '600' ? null : c;
+                    const canvas = orig || document.createElement('canvas');
+                    if (!orig) { canvas.width = 600; canvas.height = 314; }
+                    drawShareCard(canvas, {
+                        tagline: '{{ __('common.site_description') }}',
+                        body: this.username + '\n# ' + this.position + '  |  ' + this.score + ' pts',
+                        details: { label: '{{ __('rankings.share_my_rank') }}', value: '#' + this.position + '  ·  ' + this.score + ' pts' },
+                    });
+                    if (orig) return;
+                    c.width = 600; c.height = 314;
+                    c.getContext('2d').drawImage(canvas, 0, 0);
+                },
+                async downloadCard() {
+                    const c = document.getElementById('share-card-preview');
+                    if (!c) return;
+                    const a = document.createElement('a');
+                    a.download = 'checkpraia-ranking-' + this.position + '.png';
+                    a.href = c.toDataURL('image/png');
+                    a.click();
+                    this.showCard = false;
+                }
+            }));
         });
 
         // Canvas Card Generator
@@ -696,77 +769,6 @@
             }
             return false;
         };
-
-        Alpine.data('appShareHandler', () => ({
-            async share() {
-                const url = '{{ url('/') }}';
-                const title = '{{ __('profile.share_app_title') }}';
-                const text = '{{ __('profile.share_app_text') }}';
-                const result = await shareViaAPI({ title, text, url });
-                if (result === 'copied') alert('{{ __('profile.share_copied') }}');
-            },
-            async downloadCard() {
-                const c = document.createElement('canvas'); c.width = 600; c.height = 314;
-                drawShareCard(c, {
-                    tagline: '{{ __('common.site_description') }}',
-                    body: '{{ __('profile.share_app_text') }}',
-                });
-                const a = document.createElement('a');
-                a.download = 'checkpraia-card.png';
-                a.href = c.toDataURL('image/png');
-                a.click();
-            }
-        }));
-
-        Alpine.data('rankingShareHandler', () => ({
-            position: null,
-            score: null,
-            username: null,
-            showCard: false,
-            init() {
-                const el = this.$el;
-                this.position = el.dataset.position;
-                this.score = el.dataset.score;
-                this.username = el.dataset.username;
-            },
-            async share() {
-                const url = '{{ url('/rankings') }}';
-                const title = '{{ __('rankings.share_ranking_title', ['position' => '']) }}'.replace(':position', this.position);
-                const text = '{{ __('rankings.share_ranking_text', ['position' => '', 'score' => '']) }}'
-                    .replace(':position', this.position)
-                    .replace(':score', this.score);
-                const result = await shareViaAPI({ title, text, url });
-                if (result === 'copied') alert('{{ __('profile.share_copied') }}');
-            },
-            toggleCard() {
-                this.showCard = !this.showCard;
-                if (this.showCard) this.$nextTick(() => this.renderPreview());
-            },
-            renderPreview() {
-                const c = document.getElementById('share-card-preview');
-                if (!c) return;
-                const orig = c.getAttribute('width') === '600' ? null : c;
-                const canvas = orig || document.createElement('canvas');
-                if (!orig) { canvas.width = 600; canvas.height = 314; }
-                drawShareCard(canvas, {
-                    tagline: '{{ __('common.site_description') }}',
-                    body: this.username + '\n# ' + this.position + '  |  ' + this.score + ' pts',
-                    details: { label: '{{ __('rankings.share_my_rank') }}', value: '#' + this.position + '  ·  ' + this.score + ' pts' },
-                });
-                if (orig) return;
-                c.width = 600; c.height = 314;
-                c.getContext('2d').drawImage(canvas, 0, 0);
-            },
-            async downloadCard() {
-                const c = document.getElementById('share-card-preview');
-                if (!c) return;
-                const a = document.createElement('a');
-                a.download = 'checkpraia-ranking-' + this.position + '.png';
-                a.href = c.toDataURL('image/png');
-                a.click();
-                this.showCard = false;
-            }
-        }));
 
         window.toggleAppTheme = function() {
             const current = document.documentElement.getAttribute('data-theme') || 'dark';

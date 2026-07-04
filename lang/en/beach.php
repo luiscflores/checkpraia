@@ -14,6 +14,7 @@ return [
     'flag_off_season' => 'Beach is out of swimming season.',
     'flag_verified_by' => 'Verified by :count users',
     'today_votes_title' => "Today's Confirmations",
+    'history_title' => "Today's Evolution",
     'flag_report' => 'Report Flag',
 
     // Weather

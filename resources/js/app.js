@@ -1,12 +1,28 @@
 // CheckPraia - Shared UI Interactions
+// Performance-optimised: all init deferred to avoid blocking LCP
 
+// ── Critical path: run on DOMContentLoaded ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    initScrollAnimations();
-    initHeaderScrollEffect();
+    initHeaderScrollEffect();  // Critical: keeps header reactive immediately
     initPageTransitions();
-    initMobilePullToRefresh();
 });
 
+// ── Non-critical: defer to idle time ────────────────────────────────────────
+const runWhenIdle = (fn) => {
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(fn, { timeout: 1500 });
+    } else {
+        setTimeout(fn, 200);
+    }
+};
+
+runWhenIdle(() => {
+    initScrollAnimations();
+    initMobilePullToRefresh();
+    initCardTouchFeedback();
+});
+
+// ── Scroll Animations (IntersectionObserver — non-blocking) ──────────────────
 function initScrollAnimations() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -15,15 +31,15 @@ function initScrollAnimations() {
             if (entry.isIntersecting) {
                 const delay = entry.target.dataset.staggerDelay
                     ? parseFloat(entry.target.dataset.staggerDelay)
-                    : Math.min(index * 0.05, 0.5);
+                    : Math.min(index * 0.04, 0.4);
                 entry.target.style.animationDelay = `${delay}s`;
                 entry.target.classList.add('animate-fade-in-up');
                 observer.unobserve(entry.target);
             }
         });
     }, {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.05,
+        rootMargin: '0px 0px -30px 0px'
     });
 
     document.querySelectorAll('[data-animate]').forEach(el => {
@@ -32,14 +48,15 @@ function initScrollAnimations() {
 
     document.querySelectorAll('[data-animate-stagger]').forEach((container) => {
         const children = container.children;
+        const delay = parseFloat(container.dataset.animateStagger) || 0.04;
         Array.from(children).forEach((child, i) => {
-            const delay = parseFloat(container.dataset.animateStagger) || 0.05;
             child.dataset.staggerDelay = String(i * delay);
+            observer.observe(child);
         });
-        Array.from(children).forEach(child => observer.observe(child));
     });
 }
 
+// ── Header scroll shadow (passive listener, rAF throttled) ───────────────────
 function initHeaderScrollEffect() {
     const header = document.querySelector('header');
     if (!header) return;
@@ -61,6 +78,7 @@ function initHeaderScrollEffect() {
     onScroll();
 }
 
+// ── Page enter animation ─────────────────────────────────────────────────────
 function initPageTransitions() {
     const main = document.querySelector('main');
     if (main) {
@@ -68,6 +86,25 @@ function initPageTransitions() {
     }
 }
 
+// ── Mobile touch card feedback (replaces CSS :active which lags on iOS) ──────
+function initCardTouchFeedback() {
+    // Only on touch devices
+    if (!('ontouchstart' in window)) return;
+
+    document.addEventListener('touchstart', (e) => {
+        const card = e.target.closest('.glass-card');
+        if (card) card.classList.add('opacity-90');
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const card = e.target.closest('.glass-card');
+        if (card) {
+            requestAnimationFrame(() => card.classList.remove('opacity-90'));
+        }
+    }, { passive: true });
+}
+
+// ── Mobile Pull-to-Refresh ────────────────────────────────────────────────────
 function initMobilePullToRefresh() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (window.matchMedia('(min-width: 768px)').matches) return;
@@ -81,12 +118,13 @@ function initMobilePullToRefresh() {
     const threshold = 80;
     let indicator = null;
 
-    const createIndicator = () => {
+    const getOrCreateIndicator = () => {
+        if (indicator) return indicator;
         indicator = document.createElement('div');
         indicator.className = 'pull-indicator';
         indicator.innerHTML = `
-            <div class="flex items-center gap-2 text-sm text-theme-secondary font-medium">
-                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <div class="flex items-center gap-2 text-sm font-medium" style="color:var(--text-secondary)">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
@@ -94,6 +132,7 @@ function initMobilePullToRefresh() {
             </div>
         `;
         document.body.prepend(indicator);
+        return indicator;
     };
 
     main.addEventListener('touchstart', (e) => {
@@ -107,9 +146,10 @@ function initMobilePullToRefresh() {
         if (!pulling) return;
         pullDist = e.touches[0].clientY - startY;
         if (pullDist > 0 && pullDist < threshold * 1.5) {
-            if (!indicator) createIndicator();
-            indicator.style.transform = `translateY(${Math.min(pullDist * 0.5, threshold)}px)`;
-            indicator.classList.toggle('visible', pullDist > 20);
+            const ind = getOrCreateIndicator();
+            const progress = Math.min(pullDist * 0.5, threshold);
+            ind.style.transform = `translateX(-50%) translateY(${progress - 60}px)`;
+            ind.style.opacity = pullDist > 20 ? Math.min((pullDist - 20) / 40, 1) : 0;
         }
     }, { passive: true });
 
@@ -119,12 +159,12 @@ function initMobilePullToRefresh() {
             window.location.reload();
         }
         if (indicator) {
-            indicator.classList.remove('visible');
-            indicator.style.transform = '';
+            indicator.style.opacity = '0';
+            indicator.style.transform = 'translateX(-50%) translateY(-60px)';
             setTimeout(() => {
-                if (indicator && indicator.parentNode) indicator.parentNode.removeChild(indicator);
+                if (indicator?.parentNode) indicator.parentNode.removeChild(indicator);
                 indicator = null;
-            }, 300);
+            }, 250);
         }
         pulling = false;
         pullDist = 0;

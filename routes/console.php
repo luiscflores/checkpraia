@@ -12,3 +12,4 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::job(new \App\Jobs\PurgePreciseLocations)->daily();
 Schedule::job(new \App\Jobs\FetchIpmaForecasts)->cron('0 * * * *')->withoutOverlapping();
 Schedule::job(new \App\Jobs\FetchInfoAguaData)->cron('5 * * * *')->withoutOverlapping();
+Schedule::job(new \App\Jobs\CaptureHourlySnapshots)->hourlyAt(10)->withoutOverlapping();

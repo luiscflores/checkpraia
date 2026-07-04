@@ -394,6 +394,58 @@
                     </div>
                 </div>
             @endif
+
+            @if($todaySnapshots && $todaySnapshots->isNotEmpty())
+                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate>
+                    <h3 class="text-sm font-bold text-theme flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ __('beach.history_title') }}</span>
+                    </h3>
+
+                    <div class="relative pl-6 space-y-0">
+                        @php
+                            $prevFlag = null;
+                            $flagColors = [
+                                'green' => 'bg-emerald-500',
+                                'yellow' => 'bg-amber-500',
+                                'red' => 'bg-rose-500',
+                                'blue_or_neutral' => 'bg-blue-600',
+                                'gray' => 'bg-slate-500',
+                            ];
+                        @endphp
+                        @foreach($todaySnapshots as $snapshot)
+                            @php
+                                $dotColor = $flagColors[$snapshot->flag] ?? 'bg-slate-500';
+                                $changed = $prevFlag && $prevFlag !== $snapshot->flag;
+                                $prevFlag = $snapshot->flag;
+                            @endphp
+                            <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]">
+                                @if($changed)
+                                    <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full {{ $dotColor }} ring-2 ring-theme-card ring-offset-2 ring-offset-theme-card shadow-lg animate-fade-in"></div>
+                                @else
+                                    <div class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full {{ $dotColor }} ring-2 ring-theme-card opacity-60"></div>
+                                @endif
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] text-theme-muted font-medium tabular-nums">
+                                        {{ $snapshot->captured_at->timezone($beach->timezone)->format('H:i') }}
+                                    </span>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border {{ $dotColor }} text-white">
+                                        @switch($snapshot->flag)
+                                            @case('green') {{ __('common.flag_green') }} @break
+                                            @case('yellow') {{ __('common.flag_yellow') }} @break
+                                            @case('red') {{ __('common.flag_red') }} @break
+                                            @case('blue_or_neutral') {{ __('common.flag_blue_or_neutral') }} @break
+                                            @default {{ __('common.flag_none') }}
+                                        @endswitch
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
             <!-- Right Column: Details & Forecast (Span 7) -->
@@ -868,6 +920,7 @@
 
     @script
         <script>
+            document.addEventListener('alpine:init', () => {
             Alpine.data('beachDetailHandler', () => ({
                 locating: false,
                 mapInstance: null,
@@ -963,6 +1016,7 @@
                     );
                 }
             }));
+            });
         </script>
     @endscript
 </div>

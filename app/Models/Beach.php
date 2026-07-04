@@ -145,6 +145,11 @@ class Beach extends Model
         return $this->hasMany(FlagReport::class);
     }
 
+    public function hourlySnapshots()
+    {
+        return $this->hasMany(BeachHourlySnapshot::class)->orderBy('captured_at');
+    }
+
     public function currentStatus()
     {
         return $this->hasOne(BeachCurrentStatus::class);
