@@ -1,10 +1,42 @@
 <div class="space-y-6">
     @section('title', __('rankings.page_title'))
+    @section('meta_description', __('rankings.page_description'))
 
     <div class="glass-card p-5 sm:p-6 rounded-2xl border border-theme-medium flex flex-col md:flex-row gap-4 justify-between items-start md:items-center animate-fade-in-up">
         <div class="w-full md:w-auto">
             <h1 class="text-xl sm:text-2xl font-bold text-theme tracking-tight">{{ __('rankings.title') }}</h1>
             <p class="text-xs text-theme-secondary mt-1">{{ __('rankings.subtitle') }}</p>
+            @auth
+                @if($currentUserPosition)
+                    <div x-data="rankingShareHandler()"
+                         data-position="{{ $currentUserPosition }}"
+                         data-score="{{ $currentUserScore }}"
+                         data-username="{{ auth()->user()->name }}"
+                         class="mt-3 flex flex-wrap items-center gap-2">
+                        <button @click="share()" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 hover:border-blue-500/40 px-3 py-1.5 rounded-xl transition-all active:scale-95">
+                            <span aria-hidden="true">📢</span> {{ __('rankings.share_ranking') }}
+                        </button>
+                        <button @click="toggleCard()" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-theme-card hover:bg-white/5 text-theme-secondary border border-theme-medium px-3 py-1.5 rounded-xl transition-all active:scale-95">
+                            <span aria-hidden="true">🖼️</span> {{ __('profile.share_card_download') }}
+                        </button>
+                        <div x-show="showCard" x-cloak x-transition class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="toggleCard()">
+                            <div class="bg-theme-card rounded-2xl border border-theme-medium shadow-2xl p-6 max-w-lg w-full space-y-4">
+                                <canvas id="share-card-preview" class="w-full rounded-xl border border-theme-subtle"></canvas>
+                                <div class="flex gap-3">
+                                    <button @click="downloadCard()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all active:scale-95">
+                                        ⬇️ {{ __('profile.share_card_download') }}
+                                    </button>
+                                    <button @click="toggleCard()" class="px-4 bg-theme-card text-theme-secondary border border-theme-medium py-2.5 rounded-xl text-sm transition-all active:scale-95">
+                                        {{ __('common.filter_all') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <p class="mt-3 text-xs text-theme-muted italic">{{ __('rankings.share_rank_not_found') }}</p>
+                @endif
+            @endauth
         </div>
 
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
@@ -135,5 +167,7 @@
                 @endforelse
             </tbody>
         </table>
+
+        <x-ads.slot slot="rankings_bottom" />
     </div>
 </div>

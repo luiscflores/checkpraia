@@ -1,6 +1,54 @@
 <div class="space-y-8" x-data="beachDetailHandler()">
     @section('title', $beach->name . ' - ' . __('common.site_name'))
     @section('meta_description', __('beach.meta_description', ['name' => $beach->name, 'municipality' => $beach->municipality]))
+    @section('og_title', $beach->name . ' - Bandeira e Condições do Mar')
+    @section('og_description', strip_tags(__('beach.meta_description', ['name' => $beach->name, 'municipality' => $beach->municipality])))
+    @section('og_type', 'place')
+    @section('canonical', $beach->url)
+    @section('hreflang')
+        @foreach(['pt' => 'beach.show.pt', 'en' => 'beach.show.en', 'es' => 'beach.show.es', 'fr' => 'beach.show.fr'] as $locale => $route)
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ route($route, ['locale' => $locale, 'slug' => $beach->slug]) }}">
+        @endforeach
+    @endsection
+    @section('ld_json')
+    @parent
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        '@id' => $beach->url . '#breadcrumb',
+        'itemListElement' => [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => __('home.page_title'), 'item' => url('/')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $beach->name, 'item' => $beach->url],
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'Beach',
+        '@id' => $beach->url . '#beach',
+        'name' => $beach->name,
+        'description' => strip_tags(__('beach.meta_description', ['name' => $beach->name, 'municipality' => $beach->municipality])),
+        'url' => $beach->url,
+        'containedInPlace' => [
+            '@type' => 'AdministrativeArea',
+            'name' => $beach->municipality,
+            'address' => [
+                '@type' => 'PostalAddress',
+                'addressLocality' => $beach->municipality,
+                'addressCountry' => 'PT',
+            ],
+        ],
+        'latitude' => (float) $beach->latitude,
+        'longitude' => (float) $beach->longitude,
+        'image' => asset('storage/logo.png'),
+        'isAccessibleForFree' => true,
+        'publicAccess' => true,
+        'openingHours' => 'Mo-Su 09:00-19:00',
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    @endsection
 
     @if(session()->has('favorite_success'))
         <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium animate-fade-in">
@@ -464,6 +512,8 @@
                 </div>
             </div>
 
+            <x-ads.slot slot="beach_detail_inline" />
+
             <!-- Custom Tabbed Tides & Moon Panel -->
             <div x-data="{ activeTideTab: 'tides' }" class="glass-card rounded-3xl overflow-hidden border border-theme-subtle/40 shadow-xl animate-fade-in-up" data-animate>
                 <!-- Tab Headers -->
@@ -753,10 +803,12 @@
                 </div>
             </div>
 
+            <x-ads.slot slot="beach_detail_bottom" />
+
             <!-- Restaurants -->
-            <div class="space-y-4 animate-fade-in-up" data-animate>
+            <div class="space-y-3" data-animate>
                 <h3 class="text-lg font-bold text-theme flex items-center gap-2">
-                    {{ __('beach.dining_title') }}
+                    <span>🍽️</span> {{ __('beach.dining_title') }}
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-animate-stagger="0.1">

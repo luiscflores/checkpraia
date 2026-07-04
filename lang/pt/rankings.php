@@ -3,6 +3,7 @@
 return [
     'title' => 'Tabela de Liderança Nacional',
     'page_title' => 'Rankings CheckPraia - Tabela de Liderança',
+    'page_description' => 'Classificação dos utilizadores do CheckPraia que mais contribuem com confirmações de bandeiras nas praias de Portugal. Ganha pontos e sobe no ranking.',
     'subtitle' => 'Ganha pontos confirmando bandeiras nas praias vigiadas e convidando amigos.',
     'filter_district' => 'Filtrar por distrito',
     'all_districts' => 'Todos os Distritos',
@@ -22,4 +23,9 @@ return [
     'confirmations' => 'Confirmações',
     'score' => 'Pontuação',
     'position_aria' => 'Posição :position',
+    'share_ranking' => 'Partilhar minha posição',
+    'share_ranking_title' => 'Estou em #:position no CheckPraia!',
+    'share_ranking_text' => 'Estou na posição #:position com :score pontos no ranking do CheckPraia. Junta-te a mim!',
+    'share_my_rank' => 'A minha posição',
+    'share_rank_not_found' => 'Ainda não tens pontuação. Reporta bandeiras para apareceres no ranking.',
 ];

@@ -1,7 +1,61 @@
 <div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches))">
     @section('title', __('home.title'))
+    @section('og_title', __('home.og_title'))
+    @section('og_description', __('home.og_description'))
+    @section('hreflang')
+        @foreach(['pt', 'en', 'es', 'fr'] as $locale)
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ url($locale === 'pt' ? '/' : "/{$locale}") }}">
+        @endforeach
+    @endsection
 
     <h1 class="sr-only">{{ __('home.page_title') }}</h1>
+    <div class="sr-only" aria-hidden="true">
+        <p>{{ __('home.og_description') }}</p>
+    </div>
+    @section('ld_json')
+    @parent
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'FAQPage',
+        '@id' => url('/') . '#faq',
+        'mainEntity' => [
+            [
+                '@type' => 'Question',
+                'name' => 'Qual é a bandeira atual das praias de Portugal?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'Consulta o mapa do CheckPraia para ver a bandeira mais provável de cada praia marítima vigiada de Portugal, incluindo Açores e Madeira.',
+                ],
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'Como saber a temperatura da água do mar nas praias portuguesas?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'O CheckPraia mostra a temperatura da água (SST), altura das ondas, direção do vento e previsão meteorológica para cada praia.',
+                ],
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'A bandeira do CheckPraia é oficial?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'A bandeira apresentada pelo CheckPraia resulta de previsões automáticas e confirmações da comunidade. Não substitui a informação oficial dos nadadores-salvadores na praia.',
+                ],
+            ],
+            [
+                '@type' => 'Question',
+                'name' => 'Como posso reportar a bandeira que vejo na praia?',
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => 'Ao visitares a página de detalhe de uma praia no CheckPraia, podes votar na bandeira que estás a ver, contribuindo para a comunidade.',
+                ],
+            ],
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    @endsection
 
     @if(session()->has('favorite_success'))
         <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium animate-fade-in">
@@ -82,7 +136,12 @@
         
         <!-- Left Side: Beach Cards List -->
         <div class="lg:col-span-5 flex flex-col gap-4.5 max-h-[calc(100vh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
+            <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
+
             @forelse($beachesList as $i => $beach)
+                @if($i > 0 && $i % 3 === 0)
+                    <x-ads.slot slot="home_between_cards" className="col-span-full" />
+                @endif
                 <a href="{{ $beach['url'] }}" 
                    @mouseenter="hoverBeach(@js($beach))"
                    data-animate
@@ -232,6 +291,8 @@
                     <p class="text-sm text-theme-muted">{{ __('common.no_results_hint') }}</p>
                 </div>
             @endforelse
+
+            <x-ads.slot slot="home_bottom" className="col-span-full" />
         </div>
 
         <!-- Right Side: Maps -->
@@ -241,6 +302,8 @@
             <div class="flex-1 rounded-xl sm:rounded-2xl overflow-hidden border border-theme-medium relative min-h-[240px] sm:min-h-[280px]">
                 <div id="map-continente" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_continent_label') }}"></div>
             </div>
+
+            <x-ads.slot slot="home_sidebar_bottom" />
 
             <!-- Island Maps Row -->
             <div class="grid grid-cols-2 gap-2 sm:gap-3 h-28 sm:h-36 shrink-0">

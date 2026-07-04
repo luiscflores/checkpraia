@@ -1,8 +1,10 @@
 <?php
 
 return [
-    'title' => 'CheckPraia',
-    'page_title' => 'CheckPraia - Mapa das Praias',
+    'title' => 'CheckPraia - Mapa das Praias de Portugal',
+    'page_title' => 'CheckPraia - Mapa das Praias de Portugal: Bandeiras, Mar e Meteorologia',
+    'og_title' => 'CheckPraia - Bandeiras das Praias de Portugal em Tempo Real',
+    'og_description' => 'Bandeira atual, temperatura da água, ondas e vento para todas as praias de Portugal. Previsões e confirmações da comunidade.',
     'filter_all' => 'Todas',
     'azores' => 'Açores',
     'madeira' => 'Madeira',

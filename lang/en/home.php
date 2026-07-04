@@ -1,8 +1,10 @@
 <?php
 
 return [
-    'title' => 'CheckPraia',
-    'page_title' => 'CheckPraia - Beach Map',
+    'title' => 'CheckPraia - Beach Map of Portugal',
+    'page_title' => 'CheckPraia - Beach Map of Portugal: Flags, Sea & Weather',
+    'og_title' => 'CheckPraia - Real-Time Beach Flags for Portugal',
+    'og_description' => 'Current flag, water temperature, waves and wind for every beach in Portugal. Forecasts and community reports.',
     'filter_all' => 'All',
     'azores' => 'Azores',
     'madeira' => 'Madeira',

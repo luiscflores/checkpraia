@@ -24,6 +24,34 @@
     <title>@yield('title', __('common.site_name') . ' - ' . __('common.site_description'))</title>
     <meta name="description" content="@yield('meta_description', __('common.meta_description'))">
 
+    <!-- Canonical URL -->
+    <link rel="canonical" href="@yield('canonical', url()->current())">
+
+    <!-- Hreflang / Alternate Language URLs (override per page for dynamic routes) -->
+    @section('hreflang')
+        @foreach(['pt', 'en', 'es', 'fr'] as $locale)
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ url($locale === 'pt' ? '' : "/{$locale}") }}">
+        @endforeach
+    @show
+    <link rel="alternate" hreflang="x-default" href="{{ url('/') }}">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="@yield('og_title', __('common.site_name'))">
+    <meta property="og:description" content="@yield('og_description', __('common.meta_description'))">
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta property="og:url" content="@yield('canonical', url()->current())">
+    <meta property="og:image" content="@yield('og_image', asset('storage/logo.png'))">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="388">
+    <meta property="og:site_name" content="{{ __('common.site_name') }}">
+    <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('og_title', __('common.site_name'))">
+    <meta name="twitter:description" content="@yield('og_description', __('common.meta_description'))">
+    <meta name="twitter:image" content="@yield('og_image', asset('storage/logo.png'))">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +66,49 @@
     <!-- Leaflet Map CSS (non-blocking) -->
     <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
+
+    <!-- Structured Data (JSON-LD) -->
+    @section('ld_json')
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'Organization',
+                '@id' => url('/') . '#organization',
+                'name' => 'CheckPraia',
+                'url' => url('/'),
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => asset('storage/logo.png'),
+                    'width' => 1162,
+                    'height' => 376,
+                ],
+                'description' => __('common.site_description'),
+                'areaServed' => ['@type' => 'Country', 'name' => 'Portugal'],
+                'foundingDate' => '2025',
+            ],
+            [
+                '@type' => 'WebSite',
+                '@id' => url('/') . '#website',
+                'url' => url('/'),
+                'name' => __('common.site_name'),
+                'description' => __('common.site_description'),
+                'publisher' => ['@id' => url('/') . '#organization'],
+                'inLanguage' => ['pt', 'en', 'es', 'fr'],
+                'potentialAction' => [
+                    '@type' => 'SearchAction',
+                    'target' => [
+                        '@type' => 'EntryPoint',
+                        'urlTemplate' => url('/') . '/?q={search_term_string}',
+                    ],
+                    'query-input' => 'required name=search_term_string',
+                ],
+            ],
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    @show
 
     <style>
         [x-cloak] { display: none !important; }
@@ -177,6 +248,11 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+
+    @if(config('ads.publisher_id'))
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-{{ config('ads.publisher_id') }}"
+                crossorigin="anonymous"></script>
+    @endif
 </head>
 <body class="antialiased min-h-screen flex flex-col selection:bg-blue-600 selection:text-white" style="background: var(--bg-base); color: var(--text-primary);">
 
@@ -351,6 +427,9 @@
                 </div>
             </footer>
         </main>
+
+        <!-- Sticky Bottom Ad Banner (mobile only) -->
+        <x-ads.slot slot="sticky_bottom" className="fixed bottom-14 left-0 right-0 z-40 md:hidden" />
 
         <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
         <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1 px-0.5 pb-safe md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
@@ -551,6 +630,141 @@
                 },
             }));
         });
+
+        // Canvas Card Generator
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (r > w/2) r = w/2; if (r > h/2) r = h/2;
+                this.moveTo(x + r, y); this.lineTo(x + w - r, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + r);
+                this.lineTo(x + w, y + h - r);
+                this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                this.lineTo(x + r, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - r);
+                this.lineTo(x, y + r);
+                this.quadraticCurveTo(x, y, x + r, y);
+                return this;
+            };
+        }
+        const drawShareCard = (canvas, opts) => {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = 600, h = canvas.height = 314;
+            const grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, '#1e3a5f'); grad.addColorStop(0.5, '#0f2b4a'); grad.addColorStop(1, '#0a1a2e');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+            // Accent line
+            ctx.fillStyle = '#3b82f6'; ctx.fillRect(0, 0, 6, h);
+            // Logo placeholder
+            ctx.font = 'bold 42px sans-serif'; ctx.fillStyle = '#60a5fa'; ctx.fillText('🌊', 30, 80);
+            ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#f1f5f9'; ctx.fillText('CheckPraia', 90, 85);
+            ctx.font = '14px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(opts.tagline || 'Bandeiras das Praias em Tempo Real', 90, 110);
+            // Body
+            if (opts.body) {
+                ctx.font = '16px sans-serif'; ctx.fillStyle = '#e2e8f0';
+                const lines = opts.body.split('\n');
+                lines.forEach((l, i) => ctx.fillText(l, 30, 165 + i * 28));
+            }
+            // Detail box
+            if (opts.details) {
+                const bx = 30, by = h - 95, bw = w - 60, bh = 60;
+                ctx.fillStyle = 'rgba(59,130,246,0.15)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.fill();
+                ctx.strokeStyle = 'rgba(59,130,246,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.stroke();
+                ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#93c5fd';
+                ctx.fillText(opts.details.label, bx + 16, by + 24);
+                ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = '#f1f5f9';
+                ctx.fillText(opts.details.value, bx + 16, by + 52);
+                // URL at bottom-right
+                ctx.font = '12px sans-serif'; ctx.fillStyle = '#64748b';
+                ctx.fillText('checkpraia.pt', w - 140, by + 48);
+            }
+            // Bottom bar
+            ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, h - 30, w, 30);
+            ctx.font = '11px sans-serif'; ctx.fillStyle = '#64748b';
+            ctx.fillText('checkpraia.pt', 30, h - 10);
+        };
+
+        // Share Handlers
+        const shareViaAPI = async (data) => {
+            if (navigator.share) {
+                try { await navigator.share(data); return true; } catch {}
+            }
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(data.url || data.text);
+                return 'copied';
+            }
+            return false;
+        };
+
+        Alpine.data('appShareHandler', () => ({
+            async share() {
+                const url = '{{ url('/') }}';
+                const title = '{{ __('profile.share_app_title') }}';
+                const text = '{{ __('profile.share_app_text') }}';
+                const result = await shareViaAPI({ title, text, url });
+                if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+            },
+            async downloadCard() {
+                const c = document.createElement('canvas'); c.width = 600; c.height = 314;
+                drawShareCard(c, {
+                    tagline: '{{ __('common.site_description') }}',
+                    body: '{{ __('profile.share_app_text') }}',
+                });
+                const a = document.createElement('a');
+                a.download = 'checkpraia-card.png';
+                a.href = c.toDataURL('image/png');
+                a.click();
+            }
+        }));
+
+        Alpine.data('rankingShareHandler', () => ({
+            position: null,
+            score: null,
+            username: null,
+            showCard: false,
+            init() {
+                const el = this.$el;
+                this.position = el.dataset.position;
+                this.score = el.dataset.score;
+                this.username = el.dataset.username;
+            },
+            async share() {
+                const url = '{{ url('/rankings') }}';
+                const title = '{{ __('rankings.share_ranking_title', ['position' => '']) }}'.replace(':position', this.position);
+                const text = '{{ __('rankings.share_ranking_text', ['position' => '', 'score' => '']) }}'
+                    .replace(':position', this.position)
+                    .replace(':score', this.score);
+                const result = await shareViaAPI({ title, text, url });
+                if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+            },
+            toggleCard() {
+                this.showCard = !this.showCard;
+                if (this.showCard) this.$nextTick(() => this.renderPreview());
+            },
+            renderPreview() {
+                const c = document.getElementById('share-card-preview');
+                if (!c) return;
+                const orig = c.getAttribute('width') === '600' ? null : c;
+                const canvas = orig || document.createElement('canvas');
+                if (!orig) { canvas.width = 600; canvas.height = 314; }
+                drawShareCard(canvas, {
+                    tagline: '{{ __('common.site_description') }}',
+                    body: this.username + '\n# ' + this.position + '  |  ' + this.score + ' pts',
+                    details: { label: '{{ __('rankings.share_my_rank') }}', value: '#' + this.position + '  ·  ' + this.score + ' pts' },
+                });
+                if (orig) return;
+                c.width = 600; c.height = 314;
+                c.getContext('2d').drawImage(canvas, 0, 0);
+            },
+            async downloadCard() {
+                const c = document.getElementById('share-card-preview');
+                if (!c) return;
+                const a = document.createElement('a');
+                a.download = 'checkpraia-ranking-' + this.position + '.png';
+                a.href = c.toDataURL('image/png');
+                a.click();
+                this.showCard = false;
+            }
+        }));
 
         window.toggleAppTheme = function() {
             const current = document.documentElement.getAttribute('data-theme') || 'dark';

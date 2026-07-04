@@ -2,8 +2,8 @@
 
 return [
     'site_name' => 'CheckPraia',
-    'site_description' => 'Real-time beach flag status. Automated forecasts, community confirmations and sea conditions.',
-    'meta_description' => 'Check the most likely flag of Portugal\'s supervised beaches before heading out.',
+    'site_description' => 'Real-time beach flag status, water temperature, wave conditions, wind forecast and community reports for Portuguese beaches.',
+    'meta_description' => 'Live beach flag status for Portugal: sea conditions, water temperature, wind, waves, jellyfish risk and weather forecast. Check the flag before heading to the beach.',
     'aria_notifications' => 'Dynamic notifications',
 
     // Navigation

@@ -63,5 +63,7 @@
                 @endforeach
             </div>
         </div>
+
+        <x-ads.slot slot="about_bottom" />
     </div>
 </x-layouts.app>

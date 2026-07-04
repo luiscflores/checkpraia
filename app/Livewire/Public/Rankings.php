@@ -70,9 +70,23 @@ class Rankings extends Component
             ->orderBy('district')
             ->pluck('district');
 
+        $currentUserPosition = null;
+        $currentUserScore = null;
+        if (auth()->check()) {
+            foreach ($sortedUsers as $i => $u) {
+                if ($u->id === auth()->id()) {
+                    $currentUserPosition = $i + 1;
+                    $currentUserScore = $u->rank_score;
+                    break;
+                }
+            }
+        }
+
         return view('livewire.public.rankings', [
             'rankingsList' => $sortedUsers,
             'districts' => $districts,
+            'currentUserPosition' => $currentUserPosition,
+            'currentUserScore' => $currentUserScore,
         ])->layout('components.layouts.app');
     }
 }

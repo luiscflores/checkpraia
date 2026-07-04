@@ -103,6 +103,16 @@
                     </div>
                 </div>
 
+                <!-- Share App Button -->
+                <div class="pt-1 space-y-2" x-data="appShareHandler()">
+                    <button @click="share()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 active:scale-[0.98] text-white font-bold py-3 rounded-xl text-sm transition-all touch-target shadow-lg shadow-blue-500/20">
+                        <span aria-hidden="true">📢</span> {{ __('profile.share_app') }}
+                    </button>
+                    <button @click="downloadCard()" class="w-full flex items-center justify-center gap-2 bg-theme-card hover:bg-white/5 text-theme-secondary border border-theme-medium active:scale-[0.98] font-semibold py-2.5 rounded-xl text-xs transition-all touch-target">
+                        <span aria-hidden="true">🖼️</span> {{ __('profile.share_card_download') }}
+                    </button>
+                </div>
+
                 <!-- Referral progress tracker -->
                 <div class="space-y-1.5 pt-2">
                     <div class="flex justify-between text-xs font-semibold">

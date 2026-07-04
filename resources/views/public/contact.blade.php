@@ -53,6 +53,8 @@
             </a>
         </div>
 
+        <x-ads.slot slot="contact_bottom" />
+
         {{-- Social --}}
         <div class="glass-card p-6 sm:p-8 rounded-2xl text-center space-y-2">
             <span class="text-3xl block">🌐</span>

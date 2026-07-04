@@ -44,4 +44,9 @@ return [
     'flag_label' => 'Flag :flag',
     'transactions' => 'Transactions',
     'no_transactions' => 'No transactions found.',
+    'share_app' => 'Share App',
+    'share_app_title' => 'CheckPraia - Real-Time Beach Flags',
+    'share_app_text' => 'I use CheckPraia to check beach flags, water temperature and sea conditions for Portuguese beaches. Try it!',
+    'share_card_download' => 'Download Card',
+    'share_copied' => 'Link copied!',
 ];

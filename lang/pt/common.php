@@ -2,8 +2,8 @@
 
 return [
     'site_name' => 'CheckPraia',
-    'site_description' => 'Bandeira das praias em tempo real. Previsões automáticas, confirmações da comunidade e condições do mar.',
-    'meta_description' => 'Consulta a bandeira mais provável das praias marítimas vigiadas de Portugal antes de saíres de casa.',
+    'site_description' => 'Bandeira das praias em tempo real. Previsões automáticas, confirmações da comunidade, temperatura da água, estado do mar e condições meteorológicas.',
+    'meta_description' => 'Bandeira atualizada das praias de Portugal: estado do mar, temperatura da água, vento, ondas e previsão meteorológica. Consulta a bandeira antes de ir para a praia.',
     'aria_notifications' => 'Notificações dinâmicas',
 
     // Navigation

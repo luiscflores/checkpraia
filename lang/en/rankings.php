@@ -22,4 +22,9 @@ return [
     'confirmations' => 'Confirmations',
     'score' => 'Score',
     'position_aria' => 'Position :position',
+    'share_ranking' => 'Share my position',
+    'share_ranking_title' => 'I\'m #:position on CheckPraia!',
+    'share_ranking_text' => 'I\'m ranked #:position with :score points on CheckPraia. Join me!',
+    'share_my_rank' => 'My position',
+    'share_rank_not_found' => 'You don\'t have a score yet. Report flags to appear on the rankings.',
 ];

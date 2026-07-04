@@ -56,6 +56,23 @@ Route::prefix('{locale}')->group(function () {
     Route::get('/admin-dashboard', Dashboard::class)->name('admin.dashboard')->middleware(['auth', 'admin']);
 });
 
+Route::get('/sitemap.xml', function () {
+    $beaches = \App\Models\Beach::select('slug', 'updated_at')->get();
+
+    return response()->view('sitemap', [
+        'locales' => ['pt' => 'praias', 'en' => 'beaches', 'es' => 'playas', 'fr' => 'plages'],
+        'beaches' => $beaches,
+        'staticPages' => [
+            ['loc' => url('/'), 'priority' => '1.0', 'changefreq' => 'hourly'],
+            ['loc' => url('/rankings'), 'priority' => '0.8', 'changefreq' => 'daily'],
+            ['loc' => url('/sobre'), 'priority' => '0.6', 'changefreq' => 'monthly'],
+            ['loc' => url('/contactos'), 'priority' => '0.5', 'changefreq' => 'monthly'],
+            ['loc' => url('/termos'), 'priority' => '0.3', 'changefreq' => 'yearly'],
+            ['loc' => url('/privacidade'), 'priority' => '0.3', 'changefreq' => 'yearly'],
+        ],
+    ])->header('Content-Type', 'text/xml');
+})->name('sitemap');
+
 Route::post('/logout', function (\Illuminate\Http\Request $request) {
     $logout = new \App\Livewire\Actions\Logout();
     $logout();
