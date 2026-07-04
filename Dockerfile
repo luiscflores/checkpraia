@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm
 
-# EXTENSÕES PHP (IMPORTANTE para Laravel + Filament)
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
@@ -30,10 +29,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+COPY package.json package-lock.json ./
+RUN npm install
+
 COPY . .
-
-RUN npm install && npm run build && rm -rf node_modules
-
+RUN npm run build && rm -rf node_modules
 RUN composer install --no-dev --optimize-autoloader
 
 RUN chown -R www-data:www-data /var/www/html \

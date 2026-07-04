@@ -181,7 +181,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 min-h-[450px] sm:min-h-[550px]">
         
         <!-- Left Side: Beach Cards List -->
-        <div class="lg:col-span-5 flex flex-col gap-4.5 max-h-[calc(100vh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
+        <div class="lg:col-span-5 flex flex-col gap-4 max-h-[calc(100vh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
             <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
 
             <!-- Skeleton placeholders shown while Livewire is loading -->
@@ -205,7 +205,7 @@
                 @endfor
             </div>
 
-            <div wire:loading.remove>
+            <div wire:loading.remove class="flex flex-col gap-4">
 
             @forelse($beachesList as $i => $beach)
                 @if($i > 0 && $i % 3 === 0)
@@ -419,6 +419,19 @@
             init() {
                 if (this.mapContinente) return;
 
+                if (typeof L === 'undefined') {
+                    const check = setInterval(() => {
+                        if (typeof L !== 'undefined') {
+                            clearInterval(check);
+                            this._initMaps();
+                        }
+                    }, 100);
+                    return;
+                }
+                this._initMaps();
+            },
+
+            _initMaps() {
                 const removePopupHref = (e) => {
                     const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
                     if (closeBtn) {

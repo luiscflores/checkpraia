@@ -1,11 +1,10 @@
 #!/bin/bash
 set -e
 
-if [ ! -f .env ]; then
+if [ ! -f .env ] && [ -z "$APP_KEY" ]; then
     touch .env
+    php artisan key:generate --no-interaction
 fi
-
-php artisan key:generate --no-interaction
 
 php artisan storage:link --no-interaction 2>/dev/null || true
 

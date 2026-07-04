@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - checkpraia_storage:/var/www/html/storage
+      - checkpraia_database:/var/www/html/database
+    env_file: .env
+    restart: unless-stopped
+
+volumes:
+  checkpraia_storage:
+  checkpraia_database:
