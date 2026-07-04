@@ -131,6 +131,52 @@
         </div>
     </div>
 
+    <!-- Nearby Green Beaches (top 5) -->
+    <div x-show="nearbyGreen !== null && nearbyGreen.length >= 3"
+         x-cloak
+         class="animate-fade-in-up"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold text-theme flex items-center gap-2">
+                <span aria-hidden="true">🌿</span>
+                <span>{{ __('home.green_nearby_title') }}</span>
+            </h2>
+            <span x-show="nearbyGreen.length > 0"
+                  class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                <span x-text="nearbyGreen.length"></span> {{ __('home.green_nearby_count') }}
+            </span>
+        </div>
+
+        <!-- Results grid -->
+        <div x-show="nearbyGreen.length > 0"
+             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+            <template x-for="(beach, i) in nearbyGreen" :key="beach.id">
+                <a :href="beach.url"
+                   class="glass-card card-lift p-3 rounded-2xl border border-emerald-500/15 hover:border-emerald-500/40 transition-all duration-300 group flex items-start gap-3">
+                    <span class="shrink-0 w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-extrabold text-emerald-400"
+                          x-text="i + 1"></span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate" x-text="beach.name"></p>
+                        <p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            <span x-text="beach.municipality"></span>
+                            <span class="text-emerald-400 font-bold">·</span>
+                            <span class="text-emerald-400 font-bold" x-text="beach.distance_km + ' km'"></span>
+                        </p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span x-show="beach.air_temp !== null" class="text-[10px] text-slate-400" x-text="'🌡️ ' + beach.air_temp + '°'"></span>
+                            <span x-show="beach.water_temp !== null" class="text-[10px] text-slate-400" x-text="'💧 ' + beach.water_temp + '°'"></span>
+                            <span x-show="beach.wave_height_max !== null" class="text-[10px] text-slate-400" x-text="'🌊 ' + beach.wave_height_max + 'm'"></span>
+                        </div>
+                    </div>
+                </a>
+            </template>
+        </div>
+
+
+    </div>
+
     <!-- Split Content View -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 min-h-[450px] sm:min-h-[550px]">
         
@@ -348,9 +394,13 @@
             viewState: 'map',
             userCircle: null,
             tileLayers: { continente: null, acores: null, madeira: null },
+            nearbyGreen: null,
 
             init() {
                 if (this.mapContinente) return;
+                window.addEventListener('nearby-green-updated', (event) => {
+                    this.nearbyGreen = event.detail.nearbyGreen;
+                });
 
                 const removePopupHref = (e) => {
                     const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
@@ -549,38 +599,71 @@
                     if (this.mapAcores) this.mapAcores.removeLayer(this.userCircle);
                     if (this.mapMadeira) this.mapMadeira.removeLayer(this.userCircle);
                 }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
 
-                        let map = this.mapContinente;
-                        if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
-                            map = this.mapAcores;
-                        } else if (lat > 32 && lat < 33.5 && lon > -17.5 && lon < -16) {
-                            map = this.mapMadeira;
-                        }
+                const MAX_ATTEMPTS = 3;
+                let attempt = 0;
 
-                        map.setView([lat, lon], 12);
-                        this.userCircle = L.circle([lat, lon], {
-                            color: '#3b82f6',
-                            fillColor: '#93c5fd',
-                            fillOpacity: 0.25,
-                            radius: position.coords.accuracy || 50
-                        }).addTo(map).bindPopup('{{ __('common.gps_your_location') }}').openPopup();
-                    },
-                    (error) => {
-                        if (!auto) {
-                            const msgs = {
-                                1: '{{ __('common.gps_denied') }}',
-                                2: '{{ __('common.gps_unavailable') }}',
-                                3: '{{ __('common.gps_timeout') }}',
-                            };
-                            alert(msgs[error.code] || '{{ __('common.gps_error') }}');
-                        }
-                    },
-                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-                );
+                const attemptLocation = () => {
+                    attempt++;
+                    if (attempt > MAX_ATTEMPTS) {
+                        if (!auto) alert('{{ __('common.gps_unavailable') }}');
+                        return;
+                    }
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const acc = position.coords.accuracy;
+
+                            // Reject positions worse than 150m and retry
+                            if (acc > 150 && attempt < MAX_ATTEMPTS) {
+                                attemptLocation();
+                                return;
+                            }
+
+                            const lat = position.coords.latitude;
+                            const lon = position.coords.longitude;
+
+                            // Send coords to Livewire to find nearby green beaches
+                            $wire.set('latitude', lat);
+                            $wire.set('longitude', lon);
+                            $wire.call('findNearbyGreen');
+
+                            let map = this.mapContinente;
+                            if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
+                                map = this.mapAcores;
+                            } else if (lat > 32 && lat < 33.5 && lon > -17.5 && lon < -16) {
+                                map = this.mapMadeira;
+                            }
+
+                            map.setView([lat, lon], 12);
+                            this.userCircle = L.circle([lat, lon], {
+                                color: '#3b82f6',
+                                fillColor: '#93c5fd',
+                                fillOpacity: 0.25,
+                                radius: Math.max(acc, 50)
+                            }).addTo(map).bindPopup(`
+                                {{ __('common.gps_your_location') }}<br>
+                                <span class="text-[10px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
+                            `).openPopup();
+                        },
+                        (error) => {
+                            if (!auto && attempt >= MAX_ATTEMPTS) {
+                                const msgs = {
+                                    1: '{{ __('common.gps_denied') }}',
+                                    2: '{{ __('common.gps_unavailable') }}',
+                                    3: '{{ __('common.gps_timeout') }}',
+                                };
+                                alert(msgs[error.code] || '{{ __('common.gps_error') }}');
+                            } else if (error.code !== 1) {
+                                // Retry on timeout/unavailable (but not on denied)
+                                attemptLocation();
+                            }
+                        },
+                        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                    );
+                };
+
+                attemptLocation();
             },
 
             invalidateAllMaps() {

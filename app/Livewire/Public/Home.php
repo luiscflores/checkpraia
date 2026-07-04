@@ -4,6 +4,7 @@ namespace App\Livewire\Public;
 
 use Livewire\Component;
 use App\Models\Beach;
+use App\Services\GeoService;
 use Illuminate\Support\Facades\DB;
 
 class Home extends Component
@@ -12,6 +13,10 @@ class Home extends Component
     public $selectedRegion = '';
     public $selectedFlag = '';
     public $favoriteIds = [];
+
+    public $latitude = null;
+    public $longitude = null;
+    public $nearbyGreen = [];
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -37,6 +42,56 @@ class Home extends Component
             $this->favoriteIds[] = (int)$beachId;
             session()->flash('favorite_success', __('common.favorite_added'));
         }
+    }
+
+    public function findNearbyGreen()
+    {
+        $this->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        $geoService = app(GeoService::class);
+
+        $all = Beach::with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
+            ->where('is_active', true)
+            ->whereHas('currentStatus', fn($q) => $q->where('flag', 'green'))
+            ->get()
+            ->map(function ($beach) use ($geoService) {
+                $distance = $geoService->haversine(
+                    (float)$this->latitude,
+                    (float)$this->longitude,
+                    (float)$beach->latitude,
+                    (float)$beach->longitude
+                );
+                $weather = $beach->latestWeatherForecast;
+                $ocean = $beach->latestOceanForecast;
+                $status = $beach->currentStatus;
+                return [
+                    'id' => $beach->id,
+                    'name' => $beach->name,
+                    'slug' => $beach->slug,
+                    'latitude' => (float) $beach->latitude,
+                    'longitude' => (float) $beach->longitude,
+                    'distance_km' => round($distance, 1),
+                    'url' => $beach->url,
+                    'blue_flag' => (bool)$beach->blue_flag,
+                    'accessible' => (bool)$beach->accessible,
+                    'region' => $beach->region,
+                    'municipality' => $beach->municipality,
+                    'air_temp' => $weather ? (float)$weather->temp : null,
+                    'water_temp' => $ocean ? (float)$ocean->water_temp : null,
+                    'wave_height_min' => $ocean ? (float)$ocean->wave_height_min : null,
+                    'wave_height_max' => $ocean ? (float)$ocean->wave_height_max : null,
+                ];
+            })
+            ->sortBy('distance_km')
+            ->take(5)
+            ->values()
+            ->toArray();
+
+        $this->nearbyGreen = $all;
+        $this->dispatch('nearby-green-updated', nearbyGreen: $all);
     }
 
     public function render()

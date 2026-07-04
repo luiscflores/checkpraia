@@ -13,4 +13,7 @@ return [
     'map_madeira_label' => 'Mapa de praias da Madeira',
     'marker_label' => 'Marcador de :name',
     'beach_detail_link' => 'Ver Detalhes →',
+    'green_nearby_title' => 'Praias verdes perto de si',
+    'green_nearby_count' => 'perto',
+    'green_nearby_empty' => 'De momento não há praias com bandeira verde perto da sua localização.',
 ];

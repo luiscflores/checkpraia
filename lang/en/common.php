@@ -139,6 +139,7 @@ return [
     'gps_timeout' => 'Location request timed out. Please try again.',
     'gps_error' => 'Geolocation error.',
     'gps_your_location' => 'Your current location',
+    'gps_accuracy' => 'Accuracy',
 
     // Offline
     'offline_title' => 'No Connection',

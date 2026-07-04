@@ -8,7 +8,7 @@ return [
 
     // Navigation
     'nav_map' => 'Mapa',
-    'nav_rankings' => 'Clasificación',
+    'nav_rankings' => 'Rankings',
     'nav_profile' => 'Perfil',
     'nav_about' => 'Acerca de',
     'nav_contact' => 'Contacto',
@@ -17,8 +17,8 @@ return [
     'nav_logout' => 'Cerrar Sesión',
     'nav_home' => 'Inicio',
     'nav_mobile_map' => 'Mapa',
-    'nav_mobile_rankings' => 'Clasificación',
-    'nav_mobile_about' => 'Acerca de',
+    'nav_mobile_rankings' => 'Rankings',
+    'nav_mobile_about' => 'Sobre',
     'nav_mobile_contact' => 'Contacto',
     'nav_mobile_profile' => 'Perfil',
     'nav_mobile_admin' => 'Admin',
@@ -139,6 +139,7 @@ return [
     'gps_timeout' => 'La solicitud de ubicación caducó. Inténtalo de nuevo.',
     'gps_error' => 'Error de geolocalización.',
     'gps_your_location' => 'Tu ubicación actual',
+    'gps_accuracy' => 'Precisión',
 
     // Offline
     'offline_title' => 'Sin Conexión',

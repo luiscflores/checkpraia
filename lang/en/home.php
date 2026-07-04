@@ -13,4 +13,7 @@ return [
     'map_madeira_label' => 'Madeira beach map',
     'marker_label' => 'Marker for :name',
     'beach_detail_link' => 'View Details →',
+    'green_nearby_title' => 'Green beaches near you',
+    'green_nearby_count' => 'nearby',
+    'green_nearby_empty' => 'No green-flagged beaches within 30 km of your location.',
 ];

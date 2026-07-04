@@ -73,6 +73,14 @@ Route::get('/sitemap.xml', function () {
     ])->header('Content-Type', 'text/xml');
 })->name('sitemap');
 
+Route::get('/ads.txt', function () {
+    $id = config('ads.publisher_id');
+    if ($id) {
+        return response("google.com, pub-{$id}, DIRECT, f08c47fec0942fa0\n", 200, ['Content-Type' => 'text/plain']);
+    }
+    return response('', 404);
+});
+
 Route::post('/logout', function (\Illuminate\Http\Request $request) {
     $logout = new \App\Livewire\Actions\Logout();
     $logout();

@@ -8,7 +8,7 @@ return [
 
     // Navigation
     'nav_map' => 'Carte',
-    'nav_rankings' => 'Classement',
+    'nav_rankings' => 'Classements',
     'nav_profile' => 'Profil',
     'nav_about' => 'À propos',
     'nav_contact' => 'Contact',
@@ -139,6 +139,7 @@ return [
     'gps_timeout' => 'La demande de localisation a expiré. Réessaie.',
     'gps_error' => 'Erreur de géolocalisation.',
     'gps_your_location' => 'Ta position actuelle',
+    'gps_accuracy' => 'Précision',
 
     // Offline
     'offline_title' => 'Pas de Connexion',

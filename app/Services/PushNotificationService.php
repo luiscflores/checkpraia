@@ -78,7 +78,7 @@ class PushNotificationService
                 $payload = json_encode([
                     'title' => $title,
                     'body' => $body,
-                    'icon' => '/icon-192.png',
+                    'icon' => '/icon-512.png',
                     'badge' => '/icon-192.png',
                     'vibrate' => [200, 100, 200],
                     'data' => [
@@ -115,7 +115,7 @@ class PushNotificationService
             $payload = json_encode([
                 'title' => 'CheckPraia',
                 'body' => 'Notificações ativas! 🎉',
-                'icon' => '/icon-192.png',
+                'icon' => '/icon-512.png',
                 'badge' => '/icon-192.png',
                 'data' => ['url' => '/'],
             ]);

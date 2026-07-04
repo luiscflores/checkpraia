@@ -8,6 +8,7 @@
             <changefreq>{{ $page['changefreq'] }}</changefreq>
         </url>
     @endforeach
+
     @foreach($beaches as $beach)
         @foreach($locales as $locale => $prefix)
             <url>

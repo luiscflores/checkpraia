@@ -139,6 +139,7 @@ return [
     'gps_timeout' => 'Pedido de localização expirou. Tenta novamente.',
     'gps_error' => 'Erro de geolocalização.',
     'gps_your_location' => 'A tua localização actual',
+    'gps_accuracy' => 'Precisão',
 
     // Offline
     'offline_title' => 'Sem Conexão',
