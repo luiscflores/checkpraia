@@ -5,17 +5,25 @@ namespace App\Livewire\Public;
 use Livewire\Component;
 use App\Models\Beach;
 use App\Models\FlagReport;
-use App\Models\OceanForecast;
-use App\Models\WeatherForecast;
 use App\Models\WaterQualitySnapshot;
 use App\Models\OfficialAlert;
+use App\Models\TideForecast;
 use App\Domain\Community\ConsensusResolver;
 use App\Domain\Gamification\ScoreManager;
+use App\Services\GeoService;
+use Illuminate\Support\Facades\RateLimiter;
 
 class BeachDetail extends Component
 {
-    private const VOTE_COOLDOWN_MINUTES = 60;
-    private const MAX_DISTANCE_KM = 1.0;
+    private function voteCooldownMinutes(): int
+    {
+        return (int) config('gamification.report.cooldown_minutes', 60);
+    }
+
+    private function maxDistanceKm(): float
+    {
+        return (float) config('gamification.report.max_distance_km', 1.0);
+    }
 
     public $slug;
     public $beach;
@@ -23,9 +31,16 @@ class BeachDetail extends Component
 
     public function mount($slug)
     {
-        $this->beach = Beach::with(['currentStatus', 'translations', 'services', 'features', 'restaurants'])
-            ->where('slug', $slug)
-            ->firstOrFail();
+        $this->beach = Beach::with([
+            'currentStatus',
+            'translations',
+            'services',
+            'features',
+            'restaurants',
+            'latestOceanForecast',
+            'latestWeatherForecast',
+            'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
+        ])->where('slug', $slug)->firstOrFail();
 
         $this->isFavorited = auth()->check() && auth()->user()->favorites()
             ->where('beach_id', $this->beach->id)
@@ -65,19 +80,27 @@ class BeachDetail extends Component
             return;
         }
 
+        $throttleKey = 'report:' . $user->id;
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $this->addError('report', 'Muitas tentativas. Aguarda ' . $seconds . ' segundos.');
+            return;
+        }
+        RateLimiter::hit($throttleKey, 60);
+
         $exists = FlagReport::where('user_id', $user->id)
             ->where('beach_id', $this->beach->id)
-            ->where('reported_at', '>=', now()->subMinutes(self::VOTE_COOLDOWN_MINUTES))
+            ->where('reported_at', '>=', now()->subMinutes($this->voteCooldownMinutes()))
             ->exists();
 
         if ($exists) {
-            $this->addError('report', 'Já enviaste uma confirmação para esta praia nos últimos ' . self::VOTE_COOLDOWN_MINUTES . ' minutos.');
+            $this->addError('report', 'Já enviaste uma confirmação para esta praia nos últimos ' . $this->voteCooldownMinutes() . ' minutos.');
             return;
         }
 
         $distance = $this->calculateDistance((float)$lat, (float)$lon, (float)$this->beach->latitude, (float)$this->beach->longitude);
-        if ($distance > self::MAX_DISTANCE_KM) {
-            $this->addError('report', 'Deves estar a menos de ' . self::MAX_DISTANCE_KM . ' km da praia para confirmar (distância atual: ' . round($distance, 2) . ' km).');
+        if ($distance > $this->maxDistanceKm()) {
+            $this->addError('report', 'Deves estar a menos de ' . $this->maxDistanceKm() . ' km da praia para confirmar (distância atual: ' . round($distance, 2) . ' km).');
             return;
         }
 
@@ -108,44 +131,82 @@ class BeachDetail extends Component
         session()->flash('report_success', 'Bandeira confirmada! Os teus pontos estão pendentes até ao fecho da janela.');
     }
 
-    /**
-     * Compute geographical distance using Haversine formula.
-     */
     private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
-        $earthRadius = 6371; // km
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-             sin($dLon / 2) * sin($dLon / 2);
-             
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
-        return $earthRadius * $c; // returns distance in km
+        return app(GeoService::class)->haversine($lat1, $lon1, $lat2, $lon2);
     }
 
     public function render()
     {
-        // Fetch forecasts
-        $latestOcean = OceanForecast::where('beach_id', $this->beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $latestWeather = WeatherForecast::where('beach_id', $this->beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $latestQuality = WaterQualitySnapshot::where('beach_id', $this->beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
-        $latestPrediction = \App\Models\FlagPrediction::where('beach_id', $this->beach->id)->orderBy('calculated_at', 'desc')->first();
-        
-        $activeAlerts = OfficialAlert::where('beach_id', $this->beach->id)
-            ->orWhereNull('beach_id')
+        $latestOcean = $this->beach->latestOceanForecast;
+        $latestWeather = $this->beach->latestWeatherForecast;
+        $latestQuality = $this->beach->qualitySnapshots->first();
+        $latestPrediction = \App\Models\FlagPrediction::where('beach_id', $this->beach->id)
+            ->orderBy('calculated_at', 'desc')
+            ->first();
+
+        $activeAlerts = OfficialAlert::where(function ($q) {
+            $q->where('beach_id', $this->beach->id)
+              ->orWhereNull('beach_id');
+        })
             ->where('started_at', '<=', now())
             ->where(function ($q) {
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
             })->get();
 
-        $tides = \App\Models\TideForecast::where('tide_station_id', $this->beach->tide_station_id)
-            ->where('tide_time', '>=', now()->startOfDay())
-            ->where('tide_time', '<=', now()->endOfDay()->addHours(12))
+        $tides = TideForecast::where('tide_station_id', $this->beach->tide_station_id)
+            ->whereBetween('tide_time', [now()->startOfDay(), now()->endOfDay()->addHours(12)])
             ->orderBy('tide_time', 'asc')
             ->get();
+
+        $nextTide = null;
+        $tideDirection = null;
+        if ($tides->isNotEmpty()) {
+            $nextTide = $tides->firstWhere('tide_time', '>', now());
+            if ($nextTide) {
+                $prevTide = $tides->where('tide_time', '<=', now())->last();
+                if ($prevTide) {
+                    $tideDirection = $nextTide->tide_type === 'high' ? 'up' : 'down';
+                } else {
+                    $tideDirection = $nextTide->tide_type === 'high' ? 'up' : 'down';
+                }
+            } else {
+                $tideDirection = null;
+            }
+        }
+
+        $tideCurve = [];
+        $tideCurvePoints = '';
+        if ($tides->isNotEmpty()) {
+            $maxH = $tides->pluck('tide_height')->push(4)->max();
+            $minH = $tides->pluck('tide_height')->push(0)->min();
+            $rangeH = max($maxH - $minH, 0.5);
+            $dayStart = now()->startOfDay();
+            $steps = 48;
+
+            for ($i = 0; $i <= $steps; $i++) {
+                $t = $dayStart->copy()->addMinutes($i * 1440 / $steps);
+                $prev = null;
+                $next = null;
+                foreach ($tides as $tide) {
+                    if ($tide->tide_time->lte($t)) $prev = $tide;
+                    if ($tide->tide_time->gte($t) && !$next) $next = $tide;
+                }
+                $height = $prev ? $prev->tide_height : ($next ? $next->tide_height : $tides->first()->tide_height);
+                if ($prev && $next && $prev->tide_time->ne($next->tide_time)) {
+                    $ratio = $prev->tide_time->diffInMinutes($t) / max(1, $prev->tide_time->diffInMinutes($next->tide_time));
+                    $height = $prev->tide_height + ($next->tide_height - $prev->tide_height) * $ratio;
+                }
+                $pct = $rangeH > 0 ? ($height - $minH) / $rangeH : 0.5;
+                $x = $i / $steps * 100;
+                $y = 95 - $pct * 85;
+                $tideCurve[] = ['time' => $t->format('H:i'), 'pct' => round($pct, 3), 'height' => round($height, 2)];
+                $tideCurvePoints .= " {$x},{$y}";
+            }
+        }
+
+        $tidesToday = $tides->filter(fn($t) => $t->tide_time->isToday());
+        $tidesTomorrow = $tides->filter(fn($t) => $t->tide_time->isTomorrow());
 
         return view('livewire.public.beach-detail', [
             'ocean' => $latestOcean,
@@ -154,6 +215,14 @@ class BeachDetail extends Component
             'alerts' => $activeAlerts,
             'prediction' => $latestPrediction,
             'tides' => $tides,
+            'tidesToday' => $tidesToday,
+            'tidesTomorrow' => $tidesTomorrow,
+            'nextTide' => $nextTide,
+            'tideDirection' => $tideDirection,
+            'tideCurve' => $tideCurve,
+            'tideCurvePoints' => $tideCurvePoints,
+            'moonPhase' => TideForecast::moonPhase(),
+            'upcomingMoonPhases' => TideForecast::upcomingMoonPhases(),
         ])->layout('components.layouts.app');
     }
 }

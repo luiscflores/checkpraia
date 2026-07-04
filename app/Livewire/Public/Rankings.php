@@ -63,8 +63,16 @@ class Rankings extends Component
         // Sort descending and reset indices
         $sortedUsers = $users->sortByDesc('rank_score')->values();
 
+        $districts = \App\Models\Beach::whereNotNull('district')
+            ->where('district', '!=', '')
+            ->select('district')
+            ->distinct()
+            ->orderBy('district')
+            ->pluck('district');
+
         return view('livewire.public.rankings', [
             'rankingsList' => $sortedUsers,
+            'districts' => $districts,
         ])->layout('components.layouts.app');
     }
 }

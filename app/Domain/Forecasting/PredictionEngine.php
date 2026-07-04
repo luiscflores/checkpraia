@@ -8,75 +8,14 @@ use App\Models\OceanForecast;
 use App\Models\WeatherForecast;
 use App\Models\WaterQualitySnapshot;
 use App\Models\OfficialAlert;
+use App\Models\TideForecast;
 
 class PredictionEngine
 {
-    private const MAX_DATA_AGE_HOURS = 24;
-    private const CONFIDENCE_FRESH_HOURS = 4;
-    private const CONFIDENCE_DECAY_PER_HOUR = 6;
-    private const CONFIDENCE_MIN = 20;
-
-    // Wave fuzzy membership thresholds (effective height with steepness baked in)
-    private const WAVE_GREEN_MAX = 0.7;
-    private const WAVE_GREEN_FADE_END = 1.4;
-    private const WAVE_YELLOW_START = 0.7;
-    private const WAVE_YELLOW_PEAK_START = 1.1;
-    private const WAVE_YELLOW_PEAK_END = 2.0;
-    private const WAVE_YELLOW_FADE_END = 2.5;
-    private const WAVE_RED_START = 1.8;
-    private const WAVE_RED_FADE_END = 2.5;
-
-    // Wind fuzzy membership thresholds (effective knots, onshore-weighted)
-    private const WIND_GREEN_MAX = 12.0;
-    private const WIND_GREEN_FADE_END = 20.0;
-    private const WIND_YELLOW_START = 12.0;
-    private const WIND_YELLOW_PEAK_START = 16.0;
-    private const WIND_YELLOW_PEAK_END = 24.0;
-    private const WIND_YELLOW_FADE_END = 28.0;
-    private const WIND_RED_START = 22.0;
-    private const WIND_RED_FADE_END = 28.0;
-
-    // Wave steepness amplifier thresholds
-    private const STEEP_PERIOD_THRESHOLD = 8.0;
-    private const STEEP_HEIGHT_THRESHOLD = 0.8;
-    private const MODERATE_PERIOD_THRESHOLD = 10.0;
-    private const MODERATE_HEIGHT_THRESHOLD = 1.0;
-    private const LONG_SWELL_PERIOD_THRESHOLD = 14.0;
-
-    // Direction multipliers
-    private const WAVE_DIR_MIN_MULTIPLIER = 0.25;
-    private const WAVE_DIR_VARIABLE_MULTIPLIER = 0.75;
-    private const WIND_DIR_MIN_MULTIPLIER = 0.5;
-    private const WIND_DIR_VARIABLE_MULTIPLIER = 0.7;
-
-    // Slope factors
-    private const SLOPE_FACTOR_GENTLE = 1.15;
-    private const SLOPE_FACTOR_MEDIUM = 1.0;
-    private const SLOPE_FACTOR_STEEP = 0.90;
-
-    // Shelter modifiers
-    private const JETTY_SHELTER_MULTIPLIER = 1.6;
-    private const BAY_SHELTER_MULTIPLIER = 1.35;
-    private const SHELTER_MAX = 4.0;
-
-    // Beach type modifiers
-    private const ESTUARINE_WAVE_REDUCTION = 0.4;
-
-    // Environmental modifiers
-    private const POOR_QUALITY_RED = 1.0;
-    private const SUFFICIENT_QUALITY_YELLOW_FLOOR = 0.7;
-    private const SUFFICIENT_QUALITY_GREEN_CEILING = 0.2;
-    private const TIDE_LOW_THRESHOLD = 1.0;
-    private const TIDE_MODIFIER_WEIGHT = 0.4;
-    private const ESTUARY_CURRENT_BASE = 0.45;
-    private const ESTUARY_CURRENT_HIGH_RISK_BONUS = 0.15;
-    private const ESTUARY_CURRENT_HOURS = 4.0;
-
-    // Default fallback
-    private const DEFAULT_WAVE_PERIOD = 8.0;
-    private const DEFAULT_COAST_ORIENTATION = 'W';
-    private const DEFAULT_WAVE_DIRECTION = 'W';
-    private const DEFAULT_WIND_DIRECTION = 'N';
+    private function cfg(string $key, mixed $default = null): mixed
+    {
+        return config("prediction.{$key}", $default);
+    }
 
     public function calculate(Beach $beach): FlagPrediction
     {
@@ -102,7 +41,7 @@ class PredictionEngine
         $oceanAge   = abs(now()->diffInHours($ocean->created_at));
         $weatherAge = abs(now()->diffInHours($weather->created_at));
 
-        if ($oceanAge > self::MAX_DATA_AGE_HOURS || $weatherAge > self::MAX_DATA_AGE_HOURS) {
+        if ($oceanAge > $this->cfg('data_age.max_hours') || $weatherAge > $this->cfg('data_age.max_hours')) {
             return $this->grayPrediction($beach, $profile);
         }
 
@@ -111,28 +50,28 @@ class PredictionEngine
         }
 
         // Directional alignment
-        $coastAngle = $this->getCompassAngle($features->coast_orientation ?: self::DEFAULT_COAST_ORIENTATION);
-        $waveAngle  = $this->getCompassAngle($ocean->wave_direction ?: self::DEFAULT_WAVE_DIRECTION);
-        $windAngle  = $this->getCompassAngle($weather->wind_direction ?: self::DEFAULT_WIND_DIRECTION);
+        $coastAngle = $this->getCompassAngle($features->coast_orientation ?: $this->cfg('defaults.coast_orientation'));
+        $waveAngle  = $this->getCompassAngle($ocean->wave_direction ?: $this->cfg('defaults.wave_direction'));
+        $windAngle  = $this->getCompassAngle($weather->wind_direction ?: $this->cfg('defaults.wind_direction'));
 
         $waveAngleDiff     = $this->getAngleDifference($coastAngle, $waveAngle);
-        $waveDirMultiplier = self::WAVE_DIR_MIN_MULTIPLIER + self::WAVE_DIR_VARIABLE_MULTIPLIER * (1.0 - ($waveAngleDiff / 180.0));
+        $waveDirMultiplier = $this->cfg('direction.wave_min_multiplier') + $this->cfg('direction.wave_variable_multiplier') * (1.0 - ($waveAngleDiff / 180.0));
 
         $windAngleDiff     = $this->getAngleDifference($coastAngle, $windAngle);
-        $windDirMultiplier = self::WIND_DIR_MIN_MULTIPLIER + self::WIND_DIR_VARIABLE_MULTIPLIER * (1.0 - ($windAngleDiff / 180.0));
+        $windDirMultiplier = $this->cfg('direction.wind_min_multiplier') + $this->cfg('direction.wind_variable_multiplier') * (1.0 - ($windAngleDiff / 180.0));
 
         // Wave steepness amplifier
-        $wavePeriod    = (float) ($ocean->wave_period_max ?: $ocean->wave_period_min ?: self::DEFAULT_WAVE_PERIOD);
+        $wavePeriod    = (float) ($ocean->wave_period_max ?: $ocean->wave_period_min ?: $this->cfg('defaults.wave_period'));
         $waveHeightRaw = (float) ($ocean->wave_height_max ?: $ocean->wave_height_min ?: 0.0);
 
         $steepnessAmplifier = $this->computeSteepnessAmplifier($wavePeriod, $waveHeightRaw);
 
         // Beach morphology factors
         $slopeFactor = match($features->slope ?: 'medium') {
-            'gentle' => self::SLOPE_FACTOR_GENTLE,
-            'medium' => self::SLOPE_FACTOR_MEDIUM,
-            'steep'  => self::SLOPE_FACTOR_STEEP,
-            default  => self::SLOPE_FACTOR_MEDIUM,
+            'gentle' => $this->cfg('slope.gentle_factor'),
+            'medium' => $this->cfg('slope.medium_factor'),
+            'steep'  => $this->cfg('slope.steep_factor'),
+            default  => $this->cfg('slope.medium_factor'),
         };
 
         $exposureFactor   = (float) ($profile->exposure_factor ?? 1.0);
@@ -140,10 +79,10 @@ class PredictionEngine
         $waveHeightWeight = (float) ($profile->wave_height_weight ?? 1.0);
 
         if ($features->has_jetties) {
-            $shelterFactor = min(self::SHELTER_MAX, $shelterFactor * self::JETTY_SHELTER_MULTIPLIER);
+            $shelterFactor = min($this->cfg('shelter.max'), $shelterFactor * $this->cfg('shelter.jetty_multiplier'));
         }
         if ($features->has_bays) {
-            $shelterFactor = min(self::SHELTER_MAX, $shelterFactor * self::BAY_SHELTER_MULTIPLIER);
+            $shelterFactor = min($this->cfg('shelter.max'), $shelterFactor * $this->cfg('shelter.bay_multiplier'));
         }
 
         // Effective wave height
@@ -157,7 +96,7 @@ class PredictionEngine
         if (in_array($beach->type, ['fluvial', 'lagoon'])) {
             $effectiveHeight = 0.0;
         } elseif ($beach->type === 'estuarine') {
-            $effectiveHeight *= self::ESTUARINE_WAVE_REDUCTION;
+            $effectiveHeight *= $this->cfg('estuarine.wave_reduction');
         }
 
         // Effective wind
@@ -166,14 +105,14 @@ class PredictionEngine
         $effectiveWindSpeed = $windSpeed * $windDirMultiplier * $windWeight;
 
         // Fuzzy membership: wave
-        $P_wave_green  = $this->fuzzyTriangular($effectiveHeight, 0, self::WAVE_GREEN_MAX, self::WAVE_GREEN_FADE_END);
-        $P_wave_yellow = $this->fuzzyTrapezoidal($effectiveHeight, self::WAVE_YELLOW_START, self::WAVE_YELLOW_PEAK_START, self::WAVE_YELLOW_PEAK_END, self::WAVE_YELLOW_FADE_END);
-        $P_wave_red    = $this->fuzzyRamp($effectiveHeight, self::WAVE_RED_START, self::WAVE_RED_FADE_END);
+        $P_wave_green  = $this->fuzzyTriangular($effectiveHeight, 0, $this->cfg('waves.green_max'), $this->cfg('waves.green_fade_end'));
+        $P_wave_yellow = $this->fuzzyTrapezoidal($effectiveHeight, $this->cfg('waves.yellow_start'), $this->cfg('waves.yellow_peak_start'), $this->cfg('waves.yellow_peak_end'), $this->cfg('waves.yellow_fade_end'));
+        $P_wave_red    = $this->fuzzyRamp($effectiveHeight, $this->cfg('waves.red_start'), $this->cfg('waves.red_fade_end'));
 
         // Fuzzy membership: wind
-        $P_wind_green  = $this->fuzzyTriangular($effectiveWindSpeed, 0, self::WIND_GREEN_MAX, self::WIND_GREEN_FADE_END);
-        $P_wind_yellow = $this->fuzzyTrapezoidal($effectiveWindSpeed, self::WIND_YELLOW_START, self::WIND_YELLOW_PEAK_START, self::WIND_YELLOW_PEAK_END, self::WIND_YELLOW_FADE_END);
-        $P_wind_red    = $this->fuzzyRamp($effectiveWindSpeed, self::WIND_RED_START, self::WIND_RED_FADE_END);
+        $P_wind_green  = $this->fuzzyTriangular($effectiveWindSpeed, 0, $this->cfg('wind.green_max'), $this->cfg('wind.green_fade_end'));
+        $P_wind_yellow = $this->fuzzyTrapezoidal($effectiveWindSpeed, $this->cfg('wind.yellow_start'), $this->cfg('wind.yellow_peak_start'), $this->cfg('wind.yellow_peak_end'), $this->cfg('wind.yellow_fade_end'));
+        $P_wind_red    = $this->fuzzyRamp($effectiveWindSpeed, $this->cfg('wind.red_start'), $this->cfg('wind.red_fade_end'));
 
         // Combine wave + wind
         $rawGreen  = min($P_wave_green, $P_wind_green);
@@ -218,8 +157,8 @@ class PredictionEngine
         // Confidence
         $maxAge     = max($oceanAge, $weatherAge);
         $confidence = 100;
-        if ($maxAge > self::CONFIDENCE_FRESH_HOURS) {
-            $confidence = max(self::CONFIDENCE_MIN, 100 - ($maxAge * self::CONFIDENCE_DECAY_PER_HOUR));
+        if ($maxAge > $this->cfg('data_age.confidence_fresh_hours')) {
+            $confidence = max($this->cfg('data_age.confidence_min'), 100 - ($maxAge * $this->cfg('data_age.confidence_decay_per_hour')));
         }
 
         return new FlagPrediction([
@@ -229,7 +168,7 @@ class PredictionEngine
             'red_probability'    => $red,
             'selected_flag'      => $selectedFlag,
             'confidence'         => (int) $confidence,
-            'algorithm_version'  => '2.0',
+            'algorithm_version'  => $this->cfg('defaults.algorithm_version', '2.0'),
             'calculated_at'      => now(),
         ]);
     }
@@ -237,12 +176,12 @@ class PredictionEngine
     private function computeSteepnessAmplifier(float $wavePeriod, float $waveHeightRaw): float
     {
         $amplifier = 1.0;
-        if ($wavePeriod < self::STEEP_PERIOD_THRESHOLD && $waveHeightRaw > self::STEEP_HEIGHT_THRESHOLD) {
-            $amplifier = 1.0 + min(0.35, (self::STEEP_PERIOD_THRESHOLD - $wavePeriod) * 0.07);
-        } elseif ($wavePeriod < self::MODERATE_PERIOD_THRESHOLD && $waveHeightRaw > self::MODERATE_HEIGHT_THRESHOLD) {
-            $amplifier = 1.0 + min(0.15, (self::MODERATE_PERIOD_THRESHOLD - $wavePeriod) * 0.03);
-        } elseif ($wavePeriod >= self::LONG_SWELL_PERIOD_THRESHOLD) {
-            $amplifier = max(0.85, 1.0 - ($wavePeriod - self::LONG_SWELL_PERIOD_THRESHOLD) * 0.025);
+        if ($wavePeriod < $this->cfg('wave_steepness.steep_period_threshold') && $waveHeightRaw > $this->cfg('wave_steepness.steep_height_threshold')) {
+            $amplifier = 1.0 + min(0.35, ($this->cfg('wave_steepness.steep_period_threshold') - $wavePeriod) * 0.07);
+        } elseif ($wavePeriod < $this->cfg('wave_steepness.moderate_period_threshold') && $waveHeightRaw > $this->cfg('wave_steepness.moderate_height_threshold')) {
+            $amplifier = 1.0 + min(0.15, ($this->cfg('wave_steepness.moderate_period_threshold') - $wavePeriod) * 0.03);
+        } elseif ($wavePeriod >= $this->cfg('wave_steepness.long_swell_period_threshold')) {
+            $amplifier = max(0.85, 1.0 - ($wavePeriod - $this->cfg('wave_steepness.long_swell_period_threshold')) * 0.025);
         }
         return $amplifier;
     }
@@ -250,33 +189,39 @@ class PredictionEngine
     private function applyEnvironmentalModifiers($beach, $profile, $quality, $weather, float $rawGreen, float $rawYellow, float $rawRed): array
     {
         if ($quality && strtolower($quality->quality_class) === 'poor') {
-            return ['green' => 0.0, 'yellow' => 0.0, 'red' => self::POOR_QUALITY_RED];
+            return ['green' => 0.0, 'yellow' => 0.0, 'red' => $this->cfg('quality.poor_quality_red')];
         }
 
-        if ($weather->jellyfish_risk === 'Alto') {
-            $rawRed   = max($rawRed, 0.8);
-            $rawGreen = 0.0;
-        } elseif ($weather->jellyfish_risk === 'Moderado') {
-            $rawYellow = max($rawYellow, 0.7);
-            $rawGreen  = min($rawGreen, 0.1);
-        }
+
 
         if ($quality && strtolower($quality->quality_class) === 'sufficient') {
-            $rawYellow = max($rawYellow, self::SUFFICIENT_QUALITY_YELLOW_FLOOR);
-            $rawGreen  = min($rawGreen, self::SUFFICIENT_QUALITY_GREEN_CEILING);
+            $rawYellow = max($rawYellow, $this->cfg('quality.sufficient_yellow_floor'));
+            $rawGreen  = min($rawGreen, $this->cfg('quality.sufficient_green_ceiling'));
         }
 
         // Tide modifier
         $tideWeight = (float) ($profile->tide_weight ?? 1.0);
-        $nextTide   = \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)
+        $nextTide   = TideForecast::where('tide_station_id', $beach->tide_station_id)
             ->where('tide_time', '>=', now())
             ->orderBy('tide_time', 'asc')
             ->first();
 
+        // Spring tide multiplier based on moon phase
+        $springFactor = 1.0;
+        if ($nextTide && $nextTide->moon_phase !== null) {
+            $moon          = (float) $nextTide->moon_phase;
+            $distToNew     = $moon;
+            $distToFull    = abs($moon - 0.5);
+            $nearestSpring = min($distToNew, $distToFull);
+            $springEffect  = 1.0 - ($nearestSpring / 0.25);
+            $springFactor  = 1.0 + $this->cfg('tide.spring_amplifier') * max(0, $springEffect);
+        }
+
         if ($nextTide && $tideWeight > 0.0) {
-            if ($nextTide->tide_type === 'low' && $nextTide->tide_height < self::TIDE_LOW_THRESHOLD) {
-                $rawYellow = max($rawYellow, self::TIDE_MODIFIER_WEIGHT * $tideWeight);
-                $rawGreen  = min($rawGreen, 1.0 - (self::TIDE_MODIFIER_WEIGHT * $tideWeight));
+            if ($nextTide->tide_type === 'low' && $nextTide->tide_height < $this->cfg('tide.low_threshold')) {
+                $modifier  = $this->cfg('tide.modifier_weight') * $tideWeight * $springFactor;
+                $rawYellow = max($rawYellow, $modifier);
+                $rawGreen  = min($rawGreen, 1.0 - $modifier);
             }
 
             $currentRiskFactor  = (float) ($profile->current_risk_factor ?? 1.0);
@@ -284,10 +229,10 @@ class PredictionEngine
 
             if ($isEstuarineOrRiver && $currentRiskFactor > 0.0 && $nextTide->tide_type === 'low') {
                 $hoursToLowTide  = now()->diffInMinutes($nextTide->tide_time) / 60.0;
-                if ($hoursToLowTide < self::ESTUARY_CURRENT_HOURS) {
-                    $currentModifier = self::ESTUARY_CURRENT_BASE * $currentRiskFactor;
+                if ($hoursToLowTide < $this->cfg('estuarine.current_hours')) {
+                    $currentModifier = $this->cfg('estuarine.current_base') * $currentRiskFactor * $springFactor;
                     if ($beach->features && $beach->features->current_risk === 'high') {
-                        $currentModifier += self::ESTUARY_CURRENT_HIGH_RISK_BONUS;
+                        $currentModifier += $this->cfg('estuarine.current_high_risk_bonus') * $springFactor;
                     }
                     $rawYellow = max($rawYellow, $currentModifier);
                     $rawGreen  = min($rawGreen, 1.0 - $currentModifier);
@@ -334,7 +279,7 @@ class PredictionEngine
             'red_probability'    => 0,
             'selected_flag'      => 'gray',
             'confidence'         => 0,
-            'algorithm_version'  => $profile->algorithm_version ?: '2.0',
+            'algorithm_version'  => $profile->algorithm_version ?: $this->cfg('defaults.algorithm_version', '2.0'),
             'calculated_at'      => now(),
         ]);
     }

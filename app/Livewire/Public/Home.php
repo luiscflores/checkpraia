@@ -5,6 +5,7 @@ namespace App\Livewire\Public;
 use Livewire\Component;
 use App\Models\Beach;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class Home extends Component
 {
@@ -35,7 +36,7 @@ class Home extends Component
         } else {
             $user->favorites()->attach($beachId);
             $this->favoriteIds[] = (int)$beachId;
-            session()->flash('favorite_success', 'Praia adicionada aos favoritos! ⭐');
+            session()->flash('favorite_success', 'Praia adicionada aos favoritos!');
         }
     }
 
@@ -45,7 +46,7 @@ class Home extends Component
             ? auth()->user()->favorites()->pluck('beach_id')->map(fn($id) => (int)$id)->toArray()
             : [];
 
-        $query = Beach::with(['currentStatus', 'translations'])
+        $query = Beach::with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true);
 
         if ($this->search) {
@@ -70,6 +71,8 @@ class Home extends Component
 
         $beaches = $query->get()->map(function ($beach) {
             $status = $beach->currentStatus;
+            $weather = $beach->latestWeatherForecast;
+            $ocean = $beach->latestOceanForecast;
             return [
                 'id' => $beach->id,
                 'name' => $beach->name,
@@ -84,6 +87,13 @@ class Home extends Component
                 'region' => $beach->region,
                 'municipality' => $beach->municipality,
                 'is_favorited' => in_array((int)$beach->id, $this->favoriteIds),
+                'air_temp' => $weather ? (float)$weather->temp : null,
+                'water_temp' => $ocean ? (float)$ocean->water_temp : null,
+                'wave_height_min' => $ocean ? (float)$ocean->wave_height_min : null,
+                'wave_height_max' => $ocean ? (float)$ocean->wave_height_max : null,
+                'wave_direction' => $ocean ? $ocean->wave_direction : null,
+                'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
+                'wind_direction' => $weather ? $weather->wind_direction : null,
             ];
         });
 
@@ -91,6 +101,8 @@ class Home extends Component
 
         return view('livewire.public.home', [
             'beachesList' => $beaches,
+            'flagFilters' => config('flags.labels'),
+            'flagIcons' => config('flags.icons'),
         ])->layout('components.layouts.app');
     }
 }

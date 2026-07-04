@@ -15,19 +15,19 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->
 
 Route::get('/', Home::class)->name('home');
 Route::get('/rankings', Rankings::class)->name('rankings');
-Route::get('/area-pessoal', Profile::class)->name('profile');
+Route::get('/area-pessoal', Profile::class)->name('profile')->middleware('auth');
 
 Route::prefix('{locale}')->group(function () {
     Route::get('/', Home::class)->name('home.locale');
     Route::get('/rankings', Rankings::class)->name('rankings.locale');
-    Route::get('/area-pessoal', Profile::class)->name('profile.locale');
+    Route::get('/area-pessoal', Profile::class)->name('profile.locale')->middleware('auth');
 
     Route::get('/praias/{slug}', BeachDetail::class)->name('beach.show.pt');
     Route::get('/beaches/{slug}', BeachDetail::class)->name('beach.show.en');
     Route::get('/playas/{slug}', BeachDetail::class)->name('beach.show.es');
     Route::get('/plages/{slug}', BeachDetail::class)->name('beach.show.fr');
 
-    Route::get('/admin-dashboard', Dashboard::class)->name('admin.dashboard');
+    Route::get('/admin-dashboard', Dashboard::class)->name('admin.dashboard')->middleware(['auth', 'admin']);
 });
 
 Route::post('/logout', function (\Illuminate\Http\Request $request) {

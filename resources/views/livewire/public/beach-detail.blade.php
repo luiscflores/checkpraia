@@ -230,6 +230,14 @@
                 </div>
 
                 <div class="glass-card p-4 rounded-2xl text-center space-y-1">
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Período das Ondas</span>
+                    <span class="text-xl font-bold text-theme block">{{ $ocean && $ocean->wave_period_max !== null ? $ocean->wave_period_max . 's' : 'Sem Dados' }}</span>
+                    @if($ocean && $ocean->wave_period_min !== null)
+                        <span class="text-xs text-slate-500 block">Mín: {{ $ocean->wave_period_min }}s</span>
+                    @endif
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl text-center space-y-1">
                     <span class="text-xs text-slate-400 uppercase font-bold block">Temp. da Água</span>
                     <span class="text-xl font-bold text-theme block">{{ $ocean && $ocean->water_temp !== null ? $ocean->water_temp . '°C' : 'Sem Dados' }}</span>
                     <span class="text-xs text-slate-500 block">SST Média</span>
@@ -240,6 +248,14 @@
                     <span class="text-xl font-bold text-theme block">{{ $weather && $weather->wind_speed !== null ? (int)round($weather->wind_speed * 1.852) . ' km/h' : 'Sem Dados' }}</span>
                     @if($weather && $weather->wind_direction)
                         <span class="text-xs text-slate-500 block">Dir: {{ $weather->wind_direction }}</span>
+                    @endif
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl text-center space-y-1">
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Temp. do Ar</span>
+                    <span class="text-xl font-bold text-theme block">{{ $weather && $weather->temp !== null ? $weather->temp . '°C' : 'Sem Dados' }}</span>
+                    @if($weather && $weather->precipitation !== null)
+                        <span class="text-xs text-slate-500 block">Precip: {{ $weather->precipitation }}mm</span>
                     @endif
                 </div>
 
@@ -291,45 +307,146 @@
                     <span class="text-xs text-slate-500 block">{{ $uvLabel }}</span>
                 </div>
 
-                <div class="glass-card p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-xs text-slate-400 uppercase font-bold block">Alforrecas</span>
-                    @php
-                        $jelly = $weather && $weather->jellyfish_risk ? $weather->jellyfish_risk : null;
-                        $jellyClass = 'text-slate-400';
-                        $jellyLabel = 'Sem Dados';
-                        if ($jelly !== null) {
-                            $jellyClass = match($jelly) {
-                                'Alto' => 'text-rose-500 font-extrabold',
-                                'Moderado' => 'text-amber-400 font-bold',
-                                default => 'text-emerald-400'
-                            };
-                            $jellyLabel = $jelly;
-                        }
-                    @endphp
-                    <span class="text-xl font-bold block {{ $jellyClass }}">{{ $jellyLabel }}</span>
-                    <span class="text-xs text-slate-500 block">GelAvista</span>
-                </div>
+
             </div>
 
             <!-- Tide Information Card -->
             <div class="glass-card p-6 rounded-3xl space-y-4">
-                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
-                    🌊 Tabela de Marés (Previsão OGC-IH)
-                </h3>
-                @if($tides && count($tides) > 0)
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        @foreach($tides->take(4) as $tide)
-                            <div class="bg-theme-card border border-theme-subtle p-3 rounded-2xl text-center space-y-1">
-                                <span class="text-xs text-slate-400 uppercase font-bold block">
-                                    {{ $tide->tide_type === 'high' ? '📈 Preia-mar' : '📉 Baixa-mar' }}
-                                </span>
-                                <span class="text-base font-bold text-theme block">{{ $tide->tide_height }}m</span>
-                                <span class="text-xs text-slate-500 block">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-theme flex items-center gap-2">
+                        🌊 Marés
+                    </h3>
+                    @if($nextTide)
+                        <div class="flex items-center gap-2 text-xs {{ $tideDirection === 'up' ? 'text-sky-400' : 'text-amber-400' }}">
+                            <span class="text-lg">{{ $tideDirection === 'up' ? '↑' : '↓' }}</span>
+                            <div class="text-right">
+                                <span class="font-bold block">{{ $tideDirection === 'up' ? 'A encher' : 'A vazar' }}</span>
+                                <span class="text-slate-500">Próx. {{ $nextTide->tide_type === 'high' ? 'Preia-mar' : 'Baixa-mar' }} {{ $nextTide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
                             </div>
-                        @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                @if($tides->isNotEmpty())
+                    @if(!empty($tideCurve))
+                        <div class="relative h-20 sm:h-24">
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full h-full">
+                                <defs>
+                                    <linearGradient id="tideFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="rgb(56,189,248)" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="rgb(56,189,248)" stop-opacity="0.05"/>
+                                    </linearGradient>
+                                </defs>
+                                <polyline
+                                    fill="none"
+                                    stroke="rgb(56,189,248)"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    points="{{ trim($tideCurvePoints) }}"
+                                />
+                                <polygon
+                                    fill="url(#tideFill)"
+                                    points="0,95 {{ trim($tideCurvePoints) }} 100,95"
+                                />
+                                @php
+                                    $nowPct = 0;
+                                    $nowStr = now()->format('H:i');
+                                    foreach ($tideCurve as $k => $pt) {
+                                        if ($pt['time'] >= $nowStr) { $nowPct = $k / max(count($tideCurve) - 1, 1) * 100; break; }
+                                    }
+                                @endphp
+                                <line x1="{{ $nowPct }}" y1="5" x2="{{ $nowPct }}" y2="95" stroke="rgb(251,191,36)" stroke-width="1.5" stroke-dasharray="2,2"/>
+                                <circle cx="{{ $nowPct }}" cy="10" r="2" fill="rgb(251,191,36)"/>
+                            </svg>
+                        </div>
+                    @endif
+
+                    @if($tidesToday->isNotEmpty())
+                        <div class="space-y-1.5">
+                            <span class="text-xs text-slate-500 font-bold block">Hoje</span>
+                            @foreach($tidesToday as $tide)
+                                @php
+                                    $allHeights = $tides->pluck('tide_height');
+                                    $maxH = $allHeights->max();
+                                    $minH = $allHeights->min();
+                                    $rangeH = max($maxH - $minH, 0.5);
+                                    $barPct = (($tide->tide_height - $minH) / $rangeH) * 100;
+                                    $isPast = $tide->tide_time->isPast();
+                                @endphp
+                                <div class="flex items-center gap-3 py-1.5 {{ $isPast ? 'opacity-50' : '' }}">
+                                    <span class="text-xs text-slate-500 w-10 tabular-nums shrink-0">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                                    <div class="flex-1 h-5 bg-theme-card border border-theme-subtle rounded-full overflow-hidden relative">
+                                        <div class="h-full rounded-full {{ $tide->tide_type === 'high' ? 'bg-gradient-to-r from-sky-500/60 to-blue-500/60' : 'bg-gradient-to-r from-amber-500/40 to-yellow-600/40' }}" style="width: {{ max($barPct, 5) }}%"></div>
+                                        <span class="absolute inset-0 flex items-center px-2 text-xs font-bold tabular-nums {{ $tide->tide_height > 2 ? 'text-white' : 'text-slate-300' }}">{{ $tide->tide_height }}m</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-theme w-16 text-right shrink-0">{{ $tide->tide_type === 'high' ? 'Preia-mar' : 'Baixa-mar' }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if($tidesTomorrow->isNotEmpty())
+                        <details class="group">
+                            <summary class="text-xs text-slate-500 font-bold cursor-pointer list-none flex items-center gap-2 hover:text-slate-300 transition-colors">
+                                <svg class="w-3 h-3 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                Amanhã ({{ $tidesTomorrow->count() }} marés)
+                            </summary>
+                            <div class="space-y-1.5 pt-2">
+                                @foreach($tidesTomorrow as $tide)
+                                    @php
+                                        $barPct = (($tide->tide_height - $minH) / $rangeH) * 100;
+                                    @endphp
+                                    <div class="flex items-center gap-3 py-1.5">
+                                        <span class="text-xs text-slate-500 w-10 tabular-nums shrink-0">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                                        <div class="flex-1 h-5 bg-theme-card border border-theme-subtle rounded-full overflow-hidden relative">
+                                            <div class="h-full rounded-full {{ $tide->tide_type === 'high' ? 'bg-gradient-to-r from-sky-500/60 to-blue-500/60' : 'bg-gradient-to-r from-amber-500/40 to-yellow-600/40' }}" style="width: {{ max($barPct, 5) }}%"></div>
+                                            <span class="absolute inset-0 flex items-center px-2 text-xs font-bold tabular-nums {{ $tide->tide_height > 2 ? 'text-white' : 'text-slate-300' }}">{{ $tide->tide_height }}m</span>
+                                        </div>
+                                        <span class="text-xs font-bold text-theme w-16 text-right shrink-0">{{ $tide->tide_type === 'high' ? 'Preia-mar' : 'Baixa-mar' }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
+
+                    <div class="pt-3 border-t border-theme-subtle grid grid-cols-2 gap-3 text-xs">
+                        @if($moonPhase !== null)
+                            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-theme-card border border-theme-subtle">
+                                <span class="text-xl">{{ \App\Models\TideForecast::moonPhaseIcon($moonPhase) }}</span>
+                                <div>
+                                    <span class="font-bold text-theme block leading-tight">{{ \App\Models\TideForecast::moonPhaseName($moonPhase) }}</span>
+                                    <span class="text-slate-500">Fase lunar</span>
+                                </div>
+                            </div>
+                        @endif
+                        @if($nextTide)
+                            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-theme-card border border-theme-subtle">
+                                <span class="text-xl {{ $tideDirection === 'up' ? 'text-sky-400' : 'text-amber-400' }}">{{ $tideDirection === 'up' ? '⬆' : '⬇' }}</span>
+                                <div>
+                                    <span class="font-bold text-theme block leading-tight">{{ $nextTide->tide_type === 'high' ? 'Preia-mar' : 'Baixa-mar' }}</span>
+                                    <span class="text-slate-500">{{ $nextTide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
+                                </div>
+                            </div>
+                        @endif
                     </div>
+
+                    @if(count($upcomingMoonPhases) > 0)
+                        <div class="pt-2 border-t border-theme-subtle">
+                            <span class="text-xs text-slate-500 font-bold block pb-2">Próximas fases lunares</span>
+                            <div class="grid grid-cols-4 gap-2 text-xs">
+                                @foreach($upcomingMoonPhases as $item)
+                                    <div class="p-2 rounded-xl bg-theme-card border border-theme-subtle text-center">
+                                        <span class="text-lg block">{{ $item['icon'] }}</span>
+                                        <span class="font-bold text-theme block leading-tight mt-0.5">{{ $item['name'] }}</span>
+                                        <span class="text-slate-500">{{ $item['date']->format('d/m') }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 @else
-                    <p class="text-xs text-slate-500">Sem previsões de marés disponíveis para hoje.</p>
+                    <p class="text-xs text-slate-500">Sem previsões de marés disponíveis.</p>
                 @endif
             </div>
 

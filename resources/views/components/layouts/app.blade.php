@@ -171,6 +171,7 @@
         [data-theme="light"] .bg-red-950\/10 { background: rgba(254, 202, 202, 0.2); }
         [data-theme="light"] .bg-blue-950\/10 { background: rgba(219, 234, 254, 0.4); }
         [data-theme="light"] .text-blue-300 { color: #2563eb; }
+
     </style>
 
     <!-- Tailwind build -->

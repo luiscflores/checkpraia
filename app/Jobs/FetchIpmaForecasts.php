@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Beach;
 use App\Models\OceanForecast;
+use App\Models\Setting;
 use App\Models\WeatherForecast;
 use App\Services\Ipma\IpmaClient;
 use App\Domain\Forecasting\PredictionEngine;
@@ -28,18 +29,17 @@ class FetchIpmaForecasts implements ShouldQueue
         $this->beach = $beach;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         if ($this->beach) {
             $this->processBeach($this->beach);
         } else {
-            $beaches = Beach::where('is_active', true)->get();
-            foreach ($beaches as $beach) {
-                self::dispatch($beach);
-            }
+            Setting::set('last_ipma_sync', now()->toIso8601String());
+            Beach::where('is_active', true)->chunkById(50, function ($beaches) {
+                foreach ($beaches as $beach) {
+                    self::dispatch($beach);
+                }
+            });
         }
     }
 
@@ -62,7 +62,6 @@ class FetchIpmaForecasts implements ShouldQueue
             'visibility' => $weatherData['visibility'],
             'temp' => $weatherData['temp'],
             'uv_index' => $weatherData['uv_index'] ?? null,
-            'jellyfish_risk' => $weatherData['jellyfish_risk'] ?? null,
             'forecasted_at' => $weatherData['forecasted_at'],
         ]);
 
@@ -79,6 +78,7 @@ class FetchIpmaForecasts implements ShouldQueue
             'forecasted_at' => $oceanData['forecasted_at'],
         ]);
 
+
         // 2.5. Fetch and store tide forecast
         $tideClient = new \App\Services\Tides\TideClient();
         $tides = $tideClient->getTideForecasts($beach);
@@ -93,6 +93,7 @@ class FetchIpmaForecasts implements ShouldQueue
                     'tide_time' => $tideData['tide_time'],
                     'tide_type' => $tideData['tide_type'],
                     'tide_height' => $tideData['tide_height'],
+                    'moon_phase' => $tideData['moon_phase'] ?? null,
                 ]);
             }
         });

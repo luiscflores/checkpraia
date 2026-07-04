@@ -12,26 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class ConsensusResolver
 {
-    private const REPORT_WINDOW_MINUTES = 60;
-    private const COMMUNITY_MIN_USERS = 2;
-    private const COMMUNITY_CONFIDENCE = 95;
-    private const PREDICTION_MAX_AGE_HOURS = 24;
-    private const PENALIZATION_MIN_USERS = 3;
-    private const PENALIZATION_THRESHOLD_PERCENT = 75.0;
-
     // Reason thresholds (duplicated from PredictionEngine for self-contained reasons)
-    private const RED_WAVE_HEIGHT = 2.0;
-    private const RED_WIND_SPEED = 22.0;
-    private const SHORT_WAVE_PERIOD = 8.0;
-    private const YELLOW_WAVE_HEIGHT = 1.2;
-    private const YELLOW_WIND_SPEED = 14.0;
-    private const ESTUARY_CURRENT_HOURS = 4.0;
-
     protected ScoreManager $scoreManager;
 
-    public function __construct()
+    public function __construct(?ScoreManager $scoreManager = null)
     {
-        $this->scoreManager = new ScoreManager();
+        $this->scoreManager = $scoreManager ?? new ScoreManager();
     }
 
     public function resolveCurrentStatus(Beach $beach): BeachCurrentStatus
@@ -60,7 +46,7 @@ class ConsensusResolver
         }
 
         // 2. Community consensus (≥ 2 distinct users in the last 60 minutes)
-        $oneHourAgo = now()->subMinutes(self::REPORT_WINDOW_MINUTES);
+        $oneHourAgo = now()->subMinutes(config('prediction.consensus.report_window_minutes'));
         $activeReports = FlagReport::where('beach_id', $beach->id)
             ->where('reported_at', '>=', $oneHourAgo)
             ->where('status', '!=', 'cancelled')
@@ -68,7 +54,7 @@ class ConsensusResolver
 
         $distinctUsersCount = $activeReports->pluck('user_id')->unique()->count();
 
-        if ($distinctUsersCount >= self::COMMUNITY_MIN_USERS) {
+        if ($distinctUsersCount >= config('prediction.consensus.community_min_users')) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             $latestReportTime = null;
             $latestReportFlag = null;
@@ -103,7 +89,7 @@ class ConsensusResolver
             $status->fill([
                 'source' => 'community',
                 'flag' => $winningFlag,
-                'confidence' => self::COMMUNITY_CONFIDENCE,
+                'confidence' => config('prediction.consensus.community_confidence'),
                 'consensus_reports_count' => $activeReports->count(),
                 'reason' => 'Confirmado por utilizadores locais (' . $distinctUsersCount . ' votos na última hora).',
             ]);
@@ -113,7 +99,7 @@ class ConsensusResolver
 
         // 3. Fallback to automatic prediction
         $prediction = FlagPrediction::where('beach_id', $beach->id)->orderBy('calculated_at', 'desc')->first();
-        if ($prediction && $prediction->calculated_at->isAfter(now()->subHours(self::PREDICTION_MAX_AGE_HOURS))) {
+        if ($prediction && $prediction->calculated_at->isAfter(now()->subHours(config('prediction.consensus.prediction_max_age_hours')))) {
             $reason = $this->buildPredictionReason($beach, $prediction);
 
             $status->fill([
@@ -160,14 +146,14 @@ class ConsensusResolver
             if ($quality && strtolower($quality->quality_class) === 'poor') {
                 return 'Qualidade da água imprópria para banhos.';
             }
-            if ($ocean && $ocean->wave_height_max > self::RED_WAVE_HEIGHT) {
+            if ($ocean && $ocean->wave_height_max > config('prediction.consensus.red_wave_height')) {
                 $period = $ocean->wave_period_max ?: $ocean->wave_period_min;
-                $periodNote = $period && $period < self::SHORT_WAVE_PERIOD
+                $periodNote = $period && $period < config('prediction.consensus.short_wave_period')
                     ? ' com período curto de ' . round($period, 1) . 's (rebentação intensa)'
                     : '';
                 return 'Ondulação muito forte com ondas de ' . $ocean->wave_height_max . 'm' . $periodNote . ' — banhos proibidos.';
             }
-            if ($weather && $weather->wind_speed > self::RED_WIND_SPEED) {
+            if ($weather && $weather->wind_speed > config('prediction.consensus.red_wind_speed')) {
                 return 'Vento extremamente forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h (Perigo de correntes).';
             }
             return 'Condições marítimas perigosas. Entrada na água proibida.';
@@ -184,14 +170,14 @@ class ConsensusResolver
             }
             if ($nextTide && $nextTide->tide_type === 'low'
                 && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence))
-                && now()->diffInMinutes($nextTide->tide_time) / 60.0 < self::ESTUARY_CURRENT_HOURS) {
+                && now()->diffInMinutes($nextTide->tide_time) / 60.0 < config('prediction.consensus.estuary_current_hours')) {
                 $hours = round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1);
                 return 'Corrente de vazante forte no estuário (' . $hours . 'h para a maré baixa).';
             }
-            if ($ocean && $ocean->wave_height_max > self::YELLOW_WAVE_HEIGHT) {
+            if ($ocean && $ocean->wave_height_max > config('prediction.consensus.yellow_wave_height')) {
                 return 'Ondulação moderada com ondas de até ' . $ocean->wave_height_max . 'm (Recomenda-se precaução).';
             }
-            if ($weather && $weather->wind_speed > self::YELLOW_WIND_SPEED) {
+            if ($weather && $weather->wind_speed > config('prediction.consensus.yellow_wind_speed')) {
                 return 'Vento moderado a forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h.';
             }
             if ($nextTide && $nextTide->tide_type === 'low') {
@@ -218,7 +204,7 @@ class ConsensusResolver
 
         $beach = $report->beach;
         $windowStart = $report->reported_at;
-        $windowEnd = $report->reported_at->copy()->addMinutes(self::REPORT_WINDOW_MINUTES);
+        $windowEnd = $report->reported_at->copy()->addMinutes(config('prediction.consensus.report_window_minutes'));
 
         $concurrentReports = FlagReport::where('beach_id', $beach->id)
             ->whereBetween('reported_at', [$windowStart, $windowEnd])
@@ -227,7 +213,7 @@ class ConsensusResolver
 
         $distinctUsersCount = $concurrentReports->pluck('user_id')->unique()->count();
 
-        if ($distinctUsersCount >= self::PENALIZATION_MIN_USERS) {
+        if ($distinctUsersCount >= config('prediction.consensus.penalization_min_users')) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             foreach ($concurrentReports as $r) {
                 $votes[$r->flag] += $r->vote_weight;
@@ -237,7 +223,7 @@ class ConsensusResolver
             $opposingWeight = $totalWeight - $votes[$report->flag];
             $opposingPercentage = ($opposingWeight / max(1, $totalWeight)) * 100;
 
-            if ($opposingPercentage >= self::PENALIZATION_THRESHOLD_PERCENT) {
+            if ($opposingPercentage >= config('prediction.consensus.penalization_threshold_percent')) {
                 $report->status = 'rejected';
                 $report->resolved_at = now();
                 $report->save();

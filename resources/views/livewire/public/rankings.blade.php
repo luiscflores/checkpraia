@@ -13,18 +13,9 @@
             <label for="district-filter" class="sr-only">Filtrar por distrito</label>
             <select id="district-filter" wire:model.live="district" class="glass-input px-3 py-2.5 rounded-xl text-sm w-full sm:w-auto">
                 <option value="">Todos os Distritos</option>
-                <option value="Aveiro">Aveiro</option>
-                <option value="Beja">Beja</option>
-                <option value="Braga">Braga</option>
-                <option value="Coimbra">Coimbra</option>
-                <option value="Faro">Faro (Algarve)</option>
-                <option value="Leiria">Leiria</option>
-                <option value="Lisboa">Lisboa</option>
-                <option value="Porto">Porto</option>
-                <option value="Setúbal">Setúbal</option>
-                <option value="Viana do Castelo">Viana do Castelo</option>
-                <option value="Madeira">Madeira</option>
-                <option value="Açores">Açores</option>
+                @foreach($districts as $d)
+                    <option value="{{ $d }}">{{ $d }}</option>
+                @endforeach
             </select>
 
             <!-- Leaderboard scope tabs -->

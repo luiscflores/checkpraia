@@ -13,7 +13,8 @@ class TheForkClient
 
         if ($apiKey) {
             try {
-                $response = Http::timeout(5)->get('https://api.thefork.com/v1/restaurants', [
+                $cfg = config('services.thefork');
+                $response = Http::timeout($cfg['timeout'])->get($cfg['url'], [
                     'key' => $apiKey,
                     'latitude' => $latitude,
                     'longitude' => $longitude,
@@ -24,7 +25,7 @@ class TheForkClient
                     $restaurants = $data['data'] ?? [];
 
                     $results = [];
-                    foreach (array_slice($restaurants, 0, 5) as $rest) {
+                    foreach (array_slice($restaurants, 0, $cfg['max_results']) as $rest) {
                         if (!isset($rest['name'])) {
                             continue;
                         }
@@ -37,7 +38,7 @@ class TheForkClient
                             'address' => $rest['address'] ?? null,
                             'average_price' => null,
                             'booking_url' => $rest['booking_url'] ?? null,
-                            'external_url' => $rest['web_url'] ?? 'https://www.thefork.pt',
+                            'external_url' => $rest['web_url'] ?? config('services.thefork.fallback_url'),
                             'latitude' => $latitude,
                             'longitude' => $longitude,
                         ];

@@ -13,11 +13,12 @@ class TripadvisorClient
 
         if ($apiKey) {
             try {
-                $response = Http::timeout(5)->get('https://api.content.tripadvisor.com/api/v1/location/nearby_search', [
+                $cfg = config('services.tripadvisor');
+                $response = Http::timeout($cfg['timeout'])->get($cfg['url'], [
                     'key' => $apiKey,
                     'latLong' => "{$latitude},{$longitude}",
                     'category' => 'restaurants',
-                    'language' => 'pt',
+                    'language' => $cfg['language'],
                 ]);
 
                 if ($response->successful()) {
@@ -25,7 +26,7 @@ class TripadvisorClient
                     $locations = $data['data'] ?? [];
 
                     $results = [];
-                    foreach (array_slice($locations, 0, 5) as $loc) {
+                    foreach (array_slice($locations, 0, $cfg['max_results']) as $loc) {
                         if (!isset($loc['name'])) {
                             continue;
                         }
@@ -38,7 +39,7 @@ class TripadvisorClient
                             'address' => $loc['address_obj']['address_string'] ?? null,
                             'average_price' => null,
                             'booking_url' => null,
-                            'external_url' => $loc['web_url'] ?? 'https://www.tripadvisor.com',
+                            'external_url' => $loc['web_url'] ?? config('services.tripadvisor.fallback_url'),
                             'latitude' => $latitude,
                             'longitude' => $longitude,
                         ];

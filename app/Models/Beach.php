@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'type', 'external_id', 'name', 'slug', 'region', 'district', 'municipality', 'island',
@@ -29,7 +30,6 @@ class Beach extends Model
 
     public function getNameAttribute($value)
     {
-        // Simple localization translation mapping if exists
         $translation = $this->translations->where('locale', app()->getLocale())->first();
         return $translation ? $translation->name : $value;
     }
@@ -55,6 +55,13 @@ class Beach extends Model
             default => 'beach.show.pt',
         };
         return route($routeName, ['locale' => $locale, 'slug' => $this->slug]);
+    }
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        static::saved(fn ($beach) => Cache::tags('beaches')->flush());
     }
 
     public function translations()
@@ -85,6 +92,34 @@ class Beach extends Model
     public function weatherForecasts()
     {
         return $this->hasMany(WeatherForecast::class);
+    }
+
+    public function latestWeatherForecast()
+    {
+        return $this->hasOne(WeatherForecast::class)->latestOfMany('forecasted_at');
+    }
+
+    public function latestOceanForecast()
+    {
+        return $this->hasOne(OceanForecast::class)->latestOfMany('forecasted_at');
+    }
+
+    public function getCachedLatestWeatherForecast(): ?WeatherForecast
+    {
+        return Cache::tags('beaches')->remember(
+            'weather:' . $this->id,
+            300,
+            fn () => $this->latestWeatherForecast
+        );
+    }
+
+    public function getCachedLatestOceanForecast(): ?OceanForecast
+    {
+        return Cache::tags('beaches')->remember(
+            'ocean:' . $this->id,
+            300,
+            fn () => $this->latestOceanForecast
+        );
     }
 
     public function qualitySnapshots()

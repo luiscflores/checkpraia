@@ -9,17 +9,19 @@ class OverpassClient
     public function getNearbyRestaurants(float $latitude, float $longitude, int $limit = 5): array
     {
         try {
+            $cfg = config('services.overpass');
+            $radius = $cfg['search_radius'];
             $query = <<<QUERY
-[out:json][timeout:10];
+[out:json][timeout:{$cfg['query_timeout']}];
 (
-  node(around:1500,{$latitude},{$longitude})[amenity=restaurant];
-  node(around:1500,{$latitude},{$longitude})[amenity=cafe];
-  node(around:1500,{$latitude},{$longitude})[amenity=fast_food];
+  node(around:{$radius},{$latitude},{$longitude})[amenity=restaurant];
+  node(around:{$radius},{$latitude},{$longitude})[amenity=cafe];
+  node(around:{$radius},{$latitude},{$longitude})[amenity=fast_food];
 );
 out body {$limit};
 QUERY;
 
-            $response = Http::timeout(10)->post('https://overpass-api.de/api/interpreter', [
+            $response = Http::timeout($cfg['timeout'])->post($cfg['url'], [
                 'data' => $query,
             ]);
 

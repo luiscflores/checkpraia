@@ -10,28 +10,15 @@ use Illuminate\Support\Facades\DB;
 
 class ScoreManager
 {
-    private const BASE_REPORT_POINTS = 1;
-    private const FIRST_REPORT_BONUS = 1;
-    private const PENALTY_POINTS = -2;
-    private const PENALTY_FLOOR = 0;
-
-    private const VOTE_WEIGHT_MIN_ACCEPTED = 50;
-    private const VOTE_WEIGHT_SUCCESS_RATE = 0.90;
-    private const VOTE_WEIGHT_NORMAL = 1;
-    private const VOTE_WEIGHT_REINFORCED = 2;
-
-    private const REFERRALS_PER_BONUS = 5;
-    private const REFERRAL_BONUS_POINTS = 10;
-
     public function addReportPoints(FlagReport $report): void
     {
         $user = $report->user;
 
-        $points = self::BASE_REPORT_POINTS;
+        $points = config('gamification.points.base_report');
         $isFirst = $this->isFirstReportOfDay($report);
 
         if ($isFirst) {
-            $points += self::FIRST_REPORT_BONUS;
+            $points += config('gamification.points.first_report_bonus');
         }
 
         DB::transaction(function () use ($user, $report, $points, $isFirst) {
@@ -62,12 +49,12 @@ class ScoreManager
                 'user_id' => $user->id,
                 'flag_report_id' => $report->id,
                 'type' => 'report_penalized',
-                'points' => self::PENALTY_POINTS,
+                'points' => config('gamification.points.penalty'),
                 'status' => 'confirmed',
                 'description' => 'Confirmação penalizada na ' . $report->beach->name,
             ]);
 
-            $user->score = max(self::PENALTY_FLOOR, $user->score + self::PENALTY_POINTS);
+            $user->score = max(config('gamification.points.penalty_floor'), $user->score + config('gamification.points.penalty'));
             $user->confirmations_count += 1;
             $user->penalized_confirmations_count += 1;
             $user->save();
@@ -80,16 +67,16 @@ class ScoreManager
             return 0;
         }
 
-        if ($user->accepted_confirmations_count >= self::VOTE_WEIGHT_MIN_ACCEPTED) {
+        if ($user->accepted_confirmations_count >= config('gamification.vote_weight.min_accepted')) {
             $totalConfirmations = $user->confirmations_count ?: 1;
             $successRate = $user->accepted_confirmations_count / $totalConfirmations;
 
-            if ($successRate >= self::VOTE_WEIGHT_SUCCESS_RATE) {
-                return self::VOTE_WEIGHT_REINFORCED;
+            if ($successRate >= config('gamification.vote_weight.success_rate')) {
+                return config('gamification.vote_weight.reinforced');
             }
         }
 
-        return self::VOTE_WEIGHT_NORMAL;
+        return config('gamification.vote_weight.normal');
     }
 
     public function processReferral(User $invitedUser): void
@@ -118,11 +105,11 @@ class ScoreManager
                     ->where('type', 'referral_bonus')
                     ->count();
 
-                $deservedBonusesCount = (int) floor($totalQualifiedCount / self::REFERRALS_PER_BONUS);
+                $deservedBonusesCount = (int) floor($totalQualifiedCount / config('gamification.referrals.per_bonus'));
 
                 if ($deservedBonusesCount > $paidBonusesCount) {
                     $bonusesToPay = $deservedBonusesCount - $paidBonusesCount;
-                    $pointsToGrant = $bonusesToPay * self::REFERRAL_BONUS_POINTS;
+                    $pointsToGrant = $bonusesToPay * config('gamification.referrals.bonus_points');
 
                     ScoreTransaction::create([
                         'user_id' => $referrer->id,
@@ -130,7 +117,7 @@ class ScoreManager
                         'type' => 'referral_bonus',
                         'points' => $pointsToGrant,
                         'status' => 'confirmed',
-                        'description' => 'Bónus por convidar ' . ($bonusesToPay * self::REFERRALS_PER_BONUS) . ' amigos válidos',
+                        'description' => 'Bónus por convidar ' . ($bonusesToPay * config('gamification.referrals.per_bonus')) . ' amigos válidos',
                     ]);
 
                     $referrer->score += $pointsToGrant;

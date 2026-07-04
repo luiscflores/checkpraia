@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 
 #[Fillable([
     'beach_id', 'wind_speed', 'wind_direction', 'precipitation',
-    'visibility', 'temp', 'uv_index', 'jellyfish_risk', 'forecasted_at'
+    'visibility', 'temp', 'uv_index', 'forecasted_at'
 ])]
 class WeatherForecast extends Model
 {

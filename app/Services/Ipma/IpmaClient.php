@@ -12,13 +12,13 @@ class IpmaClient
     public function getWeatherForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo for weather, with 3 retries (150ms gap) and 6s timeout
-            $response = Http::retry(3, 150)->timeout(6)->get('https://api.open-meteo.com/v1/forecast', [
+            $cfg = config('services.openmeteo');
+            $response = Http::retry($cfg['retry_times'], $cfg['retry_gap'])->timeout($cfg['timeout'])->get($cfg['weather_url'], [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index,visibility',
-                'wind_speed_unit' => 'kn',
-                'timezone' => 'Europe/London',
+                'wind_speed_unit' => $cfg['wind_speed_unit'],
+                'timezone' => $cfg['timezone'],
             ]);
 
             if ($response->successful()) {
@@ -43,14 +43,15 @@ class IpmaClient
                         $visibility = 'Moderada';
                     }
 
+                    $airTemp = (float) ($current['temperature_2m'] ?? 20.0);
+
                     return [
                         'wind_speed' => $windSpeedKt,
                         'wind_direction' => $windDirection,
                         'precipitation' => (float) ($current['precipitation'] ?? 0.0),
                         'visibility' => $visibility,
-                        'temp' => (float) ($current['temperature_2m'] ?? 20.0),
+                        'temp' => $airTemp,
                         'uv_index' => $uv,
-                        'jellyfish_risk' => null,
                         'forecasted_at' => now(),
                     ];
                 }
@@ -68,12 +69,12 @@ class IpmaClient
     public function getOceanForecast(float $latitude, float $longitude): array
     {
         try {
-            // Query Open-Meteo Marine API with 3 retries (150ms gap) and 6s timeout
-            $response = Http::retry(3, 150)->timeout(6)->get('https://marine-api.open-meteo.com/v1/marine', [
+            $cfg = config('services.openmeteo');
+            $response = Http::retry($cfg['retry_times'], $cfg['retry_gap'])->timeout($cfg['timeout'])->get($cfg['marine_url'], [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'current' => 'wave_height,wave_period,wave_direction,sea_surface_temperature',
-                'timezone' => 'Europe/London',
+                'timezone' => $cfg['timezone'],
             ]);
 
             if ($response->successful()) {
@@ -113,4 +114,5 @@ class IpmaClient
         $index = round($degrees / 45);
         return $sectors[$index % 8];
     }
+
 }
