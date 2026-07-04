@@ -12,7 +12,8 @@
         "laravel/socialite": "^5.28",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^3.6.4",
-        "livewire/volt": "^1.7.0"
+        "livewire/volt": "^1.7.0",
+        "minishlink/web-push": "^8.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -53,13 +54,17 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "post-install-cmd": [
+            "@php patches/fix-safe-typehints.php"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
             "@php artisan filament:upgrade"
         ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php patches/fix-safe-typehints.php"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""

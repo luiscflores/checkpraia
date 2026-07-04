@@ -23,6 +23,17 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('aut
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 Route::view('/offline', 'public.offline')->name('offline');
+Route::view('/sobre', 'public.about')->name('about');
+Route::view('/contactos', 'public.contact')->name('contact');
+Route::view('/termos', 'public.terms')->name('terms');
+Route::view('/privacidade', 'public.privacy')->name('privacy');
+
+Route::prefix('push')->middleware('auth')->group(function () {
+    Route::post('/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
+    Route::get('/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('push.status');
+    Route::post('/test', [\App\Http\Controllers\PushSubscriptionController::class, 'test'])->name('push.test');
+});
 
 Route::get('/', Home::class)->name('home');
 Route::get('/rankings', Rankings::class)->name('rankings');
@@ -31,6 +42,10 @@ Route::get('/area-pessoal', Profile::class)->name('profile')->middleware('auth')
 Route::prefix('{locale}')->group(function () {
     Route::get('/', Home::class)->name('home.locale');
     Route::get('/rankings', Rankings::class)->name('rankings.locale');
+    Route::view('/sobre', 'public.about')->name('about.locale');
+    Route::view('/contactos', 'public.contact')->name('contact.locale');
+    Route::view('/termos', 'public.terms')->name('terms.locale');
+    Route::view('/privacidade', 'public.privacy')->name('privacy.locale');
     Route::get('/area-pessoal', Profile::class)->name('profile.locale')->middleware('auth');
 
     Route::get('/praias/{slug}', BeachDetail::class)->name('beach.show.pt');

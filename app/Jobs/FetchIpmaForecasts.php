@@ -21,9 +21,6 @@ class FetchIpmaForecasts implements ShouldQueue
 
     protected ?Beach $beach;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(?Beach $beach = null)
     {
         $this->beach = $beach;
@@ -31,15 +28,20 @@ class FetchIpmaForecasts implements ShouldQueue
 
     public function handle(): void
     {
-        if ($this->beach) {
-            $this->processBeach($this->beach);
-        } else {
+        $beaches = $this->beach ? collect([$this->beach]) : Beach::where('is_active', true)->get();
+
+        if (!$this->beach) {
             Setting::set('last_ipma_sync', now()->toIso8601String());
-            Beach::where('is_active', true)->chunkById(50, function ($beaches) {
-                foreach ($beaches as $beach) {
-                    self::dispatch($beach);
-                }
-            });
+        }
+
+        foreach ($beaches as $beach) {
+            try {
+                $this->processBeach($beach);
+            } catch (\Exception $e) {
+                logger()->warning('IPMA forecast failed for beach ' . $beach->id, [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
@@ -48,9 +50,9 @@ class FetchIpmaForecasts implements ShouldQueue
      */
     private function processBeach(Beach $beach): void
     {
-        $ipma = new IpmaClient();
-        $engine = new PredictionEngine();
-        $resolver = new ConsensusResolver();
+        $ipma = new \App\Services\Ipma\IpmaClient();
+        $engine = new \App\Domain\Forecasting\PredictionEngine();
+        $resolver = new \App\Domain\Community\ConsensusResolver();
 
         // 1. Fetch and store weather forecast
         $weatherData = $ipma->getWeatherForecast($beach->latitude, $beach->longitude);

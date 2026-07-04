@@ -378,9 +378,17 @@
                                     @endif
                                 </td>
                                 <td class="py-3 px-3 text-right">
-                                    <button wire:click="toggleBeachActive({{ $beach->id }})" wire:confirm="{{ $beach->is_active ? 'Desativar' : 'Ativar' }} {{ $beach->name }}?" class="px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold {{ $beach->is_active ? 'bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20' : 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20' }}">
-                                        {{ $beach->is_active ? 'Desativar' : 'Ativar' }}
-                                    </button>
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <button wire:click="confirmResetVotes({{ $beach->id }})"
+                                                class="px-2 py-1.5 rounded-lg transition-all text-xs font-semibold bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/20"
+                                                title="Cancelar todos os votos de hoje">🗑️</button>
+                                        <button wire:click="showOverride({{ $beach->id }})"
+                                                class="px-2 py-1.5 rounded-lg transition-all text-xs font-semibold bg-violet-600/10 hover:bg-violet-600 text-violet-400 hover:text-white border border-violet-500/20"
+                                                title="Sobrepor bandeira">✏️</button>
+                                        <button wire:click="toggleBeachActive({{ $beach->id }})" wire:confirm="{{ $beach->is_active ? 'Desativar' : 'Ativar' }} {{ $beach->name }}?" class="px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold {{ $beach->is_active ? 'bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20' : 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20' }}">
+                                            {{ $beach->is_active ? 'Desativar' : 'Ativar' }}
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -396,6 +404,59 @@
                 <div class="pt-2">{{ $beachesList->links() }}</div>
             @endif
         </div>
+
+        {{-- Modal: Confirmar reset de votos --}}
+        @if($confirmResetBeachId)
+            @php $beach = \App\Models\Beach::find($confirmResetBeachId); @endphp
+            @if($beach)
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" wire:click.self="cancelResetVotes">
+                    <div class="glass-card p-6 rounded-2xl max-w-sm w-full space-y-4">
+                        <div class="text-center space-y-2">
+                            <span class="text-4xl block">🗑️</span>
+                            <h3 class="text-lg font-bold text-theme">Cancelar votos de hoje</h3>
+                            <p class="text-sm text-theme-secondary">Tens a certeza? Todos os votos de hoje em <strong>{{ $beach->name }}</strong> serão cancelados.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button wire:click="resetTodayVotes({{ $beach->id }})" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all active:scale-95">Sim, cancelar</button>
+                            <button wire:click="cancelResetVotes" class="flex-1 bg-theme-card border border-theme-medium hover:bg-theme-elevated text-theme font-bold py-2.5 rounded-xl text-sm transition-all">Voltar</button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endif
+
+        {{-- Modal: Sobrepor bandeira --}}
+        @if($overrideBeachId)
+            @php $beach = \App\Models\Beach::find($overrideBeachId); @endphp
+            @if($beach)
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" wire:click.self="cancelOverride">
+                    <div class="glass-card p-6 rounded-2xl max-w-sm w-full space-y-4">
+                        <div class="text-center space-y-2">
+                            <span class="text-4xl block">✏️</span>
+                            <h3 class="text-lg font-bold text-theme">Sobrepor bandeira</h3>
+                            <p class="text-sm text-theme-secondary">Escolhe a bandeira para <strong>{{ $beach->name }}</strong>.</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach(['green' => 'bg-emerald-500', 'yellow' => 'bg-amber-500', 'red' => 'bg-rose-500', 'blue_or_neutral' => 'bg-blue-500'] as $val => $color)
+                                <button wire:click="$set('overrideFlag', '{{ $val }}')"
+                                        class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all border {{ $overrideFlag === $val ? 'ring-2 ring-offset-2 ring-offset-slate-900 ring-blue-400 border-blue-400' : 'border-theme-subtle' }}"
+                                        :class="{ 'ring-2 ring-offset-2 ring-offset-slate-900 ring-blue-400 border-blue-400': false }">
+                                    <span class="w-3.5 h-3.5 rounded-full inline-block {{ $color }}"></span>
+                                    @php
+                                        $label = match($val) { 'green' => 'Verde', 'yellow' => 'Amarela', 'red' => 'Vermelha', 'blue_or_neutral' => 'Fora de Época', default => $val };
+                                    @endphp
+                                    <span class="text-theme">{{ $label }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="flex gap-2">
+                            <button wire:click="applyOverride" class="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all active:scale-95">Aplicar</button>
+                            <button wire:click="cancelOverride" class="flex-1 bg-theme-card border border-theme-medium hover:bg-theme-elevated text-theme font-bold py-2.5 rounded-xl text-sm transition-all">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        @endif
     </div>
 
     {{-- ════════════════════════════════════════ TAB 4: SINCRONIZAÇÃO ════════════════════════════════════════ --}}

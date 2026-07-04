@@ -68,7 +68,9 @@ class Home extends Component
             });
         }
 
-        $beaches = $query->get()->map(function ($beach) {
+        $beaches = $query->get()->sortByDesc(function ($beach) {
+            return in_array((int)$beach->id, $this->favoriteIds);
+        })->map(function ($beach) {
             $status = $beach->currentStatus;
             $weather = $beach->latestWeatherForecast;
             $ocean = $beach->latestOceanForecast;

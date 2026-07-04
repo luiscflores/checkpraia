@@ -11,13 +11,26 @@ use App\Models\TideForecast;
 use App\Domain\Community\ConsensusResolver;
 use App\Domain\Gamification\ScoreManager;
 use App\Services\GeoService;
+use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\RateLimiter;
 
 class BeachDetail extends Component
 {
+    public $todayReports;
+
     private function voteCooldownMinutes(): int
     {
         return (int) config('gamification.report.cooldown_minutes', 60);
+    }
+
+    private function loadTodayReports(): void
+    {
+        $this->todayReports = FlagReport::where('beach_id', $this->beach->id)
+            ->where('reported_at', '>=', now()->startOfDay())
+            ->where('status', '!=', 'cancelled')
+            ->with('user')
+            ->orderBy('reported_at', 'desc')
+            ->get();
     }
 
     private function maxDistanceKm(): float
@@ -88,27 +101,30 @@ class BeachDetail extends Component
         }
         RateLimiter::hit($throttleKey, 60);
 
-        $exists = FlagReport::where('user_id', $user->id)
+        // If user already voted today, cancel their old vote so the new one replaces it
+        $existingVote = FlagReport::where('user_id', $user->id)
             ->where('beach_id', $this->beach->id)
-            ->where('reported_at', '>=', now()->subMinutes($this->voteCooldownMinutes()))
-            ->exists();
+            ->where('reported_at', '>=', now()->startOfDay())
+            ->where('status', '!=', 'cancelled')
+            ->first();
 
-        if ($exists) {
-            $this->addError('report', 'Já enviaste uma confirmação para esta praia nos últimos ' . $this->voteCooldownMinutes() . ' minutos.');
-            return;
+        if ($existingVote) {
+            if ($existingVote->flag === $flag) {
+                $this->addError('report', __('beach.report_same_flag'));
+                return;
+            }
+            $existingVote->status = 'cancelled';
+            $existingVote->resolved_at = now();
+            $existingVote->save();
         }
 
         $distance = $this->calculateDistance((float)$lat, (float)$lon, (float)$this->beach->latitude, (float)$this->beach->longitude);
-        if ($distance > $this->maxDistanceKm()) {
-            $this->addError('report', __('common.gps_unavailable'));
-            return;
-        }
 
         $scoreManager = new ScoreManager();
         $weight = $scoreManager->getVoteWeight($user);
 
-        // Save report (pending status)
-        FlagReport::create([
+        // Save report (confirmed immediately — points awarded straight away)
+        $report = FlagReport::create([
             'user_id' => $user->id,
             'beach_id' => $this->beach->id,
             'flag' => $flag,
@@ -121,14 +137,40 @@ class BeachDetail extends Component
             'reported_at' => now(),
         ]);
 
-        // Resolve current beach status immediately
         $resolver = new ConsensusResolver();
+
+        // Points only once per hour per beach
+        $hasPointsThisHour = \App\Models\ScoreTransaction::where('user_id', $user->id)
+            ->whereHas('report', fn($q) => $q->where('beach_id', $this->beach->id))
+            ->where('created_at', '>=', now()->startOfHour())
+            ->exists();
+
+        if ($hasPointsThisHour) {
+            $report->status = 'confirmed';
+            $report->resolved_at = now();
+            $report->save();
+        } else {
+            $resolver->resolveReport($report);
+        }
+
         $resolver->resolveCurrentStatus($this->beach);
+
+        // Notify subscribers (favorites + nearby)
+        try {
+            app(PushNotificationService::class)->notifyBeachVote($this->beach, $report);
+        } catch (\Exception $e) {
+            logger()->error('Push notification failed', ['error' => $e->getMessage()]);
+        }
 
         // Reload beach relation to refresh view
         $this->beach->load('currentStatus');
+        $this->loadTodayReports();
 
-        session()->flash('report_success', __('beach.report_success'));
+        $points = $report->scoreTransaction?->points;
+        $msg = $points
+            ? __('beach.report_success_points', ['points' => $points])
+            : __('beach.report_success');
+        session()->flash('report_success', $msg);
     }
 
     private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
@@ -138,6 +180,8 @@ class BeachDetail extends Component
 
     public function render()
     {
+        $this->loadTodayReports();
+
         $latestOcean = $this->beach->latestOceanForecast;
         $latestWeather = $this->beach->latestWeatherForecast;
         $latestQuality = $this->beach->qualitySnapshots->first();

@@ -9,7 +9,6 @@ Artisan::command('inspire', function () {
 
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::job(new \App\Jobs\CloseConsensusWindows)->everyMinute();
 Schedule::job(new \App\Jobs\PurgePreciseLocations)->daily();
-Schedule::job(new \App\Jobs\FetchIpmaForecasts)->hourly();
-Schedule::job(new \App\Jobs\FetchInfoAguaData)->hourly();
+Schedule::job(new \App\Jobs\FetchIpmaForecasts)->cron('0 * * * *')->withoutOverlapping();
+Schedule::job(new \App\Jobs\FetchInfoAguaData)->cron('5 * * * *')->withoutOverlapping();

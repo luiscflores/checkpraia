@@ -17,6 +17,14 @@ new #[Layout('components.layouts.app')] class extends Component
     public string $password_confirmation = '';
     public string $referralCodeInput = '';
 
+    public function mount(): void
+    {
+        $ref = request()->query('ref');
+        if ($ref && User::where('referral_code', strtoupper($ref))->exists()) {
+            $this->referralCodeInput = strtoupper($ref);
+        }
+    }
+
     public function register(): void
     {
         $validated = $this->validate([

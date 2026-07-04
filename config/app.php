@@ -118,6 +118,11 @@ return [
     |
     */
 
+    'admin_email' => env('ADMIN_EMAIL', 'admin@checkpraia.pt'),
+    'admin_name' => env('ADMIN_NAME', 'Admin'),
+    'admin_username' => env('ADMIN_USERNAME', 'admin'),
+    'admin_password' => env('ADMIN_PASSWORD'),
+
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

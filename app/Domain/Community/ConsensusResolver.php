@@ -45,21 +45,22 @@ class ConsensusResolver
             return $status;
         }
 
-        // 2. Community consensus (≥ 2 distinct users in the last 60 minutes)
-        $oneHourAgo = now()->subMinutes(config('prediction.consensus.report_window_minutes'));
-        $activeReports = FlagReport::where('beach_id', $beach->id)
-            ->where('reported_at', '>=', $oneHourAgo)
+        // 2. Daily community consensus (all non-cancelled votes from today override algorithm)
+        $todayStart = now()->startOfDay();
+        $todayReports = FlagReport::where('beach_id', $beach->id)
+            ->where('reported_at', '>=', $todayStart)
             ->where('status', '!=', 'cancelled')
             ->get();
 
-        $distinctUsersCount = $activeReports->pluck('user_id')->unique()->count();
+        $distinctUsersCount = $todayReports->pluck('user_id')->unique()->count();
+        $totalVotes = $todayReports->count();
 
-        if ($distinctUsersCount >= config('prediction.consensus.community_min_users')) {
+        if ($distinctUsersCount >= 1 && $totalVotes > 0) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             $latestReportTime = null;
             $latestReportFlag = null;
 
-            foreach ($activeReports as $report) {
+            foreach ($todayReports as $report) {
                 $votes[$report->flag] += $report->vote_weight;
 
                 if (is_null($latestReportTime) || $report->reported_at->gt($latestReportTime)) {
@@ -86,12 +87,18 @@ class ConsensusResolver
                     : (in_array('yellow', $winners) ? 'yellow' : 'green');
             }
 
+            $reason = 'Confirmado por ' . $distinctUsersCount . ' utilizador' . ($distinctUsersCount > 1 ? 'es' : '') . ' hoje';
+            if ($totalVotes > 1) {
+                $reason .= ' (' . $totalVotes . ' confirmaç' . ($totalVotes > 1 ? 'ões' : 'ão') . ')';
+            }
+            $reason .= '.';
+
             $status->fill([
                 'source' => 'community',
                 'flag' => $winningFlag,
                 'confidence' => config('prediction.consensus.community_confidence'),
-                'consensus_reports_count' => $activeReports->count(),
-                'reason' => 'Confirmado por utilizadores locais (' . $distinctUsersCount . ' votos na última hora).',
+                'consensus_reports_count' => $totalVotes,
+                'reason' => $reason,
             ]);
             $status->save();
             return $status;

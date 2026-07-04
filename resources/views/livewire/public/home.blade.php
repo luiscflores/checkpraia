@@ -159,7 +159,7 @@
                             </span>
                         @endif
 
-                        @if($beach['source'] === 'report' || $beach['source'] === 'consensus')
+                        @if(in_array($beach['source'], ['report', 'consensus', 'community']))
                             <span class="bg-emerald-600/15 border border-emerald-500/25 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 ml-auto shrink-0 shadow-sm shadow-emerald-500/5">
                                 <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 {{ __('common.flag_confirmed') }}

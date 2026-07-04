@@ -130,6 +130,9 @@ class Dashboard extends Component
     // ─── Beach Management ───
     public $searchBeach = '';
     public $showInactiveOnly = false;
+    public $confirmResetBeachId = null;
+    public $overrideBeachId = null;
+    public $overrideFlag = 'green';
 
     public function toggleBeachActive($beachId)
     {
@@ -145,7 +148,81 @@ class Dashboard extends Component
     {
         $this->searchBeach = '';
         $this->showInactiveOnly = false;
+        $this->confirmResetBeachId = null;
+        $this->overrideBeachId = null;
         $this->resetPage();
+    }
+
+    public function confirmResetVotes($beachId)
+    {
+        $this->confirmResetBeachId = $beachId;
+    }
+
+    public function cancelResetVotes()
+    {
+        $this->confirmResetBeachId = null;
+    }
+
+    public function resetTodayVotes($beachId)
+    {
+        $beach = Beach::findOrFail($beachId);
+
+        FlagReport::where('beach_id', $beachId)
+            ->where('reported_at', '>=', now()->startOfDay())
+            ->where('status', '!=', 'cancelled')
+            ->update(['status' => 'cancelled', 'resolved_at' => now()]);
+
+        $resolver = new \App\Domain\Community\ConsensusResolver();
+        $resolver->resolveCurrentStatus($beach);
+
+        $this->confirmResetBeachId = null;
+        session()->flash('beach_action', 'Votos de hoje em ' . $beach->name . ' foram cancelados.');
+    }
+
+    public function showOverride($beachId)
+    {
+        $this->overrideBeachId = $beachId;
+        $beach = Beach::find($beachId);
+        $this->overrideFlag = $beach?->currentStatus?->flag ?? 'green';
+    }
+
+    public function cancelOverride()
+    {
+        $this->overrideBeachId = null;
+    }
+
+    public function applyOverride()
+    {
+        $this->validate(['overrideFlag' => 'required|in:green,yellow,red,blue_or_neutral']);
+
+        $user = Auth::user();
+        $beach = Beach::findOrFail($this->overrideBeachId);
+
+        FlagReport::create([
+            'user_id' => $user->id,
+            'beach_id' => $beach->id,
+            'flag' => $this->overrideFlag,
+            'vote_weight' => 10,
+            'status' => 'confirmed',
+            'latitude' => (float) $beach->latitude,
+            'longitude' => (float) $beach->longitude,
+            'distance_to_beach' => 0,
+            'reported_at' => now(),
+            'resolved_at' => now(),
+        ]);
+
+        $status = BeachCurrentStatus::firstOrNew(['beach_id' => $beach->id]);
+        $status->fill([
+            'source' => 'admin',
+            'flag' => $this->overrideFlag,
+            'confidence' => 100,
+            'consensus_reports_count' => 0,
+            'reason' => 'Sobreposição manual pelo administrador.',
+        ]);
+        $status->save();
+
+        $this->overrideBeachId = null;
+        session()->flash('beach_action', 'Bandeira de ' . $beach->name . ' sobreposta para ' . $this->overrideFlag . '.');
     }
 
     // ─── Settings Management ───

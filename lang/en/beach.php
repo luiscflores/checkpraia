@@ -13,6 +13,7 @@ return [
     'flag_predicted' => 'Automatically predicted flag.',
     'flag_off_season' => 'Beach is out of swimming season.',
     'flag_verified_by' => 'Verified by :count users',
+    'today_votes_title' => "Today's Confirmations",
     'flag_report' => 'Report Flag',
 
     // Weather
@@ -69,7 +70,9 @@ return [
     'report_confirm_green' => '🟢 Green?',
     'report_confirm_yellow' => '🟡 Yellow?',
     'report_confirm_red' => '🔴 Red?',
-    'report_success' => 'Flag confirmed! Your points are pending until the window closes.',
+    'report_success' => 'Flag updated! Your vote replaced the previous one.',
+    'report_success_points' => 'Flag updated! You earned :points point(s).',
+    'report_same_flag' => 'You already voted this color today. Pick a different color to change your vote.',
 
     // Dining
     'dining_title' => '🍴 Nearby Dining',

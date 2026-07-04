@@ -27,15 +27,20 @@ class FetchInfoAguaData implements ShouldQueue
 
     public function handle(): void
     {
-        if ($this->beach) {
-            $this->processBeach($this->beach);
-        } else {
+        $beaches = $this->beach ? collect([$this->beach]) : Beach::where('is_active', true)->get();
+
+        if (!$this->beach) {
             Setting::set('last_infoagua_sync', now()->toIso8601String());
-            Beach::where('is_active', true)->chunkById(50, function ($beaches) {
-                foreach ($beaches as $beach) {
-                    self::dispatch($beach);
-                }
-            });
+        }
+
+        foreach ($beaches as $beach) {
+            try {
+                $this->processBeach($beach);
+            } catch (\Exception $e) {
+                logger()->warning('InfoÁgua fetch failed for beach ' . $beach->id, [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

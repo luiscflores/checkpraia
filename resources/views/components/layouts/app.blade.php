@@ -190,35 +190,46 @@
         <!-- Header -->
         <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300" role="banner">
             <div class="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 flex items-center justify-between">
-                <a href="{{ route('home') }}" class="flex items-center gap-1.5 group" aria-label="{{ __('common.nav_home') }}">
-                    <span class="text-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" aria-hidden="true">🌊</span>
-                    <span class="text-base font-black tracking-tight uppercase bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300" style="color: var(--text-primary);">{{ __('common.site_name') }}</span>
+                <a href="{{ route('home') }}" class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
+                    <img src="{{ asset('storage/logo.png') }}" alt="{{ __('common.site_name') }}" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105">
                 </a>
 
                 <!-- Desktop Navigation Menu -->
                 <nav class="hidden md:flex items-center gap-4 lg:gap-6" aria-label="{{ __('common.nav_map') }}">
                     <a href="{{ route('home') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('home*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('home*') ? 'aria-current="page"' : '' }}>
-                        <span aria-hidden="true">🗺️</span> {{ __('common.nav_map') }}
+                        {{ __('common.nav_map') }}
                         @if(request()->routeIs('home*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
                     <a href="{{ route('rankings') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
-                        <span aria-hidden="true">🏆</span> {{ __('common.nav_rankings') }}
+                        {{ __('common.nav_rankings') }}
                         @if(request()->routeIs('rankings*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
                     <a href="{{ route('profile') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
-                        <span aria-hidden="true">👤</span> {{ __('common.nav_profile') }}
+                        {{ __('common.nav_profile') }}
                         @if(request()->routeIs('profile*') || request()->routeIs('account.*'))
+                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
+                        @endif
+                    </a>
+                    <a href="{{ route('about') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('about*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('about*') ? 'aria-current="page"' : '' }}>
+                        {{ __('common.nav_about') }}
+                        @if(request()->routeIs('about*'))
+                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
+                        @endif
+                    </a>
+                    <a href="{{ route('contact') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('contact*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('contact*') ? 'aria-current="page"' : '' }}>
+                        {{ __('common.nav_contact') }}
+                        @if(request()->routeIs('contact*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
                     @auth
                         @if(auth()->user()->is_admin)
                             <a href="{{ route('admin.dashboard') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
-                                <span aria-hidden="true">⚙️</span> {{ __('common.nav_admin') }}
+                                {{ __('common.nav_admin') }}
                                 @if(request()->routeIs('admin.*'))
                                     <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
                                 @endif
@@ -247,7 +258,7 @@
                 </nav>
 
                 <!-- Right Controls: Theme Toggle, Score and Auth -->
-                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div class="flex items-center gap-1 sm:gap-2 shrink-0">
                     <!-- Mobile Language Switcher -->
                     <div x-data="{ open: false }" class="relative md:hidden">
                         <button @click="open = !open" @click.outside="open = false" class="theme-toggle-btn touch-target" aria-label="{{ __('common.language') }}" aria-haspopup="true" :aria-expanded="open">
@@ -266,26 +277,48 @@
                         </div>
                     </div>
 
+                    <!-- Push Notifications Toggle (desktop only) -->
+                    @auth
+                        <button x-data="pushHandler()"
+                                x-on:click="toggle()"
+                                x-show="ready"
+                                x-cloak
+                                class="theme-toggle-btn touch-target relative hidden sm:inline-flex"
+                                :title="subscribed ? '{{ __('common.push_enabled') }}' : '{{ __('common.push_enable') }}'"
+                                :class="subscribed ? 'text-blue-400' : 'text-theme-secondary'">
+                            <span class="text-lg" x-text="subscribed ? '🔔' : '🔕'"></span>
+                        </button>
+                    @endauth
+
                     <!-- Theme Toggle -->
                     <button onclick="toggleAppTheme()" class="theme-toggle-btn touch-target" aria-label="{{ __('common.theme_toggle') }}" title="{{ __('common.theme_toggle') }}">
                         <span class="theme-toggle-dark-icon" style="font-size: 18px; line-height: 1; transition: transform 0.3s ease;" x-on:click="$el.style.transform = 'rotate(360deg)'">🌙</span>
                         <span class="theme-toggle-light-icon" style="font-size: 18px; line-height: 1; transition: transform 0.3s ease;">☀️</span>
                     </button>
                     @auth
-                        <span class="text-xs sm:text-sm bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-scale-in" aria-label="{{ trans_choice('common.nav_score_label', auth()->user()->score, ['score' => auth()->user()->score]) }}">
+                        <span class="hidden sm:inline-flex text-xs sm:text-sm bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-scale-in" aria-label="{{ trans_choice('common.nav_score_label', auth()->user()->score, ['score' => auth()->user()->score]) }}">
                             <span aria-hidden="true">🏆</span> {{ auth()->user()->score }}
                         </span>
-                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-2 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[80px] sm:max-w-none transition-all hover:border-blue-500/40" aria-label="{{ __('common.nav_profile') }}">
-                            <span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 5, '') }}
-                        </a>
-                        <form method="POST" action="{{ route('logout') }}" class="inline">
-                            @csrf
-                            <button type="submit" class="theme-toggle-btn touch-target" title="{{ __('common.nav_logout') }}">
-                                <svg class="w-[18px] h-[18px] transition-transform hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] transition-all hover:border-blue-500/40 cursor-pointer" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
+                                <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline"><span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 8, '') }}</span>
                             </button>
-                        </form>
+                            <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1.5 w-44 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
+                                <a href="{{ route('profile') }}" @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme">
+                                    <span aria-hidden="true">👤</span> {{ __('common.nav_profile') }}
+                                </a>
+                                <hr class="border-theme-subtle">
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-red-400">
+                                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+                                        {{ __('common.nav_logout') }}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     @else
-                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95">
+                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95">
                             {{ __('common.nav_login') }}
                         </a>
                     @endauth
@@ -307,48 +340,58 @@
                 <div class="flex items-center justify-between border-t border-theme-subtle pt-3">
                     <div>&copy; {{ date('Y') }} {{ __('common.footer_copyright') }}</div>
                     <div class="flex gap-2">
-                        <a href="#" class="hover:text-theme transition-colors">{{ __('common.footer_terms') }}</a>
+                        <a href="{{ route('about') }}" class="hover:text-theme transition-colors">{{ __('common.footer_about') }}</a>
                         <span aria-hidden="true">&middot;</span>
-                        <a href="#" class="hover:text-theme transition-colors">{{ __('common.footer_privacy') }}</a>
+                        <a href="{{ route('contact') }}" class="hover:text-theme transition-colors">{{ __('common.footer_contact') }}</a>
+                        <span aria-hidden="true">&middot;</span>
+                        <a href="{{ route('terms') }}" class="hover:text-theme transition-colors">{{ __('common.footer_terms') }}</a>
+                        <span aria-hidden="true">&middot;</span>
+                        <a href="{{ route('privacy') }}" class="hover:text-theme transition-colors">{{ __('common.footer_privacy') }}</a>
                     </div>
                 </div>
             </footer>
         </main>
 
         <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
-        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1.5 px-4 pb-safe md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
-            <a href="{{ route('home') }}" class="relative flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 transition-all duration-200 {{ request()->routeIs('home*') ? 'text-blue-400 font-bold scale-105' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('home*') ? 'aria-current="page"' : '' }}>
-                <span class="text-xl leading-none mb-0.5 transition-transform duration-200" aria-hidden="true">🗺️</span>
-                <span>{{ __('common.nav_mobile_map') }}</span>
-                @if(request()->routeIs('home*'))
-                    <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-400 rounded-full"></span>
-                @endif
-            </a>
-            <a href="{{ route('rankings') }}" class="relative flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400 font-bold scale-105' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
-                <span class="text-xl leading-none mb-0.5 transition-transform duration-200" aria-hidden="true">🏆</span>
-                <span>{{ __('common.nav_mobile_rankings') }}</span>
-                @if(request()->routeIs('rankings*'))
-                    <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-400 rounded-full"></span>
-                @endif
-            </a>
-            <a href="{{ route('profile') }}" class="relative flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400 font-bold scale-105' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
-                <span class="text-xl leading-none mb-0.5 transition-transform duration-200" aria-hidden="true">👤</span>
-                <span>{{ __('common.nav_mobile_profile') }}</span>
-                @if(request()->routeIs('profile*') || request()->routeIs('account.*'))
-                    <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-400 rounded-full"></span>
-                @endif
-            </a>
+        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1 px-0.5 pb-safe md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
+            @php $navItems = [
+                ['route' => 'home', 'icon' => '🗺️', 'label' => 'nav_mobile_map', 'pattern' => 'home*', 'color' => 'blue'],
+                ['route' => 'rankings', 'icon' => '🏆', 'label' => 'nav_mobile_rankings', 'pattern' => 'rankings*', 'color' => 'blue'],
+                ['route' => 'profile', 'icon' => '👤', 'label' => 'nav_mobile_profile', 'pattern' => 'profile*|account.*', 'color' => 'blue'],
+                ['route' => 'about', 'icon' => 'ℹ️', 'label' => 'nav_mobile_about', 'pattern' => 'about*', 'color' => 'blue'],
+            ]; @endphp
+            @foreach($navItems as $item)
+                @php $active = request()->routeIs(explode('|', $item['pattern'])); @endphp
+                <a href="{{ route($item['route']) }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-blue-400 font-bold' : 'text-theme-secondary hover:text-theme' }}" {{ $active ? 'aria-current="page"' : '' }}>
+                    <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
+                    <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
+                    @if($active)
+                        <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
+                    @endif
+                </a>
+            @endforeach
             @auth
                 @if(auth()->user()->is_admin)
-                    <a href="{{ route('admin.dashboard') }}" class="relative flex flex-col items-center gap-0.5 text-xs min-w-[60px] py-1 transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400 font-bold scale-105' : 'text-theme-secondary hover:text-theme' }}" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
-                        <span class="text-xl leading-none mb-0.5 transition-transform duration-200" aria-hidden="true">⚙️</span>
-                        <span>{{ __('common.nav_mobile_admin') }}</span>
-                        @if(request()->routeIs('admin.*'))
-                            <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-teal-400 rounded-full"></span>
+                    @php $active = request()->routeIs('admin.*'); @endphp
+                    <a href="{{ route('admin.dashboard') }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-teal-400 font-bold' : 'text-theme-secondary hover:text-theme' }}" {{ $active ? 'aria-current="page"' : '' }}>
+                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
+                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
+                        @if($active)
+                            <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
                         @endif
                     </a>
                 @endif
             @endauth
+            @guest
+                @php $active = request()->routeIs('login'); @endphp
+                <a href="{{ route('login') }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-blue-400 font-bold' : 'text-theme-secondary hover:text-theme' }}">
+                    <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
+                    <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
+                    @if($active)
+                        <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
+                    @endif
+                </a>
+            @endguest
         </nav>
     </div>
 
@@ -381,6 +424,131 @@
                     const saved = localStorage.getItem('checkpraia-theme');
                     document.documentElement.setAttribute('data-theme', saved || 'dark');
                 }
+            }));
+
+            Alpine.data('pushHandler', () => ({
+                ready: false,
+                subscribed: false,
+                loading: false,
+
+                init() {
+                    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+                    this.checkStatus();
+                },
+
+                async checkStatus() {
+                    try {
+                        const res = await fetch('/push/status');
+                        const data = await res.json();
+                        this.subscribed = data.subscribed;
+                    } catch {}
+                    this.ready = true;
+                },
+
+                async toggle() {
+                    if (this.loading) return;
+                    this.loading = true;
+
+                    try {
+                        if (this.subscribed) {
+                            await this.unsubscribe();
+                        } else {
+                            await this.subscribe();
+                        }
+                    } catch (e) {
+                        console.error('Push error:', e);
+                    }
+
+                    this.loading = false;
+                },
+
+                async subscribe() {
+                    let permission = Notification.permission;
+                    if (permission === 'denied') return;
+
+                    if (permission === 'default') {
+                        permission = await Notification.requestPermission();
+                        if (permission !== 'granted') return;
+                    }
+
+                    const registration = await navigator.serviceWorker.ready;
+                    let subscription = await registration.pushManager.getSubscription();
+
+                    if (!subscription) {
+                        const vapidKey = '{{ config('webpush.vapid.public_key') }}';
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: this.urlBase64ToUint8Array(vapidKey),
+                        });
+                    }
+
+                    const sub = subscription.toJSON();
+                    let latitude = null;
+                    let longitude = null;
+
+                    if ('geolocation' in navigator) {
+                        try {
+                            const pos = await new Promise((resolve, reject) => {
+                                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                    timeout: 5000, maximumAge: 300000, enableHighAccuracy: false,
+                                });
+                            });
+                            latitude = pos.coords.latitude;
+                            longitude = pos.coords.longitude;
+                        } catch {}
+                    }
+
+                    const res = await fetch('/push/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify({
+                            endpoint: sub.endpoint,
+                            public_key: sub.keys?.p256dh || null,
+                            auth_token: sub.keys?.auth || null,
+                            content_encoding: 'aesgcm',
+                            latitude,
+                            longitude,
+                        }),
+                    });
+
+                    if (res.ok) {
+                        this.subscribed = true;
+
+                        fetch('/push/test', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            body: JSON.stringify({ endpoint: sub.endpoint }),
+                        });
+                    }
+                },
+
+                async unsubscribe() {
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+
+                    if (subscription) {
+                        const sub = subscription.toJSON();
+
+                        await fetch('/push/unsubscribe', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            body: JSON.stringify({ endpoint: sub.endpoint }),
+                        });
+
+                        await subscription.unsubscribe();
+                    }
+
+                    this.subscribed = false;
+                },
+
+                urlBase64ToUint8Array(base64String) {
+                    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                    const rawData = window.atob(base64);
+                    const output = new Uint8Array(rawData.length);
+                    for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+                    return output;
+                },
             }));
         });
 

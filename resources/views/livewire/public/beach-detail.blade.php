@@ -251,10 +251,105 @@
                     </div>
                 @endauth
             </div>
+
+            @if($todayReports && $todayReports->isNotEmpty())
+                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-theme flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>{{ __('beach.today_votes_title') }}</span>
+                        </h3>
+                        @php
+                            $voteCounts = $todayReports->groupBy('flag')->map->count();
+                            $consensus = $beach->currentStatus && $beach->currentStatus->source === 'community' ? $beach->currentStatus->flag : null;
+                        @endphp
+                        @if($consensus)
+                            @php
+                                $consensusLabel = match($consensus) {
+                                    'green' => __('common.flag_green'),
+                                    'yellow' => __('common.flag_yellow'),
+                                    'red' => __('common.flag_red'),
+                                    default => ''
+                                };
+                                $consensusColor = match($consensus) {
+                                    'green' => 'text-emerald-400',
+                                    'yellow' => 'text-amber-400',
+                                    'red' => 'text-rose-400',
+                                    default => 'text-slate-400'
+                                };
+                            @endphp
+                            <span class="text-xs font-extrabold uppercase tracking-wider {{ $consensusColor }}">
+                                {{ $consensusLabel }}
+                            </span>
+                        @endif
+                    </div>
+
+                    <!-- Vote count bars -->
+                    <div class="flex gap-2 h-2">
+                        @php
+                            $total = $todayReports->count();
+                            $greenCount = $voteCounts->get('green', 0);
+                            $yellowCount = $voteCounts->get('yellow', 0);
+                            $redCount = $voteCounts->get('red', 0);
+                        @endphp
+                        @if($greenCount > 0)
+                            <div class="bg-emerald-500 rounded-full transition-all" style="width: {{ ($greenCount / $total) * 100 }}%" title="{{ __('common.flag_green') }}: {{ $greenCount }}"></div>
+                        @endif
+                        @if($yellowCount > 0)
+                            <div class="bg-amber-500 rounded-full transition-all" style="width: {{ ($yellowCount / $total) * 100 }}%" title="{{ __('common.flag_yellow') }}: {{ $yellowCount }}"></div>
+                        @endif
+                        @if($redCount > 0)
+                            <div class="bg-rose-500 rounded-full transition-all" style="width: {{ ($redCount / $total) * 100 }}%" title="{{ __('common.flag_red') }}: {{ $redCount }}"></div>
+                        @endif
+                    </div>
+
+                    <!-- Vote entries -->
+                    <div class="space-y-1.5 max-h-48 overflow-y-auto scrollbar-none pr-1" data-animate-stagger="0.04">
+                        @foreach($todayReports as $report)
+                            @php
+                                $voteFlagLabel = match($report->flag) {
+                                    'green' => __('common.flag_green'),
+                                    'yellow' => __('common.flag_yellow'),
+                                    'red' => __('common.flag_red'),
+                                    default => ''
+                                };
+                                $voteFlagColor = match($report->flag) {
+                                    'green' => 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+                                    'yellow' => 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+                                    'red' => 'bg-rose-500/15 text-rose-400 border-rose-500/20',
+                                    default => 'bg-slate-500/15 text-slate-400 border-slate-500/20'
+                                };
+                                $isCurrentUser = auth()->check() && $report->user_id === auth()->id();
+                            @endphp
+                            <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-xl transition-colors {{ $isCurrentUser ? 'bg-blue-500/5 border border-blue-500/10' : 'hover:bg-white/[0.02]' }}">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-6 h-6 rounded-full bg-theme-card border border-theme-subtle flex items-center justify-center text-[10px] font-bold text-theme-secondary shrink-0">
+                                        {{ strtoupper(substr($report->user->name ?? '?', 0, 1)) }}
+                                    </span>
+                                    <span class="text-xs font-semibold text-theme truncate {{ $isCurrentUser ? 'text-blue-400' : '' }}">
+                                        {{ $report->user->name ?? __('common.anonymous') }}
+                                        @if($isCurrentUser)
+                                            <span class="text-[9px] text-blue-400 font-bold">(tu)</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-[10px] text-theme-muted font-medium tabular-nums">{{ $report->reported_at->timezone($beach->timezone)->format('H:i') }}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border {{ $voteFlagColor }}">
+                                        {{ $voteFlagLabel }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
-        <!-- Right Column: Details & Forecast (Span 7) -->
-        <div class="lg:col-span-7 space-y-6">
+            <!-- Right Column: Details & Forecast (Span 7) -->
+            <div class="lg:col-span-7 space-y-6">
             <!-- Premium Metrics Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" data-animate-stagger="0.06">
                 <!-- Wave Height -->

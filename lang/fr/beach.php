@@ -13,6 +13,7 @@ return [
     'flag_predicted' => 'Drapeau prévu automatiquement.',
     'flag_off_season' => 'Plage hors saison de baignade.',
     'flag_verified_by' => 'Vérifié par :count utilisateurs',
+    'today_votes_title' => 'Confirmations d\'Aujourd\'hui',
     'flag_report' => 'Signaler le Drapeau',
 
     // Weather
@@ -69,7 +70,9 @@ return [
     'report_confirm_green' => '🟢 Vert ?',
     'report_confirm_yellow' => '🟡 Jaune ?',
     'report_confirm_red' => '🔴 Rouge ?',
-    'report_success' => 'Drapeau confirmé ! Tes points sont en attente jusqu\'à la fermeture de la fenêtre.',
+    'report_success' => 'Drapeau mis à jour ! Ton vote a remplacé le précédent.',
+    'report_success_points' => 'Drapeau mis à jour ! Tu as gagné :points point(s).',
+    'report_same_flag' => 'Tu as déjà voté cette couleur aujourd\'hui. Choisis une couleur différente pour modifier ton vote.',
 
     // Dining
     'dining_title' => '🍴 Où Manger à Proximité',

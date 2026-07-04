@@ -80,3 +80,32 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => caches.match(event.request))
   );
 });
+
+self.addEventListener('push', (event) => {
+  let data = { title: 'CheckPraia', body: '' };
+  try {
+    if (event.data) data = event.data.json();
+  } catch {}
+
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
+    vibrate: data.vibrate || [200, 100, 200],
+    data: data.data || {},
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      const existing = windowClients.find((c) => c.url === url && 'focus' in c);
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});

@@ -13,6 +13,7 @@ return [
     'flag_predicted' => 'Bandeira prevista automaticamente.',
     'flag_off_season' => 'Praia fora da época balnear.',
     'flag_verified_by' => 'Verificado por :count utilizadores',
+    'today_votes_title' => 'Confirmações de Hoje',
     'flag_report' => 'Reportar Bandeira',
 
     // Weather
@@ -69,7 +70,9 @@ return [
     'report_confirm_green' => '🟢 Verde?',
     'report_confirm_yellow' => '🟡 Amarela?',
     'report_confirm_red' => '🔴 Vermelha?',
-    'report_success' => 'Bandeira confirmada! Os teus pontos estão pendentes até ao fecho da janela.',
+    'report_success' => 'Bandeira atualizada! O teu voto substituiu o anterior.',
+    'report_success_points' => 'Bandeira atualizada! Ganhaste :points ponto(s).',
+    'report_same_flag' => 'Já votaste nesta cor hoje. Escolhe uma cor diferente para alterar o teu voto.',
 
     // Dining
     'dining_title' => '🍴 Onde Comer por Perto',

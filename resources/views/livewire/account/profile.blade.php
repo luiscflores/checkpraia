@@ -94,11 +94,12 @@
                     {{ __('profile.referral_description') }}
                 </p>
 
+                @php $referralLink = route('register', ['ref' => auth()->user()->referral_code]); @endphp
                 <div class="bg-theme-card p-4 rounded-2xl border border-theme-subtle space-y-2">
-                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">{{ __('profile.your_code') }}</span>
-                    <div class="flex items-center justify-between bg-theme-card px-3.5 py-2 rounded-xl border border-theme-medium">
-                        <span class="font-mono text-base font-black tracking-widest text-theme select-all">{{ auth()->user()->referral_code }}</span>
-                        <button onclick="navigator.clipboard.writeText('{{ auth()->user()->referral_code }}'); alert('{{ __('profile.code_copied') }}');" class="text-xs text-blue-400 hover:underline">{{ __('profile.copy') }}</button>
+                    <span class="text-xs text-theme-secondary font-bold block uppercase tracking-wider">{{ __('profile.your_link') }}</span>
+                    <div class="flex items-center justify-between bg-theme-card px-3.5 py-2 rounded-xl border border-theme-medium gap-2">
+                        <span class="text-xs text-blue-400 truncate select-all">{{ $referralLink }}</span>
+                        <button onclick="navigator.clipboard.writeText('{{ $referralLink }}'); alert('{{ __('profile.code_copied') }}');" class="shrink-0 text-xs text-blue-400 hover:underline font-semibold">{{ __('profile.copy') }}</button>
                     </div>
                 </div>
 

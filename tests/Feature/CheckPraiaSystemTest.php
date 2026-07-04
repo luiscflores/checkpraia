@@ -11,7 +11,6 @@ use App\Models\ScoreTransaction;
 use App\Models\BeachCurrentStatus;
 use App\Models\FlagPrediction;
 use App\Jobs\PurgePreciseLocations;
-use App\Jobs\CloseConsensusWindows;
 use App\Domain\Community\ConsensusResolver;
 use App\Domain\Gamification\ScoreManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,8 +187,11 @@ class CheckPraiaSystemTest extends TestCase
         $rC = FlagReport::create(['user_id' => $uC->id, 'beach_id' => $this->beach->id, 'flag' => 'yellow', 'status' => 'pending', 'distance_to_beach' => 0.1, 'reported_at' => now()->subMinutes(65)]);
         $rD = FlagReport::create(['user_id' => $uD->id, 'beach_id' => $this->beach->id, 'flag' => 'green', 'status' => 'pending', 'reported_at' => now()->subMinutes(65), 'distance_to_beach' => 0.1]);
 
-        // Resolve consensus windows
-        CloseConsensusWindows::dispatchSync();
+        // Resolve each report individually (consensus no longer runs as a deferred job)
+        $resolver = new \App\Domain\Community\ConsensusResolver();
+        foreach ([$rA, $rB, $rC, $rD] as $r) {
+            $resolver->resolveReport($r);
+        }
 
         // D's report should be rejected/penalized
         $rD->refresh();
