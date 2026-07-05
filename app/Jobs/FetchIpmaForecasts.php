@@ -19,6 +19,8 @@ class FetchIpmaForecasts implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
     protected ?Beach $beach;
 
     public function __construct(?Beach $beach = null)
@@ -28,21 +30,22 @@ class FetchIpmaForecasts implements ShouldQueue
 
     public function handle(): void
     {
-        $beaches = $this->beach ? collect([$this->beach]) : Beach::where('is_active', true)->get();
-
-        if (!$this->beach) {
-            Setting::set('last_ipma_sync', now()->toIso8601String());
-        }
-
-        foreach ($beaches as $beach) {
+        if ($this->beach) {
             try {
-                $this->processBeach($beach);
-            } catch (\Exception $e) {
-                logger()->warning('IPMA forecast failed for beach ' . $beach->id, [
+                $this->processBeach($this->beach);
+            } catch (\Throwable $e) {
+                logger()->warning('IPMA forecast failed for beach ' . $this->beach->id, [
                     'error' => $e->getMessage(),
                 ]);
             }
+            return;
         }
+
+        Setting::set('last_ipma_sync', now()->toIso8601String());
+
+        Beach::where('is_active', true)->each(function (Beach $beach) {
+            self::dispatch($beach);
+        });
     }
 
     /**

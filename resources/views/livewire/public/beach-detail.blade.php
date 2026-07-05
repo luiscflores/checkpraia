@@ -920,7 +920,6 @@
 
     @script
         <script>
-            document.addEventListener('alpine:init', () => {
             Alpine.data('beachDetailHandler', () => ({
                 locating: false,
                 mapInstance: null,
@@ -1016,7 +1015,6 @@
                     );
                 }
             }));
-            });
         </script>
     @endscript
 </div>
