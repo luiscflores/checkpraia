@@ -1,7 +1,7 @@
-const VERSION = 'checkpraia-v3';
-const TILE_CACHE = 'checkpraia-tiles-v3';
-const STATIC_CACHE = 'checkpraia-static-v3';
-const PAGE_CACHE = 'checkpraia-pages-v3';
+const VERSION = 'checkpraia-v4';
+const TILE_CACHE = 'checkpraia-tiles-v4';
+const STATIC_CACHE = 'checkpraia-static-v4';
+const PAGE_CACHE = 'checkpraia-pages-v4';
 
 const MAX_TILES = 500;
 
@@ -132,18 +132,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Navigational requests (pages): stale-while-revalidate
+  // 4. Navigational requests (pages): network-first
   if (isNavigationalRequest(request)) {
     event.respondWith(
-      caches.open(PAGE_CACHE).then((cache) =>
-        cache.match(request).then((cached) => {
-          const fetchPromise = fetch(request).then((response) => {
-            if (response.ok) cache.put(request, response.clone());
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(PAGE_CACHE).then((cache) => cache.put(request, cloned));
             return response;
-          }).catch(() => cached);
-          return cached || fetchPromise || new Response('', { status: 504 });
+          }
+          return caches.match(request).then((cached) => {
+            return cached || response;
+          });
         })
-      )
+        .catch(() => {
+          return caches.match(request).then((cached) => {
+            return cached || caches.match('/offline') || new Response('', { status: 504 });
+          });
+        })
     );
     return;
   }
