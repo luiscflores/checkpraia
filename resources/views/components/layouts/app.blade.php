@@ -274,7 +274,7 @@
             <link rel="modulepreload" href="{{ asset('build/' . $manifest['resources/js/app.js']['file']) }}">
         @endif
     @endif
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
     @livewireStyles
 
     @if(config('ads.publisher_id'))

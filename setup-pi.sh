@@ -118,7 +118,7 @@ if [ -f package.json ]; then
     rm -rf node_modules
 fi
 
-php artisan migrate --force
+php artisan migrate --force --seed
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -165,15 +165,21 @@ HOOK
     echo "Para fazer push direto: git push pi main"
 fi
 
-# ── 12. Corrigir permissoes para o nginx/www-data ────────────────────────
-echo "=== 12. Corrigir permissoes ==="
+# ── 12. Adicionar utilizador ao grupo www-data ──────────────────────────
+echo "=== 12. Adicionar $PI_USER ao grupo www-data ==="
+
+sudo usermod -aG www-data "$PI_USER"
+echo "Utilizador $PI_USER adicionado ao grupo www-data."
+
+# ── 13. Corrigir permissoes ──────────────────────────────────────────────
+echo "=== 13. Corrigir permissoes ==="
 
 sudo chmod +x "/home/$PI_USER"
-sudo chown -R www-data:www-data "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
-sudo chmod -R 775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
+sudo chown -R "$PI_USER":www-data "$WORK_TREE"
+sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
 
-# ── 13. Arrancar servicos ────────────────────────────────────────────────
-echo "=== 13. Arrancar servicos ==="
+# ── 14. Arrancar servicos ────────────────────────────────────────────────
+echo "=== 14. Arrancar servicos ==="
 
 sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor
 sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor

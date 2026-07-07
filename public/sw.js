@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         }).catch(() => cached);
-        return cached || fetchPromise;
+        return cached || fetchPromise || new Response('', { status: 504 });
       })
     );
     return;
@@ -124,8 +124,8 @@ self.addEventListener('fetch', (event) => {
           const fetched = fetch(request).then((response) => {
             if (response.ok) cache.put(request, response.clone());
             return response;
-          });
-          return cached || fetched;
+          }).catch(() => cached);
+          return cached || fetched || new Response('', { status: 504 });
         })
       )
     );
@@ -141,7 +141,7 @@ self.addEventListener('fetch', (event) => {
             if (response.ok) cache.put(request, response.clone());
             return response;
           }).catch(() => cached);
-          return cached || fetchPromise;
+          return cached || fetchPromise || new Response('', { status: 504 });
         })
       )
     );
@@ -156,7 +156,9 @@ self.addEventListener('fetch', (event) => {
         caches.open(PAGE_CACHE).then((cache) => cache.put(request, cloned)).catch(() => {});
       }
       return response;
-    }).catch(() => caches.match(request))
+    }).catch(() =>
+      caches.match(request).then((cached) => cached || new Response('', { status: 504 }))
+    )
   );
 });
 

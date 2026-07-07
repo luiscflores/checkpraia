@@ -1,3 +1,5 @@
+import '../css/app.css';
+
 // CheckPraia - Shared UI Interactions
 // Performance-optimised: all init deferred to avoid blocking LCP
 

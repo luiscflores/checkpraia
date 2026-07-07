@@ -9,10 +9,6 @@ cd "$APP_DIR"
 
 echo ">>> Deploy: $APP_DIR"
 
-# Ensure pi owns everything before git pull (git needs write access)
-sudo chown -R pi:pi . 2>/dev/null || true
-chmod -R u+rwX . 2>/dev/null || true
-
 git fetch origin main
 git reset --hard origin/main
 
@@ -34,15 +30,13 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run build
 rm -rf node_modules
 
-php artisan migrate --force
+php artisan migrate --force --seed
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan storage:link --no-interaction 2>/dev/null || true
 
-# www-data needs write access to storage/cache/database
-sudo chown -R www-data:www-data storage bootstrap/cache database 2>/dev/null || true
-sudo chmod -R 775 storage bootstrap/cache database 2>/dev/null || true
+sudo chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true
 
 sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null || sudo systemctl restart "$PHP_FPM_SERVICE"
 
