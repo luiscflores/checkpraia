@@ -182,7 +182,7 @@
                           x-text="i + 1"></span>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate">
-                            <span x-show="beach.beachcam_slug" class="inline-block mr-0.5 shrink-0">📹</span>
+                            <span x-show="beach.beachcam_slug" class="inline-block mr-1 shrink-0 bg-amber-600/20 border border-amber-500/25 text-amber-400 text-[10px] px-1.5 py-0.5 rounded-md font-bold leading-none">📹</span>
                             <span x-text="beach.name"></span>
                         </p>
                         <p class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
@@ -249,7 +249,6 @@
                     <div class="flex items-start justify-between gap-2.5 relative z-10">
                         <div class="min-w-0 flex-1">
                             <h2 class="font-extrabold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate tracking-tight">
-                                @if($beach['beachcam_slug'])<span class="inline-block mr-1 shrink-0" title="Tem câmara ao vivo">📹</span>@endif
                                 {{ $beach['name'] }}
                             </h2>
                             <div class="flex items-center gap-1 mt-0.5 text-xs text-slate-400 font-medium">
@@ -310,6 +309,11 @@
                         @if($beach['accessible'])
                             <span class="bg-teal-600/15 border border-teal-500/20 text-teal-400 text-[11px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
                                 {{ __('common.flag_accessible') }}
+                            </span>
+                        @endif
+                        @if($beach['beachcam_slug'])
+                            <span class="bg-amber-600/15 border border-amber-500/20 text-amber-400 text-[11px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                                📹 {{ __('common.flag_webcam') }}
                             </span>
                         @endif
 

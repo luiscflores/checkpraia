@@ -55,6 +55,7 @@ return [
     'flag_confirmed' => 'Confirmed',
     'flag_blue_flag' => 'Blue Flag',
     'flag_accessible' => 'Accessible',
+    'flag_webcam' => 'Live Cam',
     'flag_all' => 'All',
 
     // Weather

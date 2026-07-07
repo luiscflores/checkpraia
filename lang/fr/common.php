@@ -55,6 +55,7 @@ return [
     'flag_confirmed' => 'Confirmé',
     'flag_blue_flag' => 'Pavillon Bleu',
     'flag_accessible' => 'Accessible',
+    'flag_webcam' => 'Webcam En Direct',
     'flag_all' => 'Toutes',
 
     // Weather
