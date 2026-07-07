@@ -30,7 +30,12 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run build
 rm -rf node_modules
 
-php artisan migrate --force --seed
+# Only seed if no beaches exist (first deploy)
+BEACH_COUNT=$(php -r 'try { echo \App\Models\Beach::count(); } catch (\Throwable $e) { echo "0"; }' 2>/dev/null || echo "0")
+php artisan migrate --force
+if [ "$BEACH_COUNT" = "0" ]; then
+    php artisan db:seed --force
+fi
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
