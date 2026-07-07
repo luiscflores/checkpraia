@@ -10,6 +10,7 @@ return [
     'flag_title' => 'Drapeau Actuel',
     'flag_official' => 'Collecte officielle de données côtières.',
     'flag_community' => 'Avec confirmation de la communauté.',
+    'flag_user_vote' => "Vote de l'Utilisateur",
     'flag_predicted' => 'Drapeau prévu automatiquement.',
     'flag_off_season' => 'Plage hors saison de baignade.',
     'flag_verified_by' => 'Vérifié par :count utilisateurs',

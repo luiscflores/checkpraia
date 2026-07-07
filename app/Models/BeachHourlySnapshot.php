@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'beach_id', 'flag', 'source', 'confidence',
     'wave_height', 'wind_speed', 'water_temp', 'air_temp',
-    'water_quality', 'captured_at'
+    'water_quality', 'captured_at', 'vote_time'
 ])]
 class BeachHourlySnapshot extends Model
 {
@@ -21,6 +21,7 @@ class BeachHourlySnapshot extends Model
             'water_temp' => 'decimal:1',
             'air_temp' => 'decimal:1',
             'captured_at' => 'datetime',
+            'vote_time' => 'datetime',
         ];
     }
 

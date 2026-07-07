@@ -11,19 +11,28 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function login(): void
     {
-        $this->validate();
+        try {
+            $this->validate();
 
-        $user = \App\Models\User::where('email', $this->form->email)->first();
-        if ($user && $user->is_suspended) {
-            $this->addError('form.email', __('auth.login.suspended_error'));
-            return;
+            $user = \App\Models\User::where('email', $this->form->email)->first();
+            if ($user && $user->is_suspended) {
+                $this->addError('form.email', __('auth.login.suspended_error'));
+                return;
+            }
+
+            $this->form->authenticate();
+
+            Session::regenerate();
+
+            $this->redirectIntended(default: route('profile', absolute: false));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('LOGIN_ERROR: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
-
-        $this->form->authenticate();
-
-        Session::regenerate();
-
-        $this->redirectIntended(default: route('profile', absolute: false));
     }
 }; ?>
 

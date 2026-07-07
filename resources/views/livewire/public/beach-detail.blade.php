@@ -423,6 +423,9 @@
                                 $dotColor = $flagColors[$snapshot->flag] ?? 'bg-slate-500';
                                 $changed = $prevFlag && $prevFlag !== $snapshot->flag;
                                 $prevFlag = $snapshot->flag;
+                                $displayTime = $snapshot->vote_time 
+                                    ? $snapshot->vote_time->timezone($beach->timezone) 
+                                    : $snapshot->captured_at->timezone($beach->timezone);
                             @endphp
                             <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]">
                                 @if($changed)
@@ -431,9 +434,16 @@
                                     <div class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full {{ $dotColor }} ring-2 ring-theme-card opacity-60"></div>
                                 @endif
                                 <div class="flex items-center justify-between">
-                                    <span class="text-[11px] text-theme-muted font-medium tabular-nums">
-                                        {{ $snapshot->captured_at->timezone($beach->timezone)->format('H:i') }}
-                                    </span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[11px] text-theme-muted font-medium tabular-nums">
+                                            {{ $displayTime->format('H:i') }}
+                                        </span>
+                                        @if($snapshot->source === 'community')
+                                            <span class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-500/20 bg-blue-500/10 text-blue-400">
+                                                👤 {{ __('beach.flag_user_vote') }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border {{ $dotColor }} text-white">
                                         @switch($snapshot->flag)
                                             @case('green') {{ __('common.flag_green') }} @break

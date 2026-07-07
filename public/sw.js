@@ -64,7 +64,8 @@ function isStaticAsset(url) {
       u.pathname.startsWith('/storage/') ||
       u.pathname.startsWith('/icon-') ||
       u.pathname === '/favicon.ico' ||
-      u.pathname === '/manifest.json'
+      u.pathname === '/manifest.json' ||
+      u.pathname === '/logo.png'
     );
   } catch {
     return false;

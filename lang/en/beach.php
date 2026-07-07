@@ -10,6 +10,7 @@ return [
     'flag_title' => 'Current Flag',
     'flag_official' => 'Official coastal data collection.',
     'flag_community' => 'With community confirmation.',
+    'flag_user_vote' => 'User Vote',
     'flag_predicted' => 'Automatically predicted flag.',
     'flag_off_season' => 'Beach is out of swimming season.',
     'flag_verified_by' => 'Verified by :count users',

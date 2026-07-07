@@ -6,20 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('locale', 2)->nullable()->after('referral_code');
+        Schema::table('beach_hourly_snapshots', function (Blueprint $table) {
+            $table->dateTime('vote_time')->nullable()->after('captured_at');
         });
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('locale');
+        Schema::table('beach_hourly_snapshots', function (Blueprint $table) {
+            $table->dropColumn('vote_time');
         });
     }
 };

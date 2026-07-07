@@ -10,6 +10,7 @@ return [
     'flag_title' => 'Bandeira Actual',
     'flag_official' => 'Recolha oficial de dados costeiros.',
     'flag_community' => 'Com confirmação da comunidade.',
+    'flag_user_vote' => 'Voto de Utilizador',
     'flag_predicted' => 'Bandeira prevista automaticamente.',
     'flag_off_season' => 'Praia fora da época balnear.',
     'flag_verified_by' => 'Verificado por :count utilizadores',

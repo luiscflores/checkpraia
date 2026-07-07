@@ -168,16 +168,16 @@ class Home extends Component
         }
 
         $query = Beach::select(['id', 'name', 'slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
-            ->with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast'])
+            ->with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast', 'translations'])
             ->where('is_active', true);
 
         if ($this->search) {
-            $searchVal = '%'.strtolower(trim($this->search)).'%';
+            $searchVal = '%'.trim($this->search).'%';
             $query->where(function ($q) use ($searchVal) {
-                $q->where(DB::raw('lower(name)'), 'like', $searchVal)
-                    ->orWhere(DB::raw('lower(municipality)'), 'like', $searchVal)
-                    ->orWhere(DB::raw('lower(district)'), 'like', $searchVal)
-                    ->orWhere(DB::raw('lower(region)'), 'like', $searchVal);
+                $q->where('name', 'like', $searchVal)
+                    ->orWhere('municipality', 'like', $searchVal)
+                    ->orWhere('district', 'like', $searchVal)
+                    ->orWhere('region', 'like', $searchVal);
             });
         }
 

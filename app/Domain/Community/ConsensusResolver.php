@@ -26,8 +26,10 @@ class ConsensusResolver
         $status->updated_at = now();
 
         // 1. Official alerts (absolute priority)
-        $alert = OfficialAlert::where('beach_id', $beach->id)
-            ->orWhereNull('beach_id')
+        $alert = OfficialAlert::where(function ($query) use ($beach) {
+                $query->where('beach_id', $beach->id)
+                      ->orWhereNull('beach_id');
+            })
             ->where('started_at', '<=', now())
             ->where(function ($q) {
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
@@ -41,12 +43,12 @@ class ConsensusResolver
                 'consensus_reports_count' => 0,
                 'reason' => 'Interdição oficial da autoridade: ' . $alert->description,
             ]);
-            $status->save();
-            return $status;
+            return $this->saveAndCapture($status, $beach);
         }
 
         // 2. Daily community consensus (all non-cancelled votes from today override algorithm)
-        $todayStart = now()->startOfDay();
+        $beachTimezone = $beach->timezone;
+        $todayStart = now($beachTimezone)->startOfDay()->timezone(config('app.timezone'));
         $todayReports = FlagReport::where('beach_id', $beach->id)
             ->where('reported_at', '>=', $todayStart)
             ->where('status', '!=', 'cancelled')
@@ -100,8 +102,7 @@ class ConsensusResolver
                 'consensus_reports_count' => $totalVotes,
                 'reason' => $reason,
             ]);
-            $status->save();
-            return $status;
+            return $this->saveAndCapture($status, $beach);
         }
 
         // 3. Fallback to automatic prediction
@@ -135,8 +136,7 @@ class ConsensusResolver
             }
         }
 
-        $status->save();
-        return $status;
+        return $this->saveAndCapture($status, $beach);
     }
 
     private function buildPredictionReason(Beach $beach, FlagPrediction $prediction): string
@@ -249,5 +249,43 @@ class ConsensusResolver
         $report->save();
 
         $this->scoreManager->addReportPoints($report);
+    }
+
+    private function saveAndCapture(BeachCurrentStatus $status, Beach $beach): BeachCurrentStatus
+    {
+        $status->save();
+        $this->captureSnapshotForBeach($beach, $status);
+        return $status;
+    }
+
+    public function captureSnapshotForBeach(Beach $beach, BeachCurrentStatus $status): void
+    {
+        $now = now();
+        $capturedAt = $now->copy()->startOfHour();
+
+        $ocean = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $latestQuality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)
+            ->orderBy('sampled_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        \App\Models\BeachHourlySnapshot::updateOrCreate(
+            [
+                'beach_id' => $beach->id,
+                'captured_at' => $capturedAt,
+            ],
+            [
+                'flag' => $status->flag,
+                'source' => $status->source,
+                'confidence' => $status->confidence,
+                'wave_height' => $ocean ? (($ocean->wave_height_min + $ocean->wave_height_max) / 2) : null,
+                'wind_speed' => $weather?->wind_speed,
+                'water_temp' => $ocean?->water_temp,
+                'air_temp' => $weather?->temp,
+                'water_quality' => $latestQuality?->quality_class,
+                'vote_time' => $status->source === 'community' ? $now : null,
+            ]
+        );
     }
 }

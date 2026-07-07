@@ -274,7 +274,7 @@
             <link rel="modulepreload" href="{{ asset('build/' . $manifest['resources/js/app.js']['file']) }}">
         @endif
     @endif
-    @vite(['resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
     @if(config('ads.publisher_id'))
@@ -314,38 +314,37 @@
                 <a href="{{ route('home') }}" class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
                     <img src="{{ asset('logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
                 </a>
-
                 <!-- Desktop Navigation Menu -->
                 <nav class="hidden md:flex items-center gap-4 lg:gap-6" aria-label="{{ __('common.nav_map') }}">
                     @if(request()->routeIs('home*'))
-                        <span class="relative text-xs font-bold uppercase tracking-wider text-blue-400 font-extrabold" aria-current="page">
+                        <span class="relative text-xs font-bold uppercase tracking-wider text-blue-400" aria-current="page">
                             {{ __('common.nav_map') }}
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         </span>
                     @else
-                        <a href="{{ route('home') }}#map" class="relative text-xs font-bold uppercase tracking-wider text-theme-secondary hover:text-theme hover:scale-105">
+                        <a href="{{ route('home') }}#map" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 text-theme-secondary hover:text-theme hover:scale-105 focus:outline-none">
                             {{ __('common.nav_map') }}
                         </a>
                     @endif
-                    <a href="{{ route('rankings') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('rankings') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_rankings') }}
                         @if(request()->routeIs('rankings*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('profile') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('profile') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_profile') }}
                         @if(request()->routeIs('profile*') || request()->routeIs('account.*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('about') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('about*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('about*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('about') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('about*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('about*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_about') }}
                         @if(request()->routeIs('about*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('contact') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('contact*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('contact*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('contact') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('contact*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('contact*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_contact') }}
                         @if(request()->routeIs('contact*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
@@ -353,7 +352,7 @@
                     </a>
                     @auth
                         @if(auth()->user()->is_admin)
-                            <a href="{{ route('admin.dashboard') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
+                            <a href="{{ route('admin.dashboard') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
                                 {{ __('common.nav_admin') }}
                                 @if(request()->routeIs('admin.*'))
                                     <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
@@ -425,17 +424,17 @@
                             <span aria-hidden="true">🏆</span> {{ auth()->user()->score }}
                         </span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] transition-all hover:border-blue-500/40 cursor-pointer" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
+                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] transition-all hover:border-blue-500/40 cursor-pointer focus:outline-none" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
                                 <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline"><span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 8, '') }}</span>
                             </button>
                             <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1.5 w-44 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
-                                <a href="{{ route('profile') }}" @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme">
+                                <a href="{{ route('profile') }}" @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme focus:outline-none">
                                     <span aria-hidden="true">👤</span> {{ __('common.nav_profile') }}
                                 </a>
                                 <hr class="border-theme-subtle">
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
-                                    <button type="submit" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-red-400">
+                                    <button type="submit" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-red-400 focus:outline-none">
                                         <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
                                         {{ __('common.nav_logout') }}
                                     </button>
@@ -443,7 +442,7 @@
                             </div>
                         </div>
                     @else
-                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95">
+                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 focus:outline-none">
                             {{ __('common.nav_login') }}
                         </a>
                     @endauth

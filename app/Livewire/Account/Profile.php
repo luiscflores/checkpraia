@@ -107,7 +107,10 @@ class Profile extends Component
 
         // Fetch user visit reports
         $reports = FlagReport::select(['id', 'beach_id', 'flag', 'status', 'distance_to_beach', 'gps_accuracy', 'reported_at', 'resolved_at'])
-            ->with('beach:id,name,slug,latitude,longitude,region,municipality')
+            ->with(['beach' => function ($q) {
+                $q->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality'])
+                  ->with('translations');
+            }])
             ->where('user_id', $user->id)
             ->orderBy('reported_at', 'desc')
             ->take(50)
@@ -116,7 +119,7 @@ class Profile extends Component
         // Fetch user favorites
         $favorites = $user->favorites()
             ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality', 'blue_flag', 'accessible', 'is_active'])
-            ->with('currentStatus')
+            ->with(['currentStatus', 'translations'])
             ->get();
 
         // Fetch referral invitations counts

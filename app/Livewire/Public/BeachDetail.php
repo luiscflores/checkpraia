@@ -18,22 +18,12 @@ use Livewire\Component;
 
 class BeachDetail extends Component
 {
-    public $todayReports;
-
     private function voteCooldownMinutes(): int
     {
         return (int) config('gamification.report.cooldown_minutes', 60);
     }
 
-    private function loadTodayReports(): void
-    {
-        $this->todayReports = FlagReport::where('beach_id', $this->beachId)
-            ->where('reported_at', '>=', now()->startOfDay())
-            ->where('status', '!=', 'cancelled')
-            ->with('user')
-            ->orderBy('reported_at', 'desc')
-            ->get();
-    }
+
 
     private function maxDistanceKm(): float
     {
@@ -174,8 +164,6 @@ class BeachDetail extends Component
             logger()->error('Push notification failed', ['error' => $e->getMessage()]);
         }
 
-        $this->loadTodayReports();
-
         $points = $report->scoreTransaction?->points;
         $msg = $points
             ? __('beach.report_success_points', ['points' => $points])
@@ -192,18 +180,26 @@ class BeachDetail extends Component
 
     public function render()
     {
-        $this->loadTodayReports();
-
         $beach = Beach::with([
             'currentStatus',
             'translations',
             'services',
             'features',
-            'restaurants',
+            'restaurants' => fn ($q) => $q->take(6),
             'latestOceanForecast',
             'latestWeatherForecast',
             'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
         ])->findOrFail($this->beachId);
+
+        $beachTimezone = $beach->timezone;
+        $startOfDay = now($beachTimezone)->startOfDay()->timezone(config('app.timezone'));
+
+        $todayReports = FlagReport::where('beach_id', $this->beachId)
+            ->where('reported_at', '>=', $startOfDay)
+            ->where('status', '!=', 'cancelled')
+            ->with('user')
+            ->orderBy('reported_at', 'desc')
+            ->get();
 
         $latestOcean = $beach->latestOceanForecast;
         $latestWeather = $beach->latestWeatherForecast;
@@ -213,7 +209,7 @@ class BeachDetail extends Component
             ->first();
 
         $todaySnapshots = BeachHourlySnapshot::where('beach_id', $this->beachId)
-            ->where('captured_at', '>=', now()->startOfDay())
+            ->where('captured_at', '>=', $startOfDay)
             ->orderBy('captured_at')
             ->get();
 
@@ -285,6 +281,7 @@ class BeachDetail extends Component
         $tidesTomorrow = $tides->filter(fn ($t) => $t->tide_time->isTomorrow());
 
         return view('livewire.public.beach-detail', [
+            'todayReports' => $todayReports,
             'beach' => $beach,
             'ocean' => $latestOcean,
             'weather' => $latestWeather,

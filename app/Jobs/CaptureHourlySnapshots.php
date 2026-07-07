@@ -58,7 +58,11 @@ class CaptureHourlySnapshots implements ShouldQueue
             ];
         }
 
-        BeachHourlySnapshot::insert($snapshots);
+        BeachHourlySnapshot::upsert(
+            $snapshots,
+            ['beach_id', 'captured_at'],
+            ['flag', 'source', 'confidence', 'wave_height', 'wind_speed', 'water_temp', 'air_temp', 'water_quality', 'updated_at']
+        );
         BeachHourlySnapshot::where('captured_at', '<', $now->copy()->startOfDay())->delete();
     }
 }
