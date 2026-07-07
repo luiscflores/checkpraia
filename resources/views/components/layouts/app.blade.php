@@ -22,6 +22,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta http-equiv="Accept-CH" content="DPR, Width, Viewport-Width">
 
     <title>@yield('title', __('common.site_name') . ' - ' . __('common.site_description'))</title>
     <meta name="description" content="@yield('meta_description', __('common.meta_description'))">
@@ -67,8 +68,9 @@
     <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
     <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <!-- Leaflet CSS (non-blocking: print media, then switch to all after load) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""></noscript>
 
     <!-- Structured Data (JSON-LD) -->
     @section('ld_json')
@@ -249,6 +251,12 @@
         [data-theme="light"] .text-blue-300 { color: #2563eb; }
     </style>
 
+    @if(app()->environment('production'))
+        @php $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true); @endphp
+        @if(isset($manifest['resources/js/app.js']['file']))
+            <link rel="modulepreload" href="{{ asset('build/' . $manifest['resources/js/app.js']['file']) }}">
+        @endif
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
@@ -267,10 +275,10 @@
     <div class="w-full flex-1 flex flex-col relative">
 
         <!-- Header -->
-        <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300" role="banner">
-            <div class="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 flex items-center justify-between">
+        <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300 pt-safe" role="banner">
+            <div class="w-full max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-3 flex items-center justify-between pl-safe pr-safe">
                 <a href="{{ route('home') }}" class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
-                    <img src="{{ asset('storage/logo.png') }}" alt="{{ __('common.site_name') }}" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105">
+                    <img src="{{ asset('storage/logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
                 </a>
 
                 <!-- Desktop Navigation Menu -->
@@ -406,7 +414,7 @@
         </header>
 
         <!-- Main Content Area -->
-        <main id="main-content" class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-6 pb-28 md:pb-12" role="main">
+        <main id="main-content" class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-6 pb-32 md:pb-12 pb-safe" role="main">
             {{ $slot }}
 
             <!-- Footer Area -->
@@ -431,11 +439,40 @@
             </footer>
         </main>
 
+        <!-- PWA Install Banner -->
+        <div x-data="pwaInstallHandler()"
+             x-show="showInstall && !dismissed"
+             x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-4"
+             class="fixed bottom-20 md:bottom-4 left-0 right-0 z-[55] mx-auto max-w-sm px-4 pb-safe"
+             role="alert">
+            <div class="bg-theme-card backdrop-blur-xl border border-blue-500/20 rounded-2xl shadow-2xl p-4 flex items-center gap-3">
+                <img src="/icon-192.png" alt="CheckPraia" class="w-12 h-12 rounded-xl shrink-0 shadow-lg">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-theme truncate">{{ __('common.pwa_install_title') }}</p>
+                    <p class="text-xs text-theme-secondary leading-tight mt-0.5">{{ __('common.pwa_install_description') }}</p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button @click="dismiss()" class="text-xs font-semibold text-theme-secondary hover:text-theme px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                        {{ __('common.pwa_install_dismiss') }}
+                    </button>
+                    <button @click="install()" class="text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-2 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95">
+                        {{ __('common.pwa_install_button') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Sticky Bottom Ad Banner (mobile only) -->
-        <x-ads.slot slot="sticky_bottom" className="fixed bottom-14 left-0 right-0 z-40 md:hidden" />
+        <x-ads.slot slot="sticky_bottom" className="fixed bottom-14 left-0 right-0 z-40 md:hidden pb-safe" />
 
         <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
-        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1 px-0.5 pb-safe md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
+        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1 px-0.5 pb-safe md:hidden pl-safe pr-safe shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
             @php $navItems = [
                 ['route' => 'home', 'icon' => '🗺️', 'label' => 'nav_mobile_map', 'pattern' => 'home*', 'color' => 'blue'],
                 ['route' => 'rankings', 'icon' => '🏆', 'label' => 'nav_mobile_rankings', 'pattern' => 'rankings*', 'color' => 'blue'],
@@ -475,10 +512,21 @@
                 </a>
             @endguest
         </nav>
+
+        <!-- Livewire Loading Indicator -->
+        <div wire:loading class="livewire-loading-bar"></div>
+
+        <!-- Global Toast (share/copy feedback) -->
+        <div x-data="appToast()" x-show="show" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] max-w-xs w-full mx-auto px-4 pointer-events-none" role="status">
+            <div class="bg-slate-800/90 backdrop-blur-md text-white text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-slate-600/30 flex items-center gap-2.5">
+                <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span x-text="message" class="flex-1"></span>
+            </div>
+        </div>
     </div>
 
-    <!-- Leaflet Map Script -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Map Script (deferred to avoid blocking) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
 
     <!-- ARIA live region for dynamic notifications -->
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="notification-aria"></div>
@@ -505,6 +553,39 @@
                 init() {
                     const saved = localStorage.getItem('checkpraia-theme');
                     document.documentElement.setAttribute('data-theme', saved || 'dark');
+                }
+            }));
+
+            Alpine.data('notificationPrompter', () => ({
+                show: false,
+                dismissed: false,
+
+                init() {
+                    if (localStorage.getItem('checkpraia-notification-prompt-dismissed')) {
+                        this.dismissed = true;
+                        return;
+                    }
+                    if (Notification.permission === 'granted') return;
+                    if (Notification.permission === 'denied') return;
+                    window.addEventListener('report-submitted', () => {
+                        setTimeout(() => { if (!this.dismissed) this.show = true; }, 2000);
+                    }, { once: true });
+                },
+
+                dismiss() {
+                    this.show = false;
+                    this.dismissed = true;
+                    localStorage.setItem('checkpraia-notification-prompt-dismissed', '1');
+                },
+
+                async enable() {
+                    this.show = false;
+                    this.dismissed = true;
+                    localStorage.setItem('checkpraia-notification-prompt-dismissed', '1');
+                    const handler = Alpine.$data(document.querySelector('[x-data="pushHandler"]'));
+                    if (handler && !handler.subscribed) {
+                        await handler.subscribe();
+                    }
                 }
             }));
 
@@ -633,13 +714,77 @@
                 },
             }));
 
+            Alpine.data('pwaInstallHandler', () => ({
+                deferredPrompt: null,
+                showInstall: false,
+                dismissed: false,
+
+                init() {
+                    if (this._isStandalone()) return;
+
+                    const dismissed = localStorage.getItem('checkpraia-pwa-dismissed');
+                    if (dismissed) { this.dismissed = true; return; }
+
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        e.preventDefault();
+                        this.deferredPrompt = e;
+                        this.showInstall = true;
+                    });
+
+                    window.addEventListener('appinstalled', () => {
+                        this.showInstall = false;
+                        this.deferredPrompt = null;
+                        localStorage.setItem('checkpraia-pwa-installed', '1');
+                    });
+                },
+
+                _isStandalone() {
+                    return window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone === true
+                        || localStorage.getItem('checkpraia-pwa-installed') === '1';
+                },
+
+                async install() {
+                    if (!this.deferredPrompt) return;
+                    this.deferredPrompt.prompt();
+                    const result = await this.deferredPrompt.userChoice;
+                    this.deferredPrompt = null;
+                    this.showInstall = false;
+                    if (result.outcome === 'accepted') {
+                        localStorage.setItem('checkpraia-pwa-installed', '1');
+                    }
+                },
+
+                dismiss() {
+                    this.showInstall = false;
+                    this.dismissed = true;
+                    localStorage.setItem('checkpraia-pwa-dismissed', '1');
+                }
+            }));
+
+            Alpine.data('appToast', () => ({
+                show: false,
+                message: '',
+                timer: null,
+                init() {
+                    window.addEventListener('toast', (e) => {
+                        if (this.timer) clearTimeout(this.timer);
+                        this.message = e.detail.message;
+                        this.show = true;
+                        this.timer = setTimeout(() => { this.show = false; }, 3000);
+                    });
+                }
+            }));
+
             Alpine.data('appShareHandler', () => ({
                 async share() {
                     const url = '{{ url('/') }}';
                     const title = '{{ __('profile.share_app_title') }}';
                     const text = '{{ __('profile.share_app_text') }}';
                     const result = await shareViaAPI({ title, text, url });
-                    if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+                    if (result === 'copied') {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: '{{ __('profile.share_copied') }}' } }));
+                    }
                 },
                 async downloadCard() {
                     const c = document.createElement('canvas'); c.width = 600; c.height = 314;
@@ -672,7 +817,9 @@
                         .replace(':position', this.position)
                         .replace(':score', this.score);
                     const result = await shareViaAPI({ title, text, url });
-                    if (result === 'copied') alert('{{ __('profile.share_copied') }}');
+                    if (result === 'copied') {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: '{{ __('profile.share_copied') }}' } }));
+                    }
                 },
                 toggleCard() {
                     this.showCard = !this.showCard;
@@ -781,5 +928,36 @@
     </script>
 
     @livewireScripts
+
+    {{-- Notification permission prompt (shows after first report) --}}
+    <div x-data="notificationPrompter"
+         x-show="show"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-8"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-8"
+         class="fixed bottom-24 sm:bottom-8 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 glass-card rounded-2xl border border-blue-500/30 p-5 shadow-2xl shadow-blue-500/10"
+         role="alert">
+        <button @click="dismiss()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-200 transition-colors p-1" aria-label="Fechar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="flex items-start gap-3">
+            <span class="text-2xl shrink-0">🔔</span>
+            <div>
+                <p class="text-sm font-bold text-theme mb-1">{{ __('common.push_enable') }}</p>
+                <p class="text-xs text-theme-secondary leading-relaxed">{{ __('common.push_enable_description') }}</p>
+                <div class="flex gap-2 mt-3">
+                    <button @click="enable()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95">
+                        {{ __('common.push_enable') }}
+                    </button>
+                    <button @click="dismiss()" class="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium">
+                        {{ __('common.no_thanks') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -164,6 +164,13 @@ return [
     'push_test_sent' => 'Test notification sent!',
     'push_test_failed' => 'Failed to send test notification.',
     'push_nearby_km' => 'Within :km km of your location',
+    'no_thanks' => 'No thanks',
+    // PWA Install
+    'pwa_install_title' => 'Install CheckPraia',
+    'pwa_install_description' => 'Install the app for a better experience and offline access.',
+    'pwa_install_button' => 'Install',
+    'pwa_install_dismiss' => 'Not now',
+
     // About page
     'about_page_title' => 'About CheckPraia',
     'about_page_subtitle' => 'Your trusted app for checking Portuguese beach conditions in real time.',

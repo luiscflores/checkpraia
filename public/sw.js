@@ -1,16 +1,20 @@
-const CACHE = 'checkpraia-v2';
-const STATIC_ASSETS = [
+const VERSION = 'checkpraia-v3';
+const TILE_CACHE = 'checkpraia-tiles-v3';
+const STATIC_CACHE = 'checkpraia-static-v3';
+const PAGE_CACHE = 'checkpraia-pages-v3';
+
+const MAX_TILES = 500;
+
+const PRECACHE_URLS = [
   '/',
   '/offline',
   '/manifest.json',
 ];
 
-const TILE_CACHE = 'checkpraia-tiles-v2';
-
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(PAGE_CACHE).then((cache) => cache.addAll(PRECACHE_URLS))
   );
 });
 
@@ -19,7 +23,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE && key !== TILE_CACHE)
+          .filter((key) => key !== TILE_CACHE && key !== STATIC_CACHE && key !== PAGE_CACHE)
           .map((key) => caches.delete(key))
       )
     )
@@ -27,12 +31,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// ── Helpers ─────────────────────────────────────────────────────────────
+
 function isTileRequest(url) {
   try {
     const u = new URL(url);
     return (
       u.hostname === 'tile.openstreetmap.org' ||
       u.hostname === 'server.arcgisonline.com' ||
+      u.hostname === 'basemaps.cartocdn.com' ||
       u.pathname.includes('/tile/') ||
       u.pathname.includes('/maps/tile')
     );
@@ -41,20 +48,81 @@ function isTileRequest(url) {
   }
 }
 
-function isApiRequest(url) {
-  const path = new URL(url).pathname;
-  return path.includes('/livewire/') || path.includes('/up');
+function isLivewireRequest(url) {
+  try {
+    return new URL(url).pathname.includes('/livewire/');
+  } catch {
+    return false;
+  }
 }
 
-self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
+function isStaticAsset(url) {
+  try {
+    const u = new URL(url);
+    return (
+      u.pathname.startsWith('/build/') ||
+      u.pathname.startsWith('/storage/') ||
+      u.pathname.startsWith('/icon-') ||
+      u.pathname === '/favicon.ico' ||
+      u.pathname === '/manifest.json'
+    );
+  } catch {
+    return false;
+  }
+}
 
+function isNavigationalRequest(request) {
+  return request.mode === 'navigate' ||
+    (request.method === 'GET' && request.destination === 'document');
+}
+
+async function limitCacheSize(cache, maxItems) {
+  const keys = await cache.keys();
+  if (keys.length > maxItems) {
+    const toDelete = keys.slice(0, keys.length - maxItems);
+    await Promise.all(toDelete.map((key) => cache.delete(key)));
+  }
+}
+
+// ── Fetch handler ────────────────────────────────────────────────────────
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = request.url;
+
+  // 1. Map tiles: cache-first with LRU limit
   if (isTileRequest(url)) {
     event.respondWith(
-      caches.open(TILE_CACHE).then((cache) =>
-        cache.match(event.request).then((cached) => {
-          const fetched = fetch(event.request).then((response) => {
-            if (response.ok) cache.put(event.request, response.clone());
+      caches.open(TILE_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const fetchPromise = fetch(request).then((response) => {
+          if (response.ok) {
+            cache.put(request, response.clone());
+            limitCacheSize(cache, MAX_TILES);
+          }
+          return response;
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // 2. Livewire API: network-only (must be fresh)
+  if (isLivewireRequest(url)) {
+    event.respondWith(
+      fetch(request).catch(() => new Response(null, { status: 503 }))
+    );
+    return;
+  }
+
+  // 3. Static build assets: cache-first (immutable, hashed filenames)
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          const fetched = fetch(request).then((response) => {
+            if (response.ok) cache.put(request, response.clone());
             return response;
           });
           return cached || fetched;
@@ -64,28 +132,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isApiRequest(url)) {
+  // 4. Navigational requests (pages): stale-while-revalidate
+  if (isNavigationalRequest(request)) {
     event.respondWith(
-      fetch(event.request).catch(() => new Response(null, { status: 503 }))
+      caches.open(PAGE_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
+          const fetchPromise = fetch(request).then((response) => {
+            if (response.ok) cache.put(request, response.clone());
+            return response;
+          }).catch(() => cached);
+          return cached || fetchPromise;
+        })
+      )
     );
     return;
   }
 
-  // Network-first for pages: online → always fresh, offline → cached fallback
+  // 5. Everything else (images, fonts, etc.): network-first
   event.respondWith(
-    fetch(event.request).then((response) => {
-      const copy = response.clone();
-      caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+    fetch(request).then((response) => {
+      if (response.ok && request.method === 'GET') {
+        const cloned = response.clone();
+        caches.open(PAGE_CACHE).then((cache) => cache.put(request, cloned)).catch(() => {});
+      }
       return response;
-    }).catch(() => caches.match(event.request))
+    }).catch(() => caches.match(request))
   );
 });
 
+// ── Push notifications ──────────────────────────────────────────────────
+
 self.addEventListener('push', (event) => {
   let data = { title: 'CheckPraia', body: '' };
-  try {
-    if (event.data) data = event.data.json();
-  } catch {}
+  try { if (event.data) data = event.data.json(); } catch { /* empty */ }
 
   const options = {
     body: data.body || '',

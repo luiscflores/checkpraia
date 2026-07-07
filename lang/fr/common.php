@@ -164,6 +164,7 @@ return [
     'push_test_sent' => 'Notification de test envoyée!',
     'push_test_failed' => 'Échec de l\'envoi de la notification de test.',
     'push_nearby_km' => 'À :km km de votre position',
+    'no_thanks' => 'Non merci',
     // About page
     'about_page_title' => 'À propos de CheckPraia',
     'about_page_subtitle' => 'Ton application de confiance pour consulter les conditions des plages portugaises en temps réel.',
@@ -236,4 +237,10 @@ return [
     'contact_email_address' => 'checkpraia@example.com',
     'contact_social' => 'Suis-nous sur les réseaux sociaux',
     'contact_social_description' => 'Reste informé des nouveautés, conseils et mises à jour.',
+
+    // PWA Install
+    'pwa_install_title' => 'Installer CheckPraia',
+    'pwa_install_description' => 'Installez l\'application pour une meilleure expérience et un accès hors ligne.',
+    'pwa_install_button' => 'Installer',
+    'pwa_install_dismiss' => 'Pas maintenant',
 ];

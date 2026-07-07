@@ -61,7 +61,10 @@ class Beach extends Model
     {
         parent::boot();
 
-        static::saved(fn ($beach) => Cache::tags('beaches')->flush());
+        static::saved(function ($beach) {
+            Cache::forget('beach_weather:' . $beach->id);
+            Cache::forget('beach_ocean:' . $beach->id);
+        });
     }
 
     public function translations()
@@ -106,8 +109,8 @@ class Beach extends Model
 
     public function getCachedLatestWeatherForecast(): ?WeatherForecast
     {
-        return Cache::tags('beaches')->remember(
-            'weather:' . $this->id,
+        return Cache::remember(
+            'beach_weather:' . $this->id,
             300,
             fn () => $this->latestWeatherForecast
         );
@@ -115,8 +118,8 @@ class Beach extends Model
 
     public function getCachedLatestOceanForecast(): ?OceanForecast
     {
-        return Cache::tags('beaches')->remember(
-            'ocean:' . $this->id,
+        return Cache::remember(
+            'beach_ocean:' . $this->id,
             300,
             fn () => $this->latestOceanForecast
         );

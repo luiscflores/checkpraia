@@ -164,6 +164,13 @@ return [
     'push_test_sent' => '¡Notificación de prueba enviada!',
     'push_test_failed' => 'Error al enviar notificación de prueba.',
     'push_nearby_km' => 'A :km km de tu ubicación',
+    'no_thanks' => 'Ahora no',
+    // PWA Install
+    'pwa_install_title' => 'Instalar CheckPraia',
+    'pwa_install_description' => 'Instala la aplicación para una mejor experiencia y acceso sin conexión.',
+    'pwa_install_button' => 'Instalar',
+    'pwa_install_dismiss' => 'Ahora no',
+
     // About page
     'about_page_title' => 'Acerca de CheckPraia',
     'about_page_subtitle' => 'Tu aplicación de confianza para consultar las condiciones de las playas portuguesas en tiempo real.',

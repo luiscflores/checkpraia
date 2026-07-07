@@ -170,4 +170,12 @@
 
         <x-ads.slot slot="rankings_bottom" />
     </div>
+
+    @if($hasMore)
+        <div class="flex justify-center pt-2 pb-6">
+            <button wire:click="loadMore" class="px-6 py-2.5 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 font-bold text-sm hover:bg-blue-600/20 active:scale-95 transition-all">
+                {{ __('rankings.load_more') }}
+            </button>
+        </div>
+    @endif
 </div>

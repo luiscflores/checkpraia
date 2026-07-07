@@ -905,7 +905,8 @@
     </div>
 
     <!-- Leaflet single location map section -->
-    <div class="glass-card p-4 rounded-3xl border border-theme-medium animate-fade-in-up" data-animate>
+    <div class="glass-card p-4 rounded-3xl border border-theme-medium animate-fade-in-up" data-animate
+         x-intersect="$el.querySelector('#beach-map').setAttribute('data-visible', '1')">
         <h3 class="text-sm font-bold text-theme uppercase tracking-wider mb-3"><span aria-hidden="true">📍</span> {{ __('beach.map_location') }}</h3>
         <div id="beach-map"
              data-lat="{{ $beach->latitude }}"
@@ -933,6 +934,10 @@
                     const el = document.getElementById('beach-map');
                     if (!el || typeof L === 'undefined') {
                         setTimeout(() => this.loadMap(), 100);
+                        return;
+                    }
+                    if (!el.dataset.visible) {
+                        setTimeout(() => this.loadMap(), 200);
                         return;
                     }
                     const lat = parseFloat(el.dataset.lat);
@@ -997,22 +1002,18 @@
 
                 triggerReport(flagColor) {
                     this.locating = true;
-                    if (!navigator.geolocation) {
-                        this.$dispatch('notify', { message: '{{ __('common.gps_not_supported') }}', type: 'error' });
+                    window.CheckPraiaPermissions.requestLocation('report_flag').then((position) => {
+                        $wire.call('submitReport', flagColor, position.coords.latitude, position.coords.longitude, position.coords.accuracy);
                         this.locating = false;
-                        return;
-                    }
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            $wire.call('submitReport', flagColor, position.coords.latitude, position.coords.longitude, position.coords.accuracy);
-                            this.locating = false;
-                        },
-                        (error) => {
-                            this.$dispatch('notify', { message: '{{ __('common.gps_denied') }}', type: 'error' });
-                            this.locating = false;
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
+                    }).catch((err) => {
+                        const msgs = {
+                            'GPS_NOT_SUPPORTED': '{{ __('common.gps_not_supported') }}',
+                            'GPS_DENIED': '{{ __('common.gps_denied') }}',
+                            'GPS_ERROR': '{{ __('common.gps_error') }}',
+                        };
+                        this.$dispatch('notify', { message: msgs[err.message] || '{{ __('common.gps_error') }}', type: 'error' });
+                        this.locating = false;
+                    });
                 }
             }));
         </script>

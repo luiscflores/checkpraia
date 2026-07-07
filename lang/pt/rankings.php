@@ -28,4 +28,5 @@ return [
     'share_ranking_text' => 'Estou na posição #:position com :score pontos no ranking do CheckPraia. Junta-te a mim!',
     'share_my_rank' => 'A minha posição',
     'share_rank_not_found' => 'Ainda não tens pontuação. Reporta bandeiras para apareceres no ranking.',
+    'load_more' => 'Carregar mais',
 ];

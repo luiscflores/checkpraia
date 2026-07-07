@@ -136,7 +136,7 @@ class Dashboard extends Component
 
     public function toggleBeachActive($beachId)
     {
-        $beach = Beach::find($beachId);
+        $beach = Beach::with('translations')->find($beachId);
         if ($beach) {
             $beach->is_active = !$beach->is_active;
             $beach->save();
@@ -165,7 +165,7 @@ class Dashboard extends Component
 
     public function resetTodayVotes($beachId)
     {
-        $beach = Beach::findOrFail($beachId);
+        $beach = Beach::with('translations')->findOrFail($beachId);
 
         FlagReport::where('beach_id', $beachId)
             ->where('reported_at', '>=', now()->startOfDay())
@@ -182,7 +182,7 @@ class Dashboard extends Component
     public function showOverride($beachId)
     {
         $this->overrideBeachId = $beachId;
-        $beach = Beach::find($beachId);
+        $beach = Beach::with('currentStatus')->find($beachId);
         $this->overrideFlag = $beach?->currentStatus?->flag ?? 'green';
     }
 
@@ -196,7 +196,7 @@ class Dashboard extends Component
         $this->validate(['overrideFlag' => 'required|in:green,yellow,red,blue_or_neutral']);
 
         $user = Auth::user();
-        $beach = Beach::findOrFail($this->overrideBeachId);
+        $beach = Beach::with('translations')->findOrFail($this->overrideBeachId);
 
         FlagReport::create([
             'user_id' => $user->id,
@@ -493,7 +493,7 @@ class Dashboard extends Component
             ->get();
 
         // Beaches query
-        $beachQuery = Beach::query()->with('currentStatus');
+        $beachQuery = Beach::query()->with(['currentStatus', 'translations']);
         if ($this->searchBeach) {
             $beachQuery->where(function ($q) {
                 $q->where('name', 'like', '%' . $this->searchBeach . '%')

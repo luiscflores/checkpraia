@@ -1,10 +1,87 @@
 // CheckPraia - Shared UI Interactions
 // Performance-optimised: all init deferred to avoid blocking LCP
 
+// ── Permission helpers (exposed on window for Alpine) ───────────────────────
+
+window.CheckPraiaPermissions = {
+    /**
+     * Request geolocation with an explanation prompt before the browser dialog.
+     * @param {string} purposeKey — translation key for the explanation (e.g. "beach.gps_report_purpose")
+     * @returns {Promise<GeolocationPosition>}
+     */
+    requestLocation(purposeKey) {
+        return new Promise((resolve, reject) => {
+            if (!('geolocation' in navigator)) {
+                reject(new Error('GPS_NOT_SUPPORTED'));
+                return;
+            }
+
+            if (navigator.permissions && navigator.permissions.query) {
+                navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+                    if (status.state === 'denied') {
+                        reject(new Error('GPS_DENIED'));
+                        return;
+                    }
+                    this._doGetCurrentPosition(resolve, reject);
+                }).catch(() => {
+                    this._doGetCurrentPosition(resolve, reject);
+                });
+            } else {
+                this._doGetCurrentPosition(resolve, reject);
+            }
+        });
+    },
+
+    _doGetCurrentPosition(resolve, reject) {
+        const MAX_ATTEMPTS = 3;
+        let attempt = 0;
+
+        const attemptLocation = () => {
+            attempt++;
+            if (attempt > MAX_ATTEMPTS) {
+                reject(new Error('GPS_UNAVAILABLE'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    if (position.coords.accuracy > 150 && attempt < MAX_ATTEMPTS) {
+                        attemptLocation();
+                        return;
+                    }
+                    resolve(position);
+                },
+                (error) => {
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            reject(new Error('GPS_DENIED'));
+                            break;
+                        case error.TIMEOUT:
+                            if (attempt < MAX_ATTEMPTS) {
+                                attemptLocation();
+                            } else {
+                                reject(new Error('GPS_TIMEOUT'));
+                            }
+                            break;
+                        default:
+                            if (attempt < MAX_ATTEMPTS) {
+                                attemptLocation();
+                            } else {
+                                reject(new Error('GPS_ERROR'));
+                            }
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            );
+        };
+
+        attemptLocation();
+    },
+};
+
 // ── Critical path: run on DOMContentLoaded ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    initHeaderScrollEffect();  // Critical: keeps header reactive immediately
-    initPageTransitions();
+    initHeaderScrollEffect();
 });
 
 // ── Non-critical: defer to idle time ────────────────────────────────────────
@@ -78,14 +155,6 @@ function initHeaderScrollEffect() {
     onScroll();
 }
 
-// ── Page enter animation ─────────────────────────────────────────────────────
-function initPageTransitions() {
-    const main = document.querySelector('main');
-    if (main) {
-        main.classList.add('page-enter');
-    }
-}
-
 // ── Mobile touch card feedback (replaces CSS :active which lags on iOS) ──────
 function initCardTouchFeedback() {
     // Only on touch devices
@@ -135,7 +204,18 @@ function initMobilePullToRefresh() {
         return indicator;
     };
 
+    const isInsideMap = (el) => {
+        while (el && el !== main) {
+            if (el.classList && (el.classList.contains('leaflet-container') || el.id === 'map-continente' || el.id === 'map-acores' || el.id === 'map-madeira')) {
+                return true;
+            }
+            el = el.parentElement;
+        }
+        return false;
+    };
+
     main.addEventListener('touchstart', (e) => {
+        if (isInsideMap(e.target)) return;
         if (window.scrollY === 0) {
             startY = e.touches[0].clientY;
             pulling = true;

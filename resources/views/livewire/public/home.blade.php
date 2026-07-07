@@ -9,6 +9,17 @@
     @endsection
 
     <h1 class="sr-only">{{ __('home.page_title') }}</h1>
+
+    <!-- Wave Background Decoration -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
+        <svg class="wave-decoration absolute -top-20 left-0 w-[200%] h-auto opacity-[0.015] sm:opacity-[0.025]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6;">
+            <path d="M0,192L48,176C96,160,192,128,288,138.7C384,149,480,203,576,218.7C672,235,768,213,864,192C960,171,1056,149,1152,138.7C1248,128,1344,128,1392,128L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        </svg>
+        <svg class="wave-decoration absolute -bottom-10 right-0 w-[180%] h-auto opacity-[0.01] sm:opacity-[0.02]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6; animation-delay: -3s;">
+            <path d="M0,64L48,74.7C96,85,192,107,288,112C384,117,480,107,576,112C672,117,768,139,864,144C960,149,1056,139,1152,128C1248,117,1344,107,1392,101.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        </svg>
+    </div>
+
     <div class="sr-only" aria-hidden="true">
         <p>{{ __('home.og_description') }}</p>
     </div>
@@ -99,32 +110,44 @@
                 </svg>
                 <span class="hidden sm:inline">{{ __('common.search_nearby_short') }}</span>
             </button>
+
+            <template x-teleport="body">
+                <div x-show="locationError" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-2" class="fixed bottom-28 md:bottom-24 left-1/2 -translate-x-1/2 z-[60] max-w-sm w-full mx-auto px-4" role="alert">
+                    <div class="bg-red-600/90 backdrop-blur-md text-white text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-red-400/30 flex items-center gap-2">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                        <span x-text="locationError" class="flex-1"></span>
+                        <button @click="locationError = null" class="shrink-0 p-1 hover:bg-white/10 rounded-lg transition-colors" aria-label="Dismiss">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- Flag Filters -->
         <div class="flex flex-wrap gap-2">
             <button wire:click="$set('selectedFlag', '')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === '' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                     class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === '' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
                 <span>🏁</span>
                 <span>{{ __('common.flag_all') }}</span>
             </button>
             <button wire:click="$set('selectedFlag', 'green')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'green' ? 'bg-emerald-600/10 border-emerald-500/30 text-emerald-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'green' ? 'bg-emerald-600/10 border-emerald-500/30 text-emerald-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                 <span>{{ __('common.flag_green') }}</span>
             </button>
             <button wire:click="$set('selectedFlag', 'yellow')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'yellow' ? 'bg-amber-600/10 border-amber-500/30 text-amber-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'yellow' ? 'bg-amber-600/10 border-amber-500/30 text-amber-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                 <span>{{ __('common.flag_yellow') }}</span>
             </button>
             <button wire:click="$set('selectedFlag', 'red')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'red' ? 'bg-rose-600/10 border-rose-500/30 text-rose-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'red' ? 'bg-rose-600/10 border-rose-500/30 text-rose-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
                 <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                 <span>{{ __('common.flag_red') }}</span>
             </button>
             <button wire:click="$set('selectedFlag', 'blue_or_neutral')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'blue_or_neutral' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'blue_or_neutral' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
                 <span>❄️</span>
                 <span>{{ __('common.flag_blue_or_neutral') }}</span>
             </button>
@@ -181,7 +204,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 min-h-[450px] sm:min-h-[550px]">
         
         <!-- Left Side: Beach Cards List -->
-        <div class="lg:col-span-5 flex flex-col gap-4 max-h-[calc(100vh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
+        <div class="lg:col-span-5 flex flex-col gap-4 max-h-[calc(100dvh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
             <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
 
             <!-- Skeleton placeholders shown while Livewire is loading -->
@@ -213,8 +236,7 @@
                 @endif
                 <a href="{{ $beach['url'] }}" 
                    @mouseenter="hoverBeach(@js($beach))"
-                   data-animate
-                   data-stagger-delay="{{ min($i * 0.03, 0.5) }}"
+                   wire:key="{{ $beach['id'] }}"
                    class="glass-card card-lift shrink-0 p-4 rounded-3xl border transition-all duration-300 flex flex-col gap-3.5 group active:scale-[0.99] relative overflow-hidden {{ $beach['is_favorited'] ? 'border-amber-500/30 bg-amber-500/[0.03] shadow-[inset_0_0_16px_rgba(245,158,11,0.03)]' : 'border-theme-medium hover:border-blue-500/40' }}">
                     
                     @if($beach['is_favorited'])
@@ -235,10 +257,13 @@
 
                         <div class="flex items-center gap-2 shrink-0">
                             <button type="button"
-                                    @click.prevent.stop="$wire.toggleFavorite({{ $beach['id'] }})"
-                                    class="p-1 rounded-xl text-lg transition-all hover:scale-125 active:scale-90 hover:bg-white/5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] text-amber-400' : 'opacity-30 hover:opacity-80 text-slate-400' }}"
+                                    @click.prevent.stop="
+                                        $el.querySelector('.fav-star').classList.add('animate-fav-bounce');
+                                        setTimeout(() => $el.querySelector('.fav-star').classList.remove('animate-fav-bounce'), 500);
+                                        $wire.toggleFavorite({{ $beach['id'] }})"
+                                    class="p-1 rounded-xl transition-all hover:scale-125 active:scale-90 hover:bg-white/5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] text-amber-400' : 'opacity-30 hover:opacity-80 text-slate-400' }}"
                                     title="{{ $beach['is_favorited'] ? __('common.favorite_remove') : __('common.favorite_add') }}">
-                                ★
+                                    <span class="fav-star block text-lg">★</span>
                             </button>
 
                             @if($beach['flag'] === 'green')
@@ -402,6 +427,13 @@
         </button>
     </div>
 
+    <!-- Scroll to Top Button -->
+    <div x-data="{ visible: false }" x-init="window.addEventListener('scroll', () => { visible = window.scrollY > 600; }, { passive: true })" class="fixed bottom-32 right-4 sm:right-6 z-40">
+        <button x-show="visible" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 scale-75" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 translate-y-4 scale-75" @click="window.scrollTo({ top: 0, behavior: 'smooth' })" class="bg-blue-600/90 hover:bg-blue-500 active:scale-90 text-white w-11 h-11 rounded-full shadow-lg shadow-blue-500/25 flex items-center justify-center transition-all backdrop-blur-sm touch-target" aria-label="Scroll to top">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+        </button>
+    </div>
+
     @script
     <script>
         Alpine.data('beachMapHandler', (initialBeaches) => ({
@@ -414,11 +446,11 @@
             userCircle: null,
             tileLayers: { continente: null, acores: null, madeira: null },
             nearbyGreen: [],
+            locationError: null,
+            locationErrorTimer: null,
             _initialRender: true,
 
             init() {
-                if (this.mapContinente) return;
-
                 if (typeof L === 'undefined') {
                     const check = setInterval(() => {
                         if (typeof L !== 'undefined') {
@@ -432,6 +464,20 @@
             },
 
             _initMaps() {
+                const contEl = document.getElementById('map-continente');
+                if (!contEl) return;
+
+                // Reuse existing map if Leaflet already initialized on this container
+                if (contEl.__leafletMap) {
+                    this.mapContinente = contEl.__leafletMap;
+                    this.mapAcores = document.getElementById('map-acores')?.__leafletMap || null;
+                    this.mapMadeira = document.getElementById('map-madeira')?.__leafletMap || null;
+                    this.renderMarkers();
+                    this.invalidateAllMaps();
+                    this._initialRender = false;
+                    return;
+                }
+
                 const removePopupHref = (e) => {
                     const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
                     if (closeBtn) {
@@ -447,6 +493,7 @@
                     minZoom: 6
                 }).setView([39.6, -8.2], 7);
                 this.mapContinente.on('popupopen', removePopupHref);
+                contEl.__leafletMap = this.mapContinente;
 
                 this.tileLayers.continente = this.createTileLayer();
                 this.tileLayers.continente.addTo(this.mapContinente);
@@ -498,6 +545,23 @@
             },
 
             initIslandMap(elementId, region, bounds, removePopupHref) {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+
+                // Reuse existing island map if already initialized
+                if (el.__leafletMap) {
+                    const map = el.__leafletMap;
+                    this['map' + region.charAt(0).toUpperCase() + region.slice(1)] = map;
+                    this.renderRegionMarkers(map, this.markers[region], this.beaches.filter(b => {
+                        const r = b.region || 'Continental';
+                        if (region === 'acores') return r === 'Açores';
+                        if (region === 'madeira') return r === 'Madeira';
+                        return false;
+                    }));
+                    setTimeout(() => map.invalidateSize(), 100);
+                    return;
+                }
+
                 const center = bounds.reduce((acc, b) => [acc[0] + b[0]/2, acc[1] + b[1]/2], [0,0]);
                 const map = L.map(elementId, {
                     zoomControl: false,
@@ -508,6 +572,7 @@
                     scrollWheelZoom: true
                 }).setView(center, 7);
                 map.on('popupopen', removePopupHref);
+                el.__leafletMap = map;
                 const layer = this.createTileLayer();
                 layer.addTo(map);
                 this['map' + region.charAt(0).toUpperCase() + region.slice(1)] = map;
@@ -600,7 +665,11 @@
             clearMarkers() {
                 ['continente', 'acores', 'madeira'].forEach(key => {
                     const map = key === 'continente' ? this.mapContinente : key === 'acores' ? this.mapAcores : this.mapMadeira;
-                    if (map) Object.values(this.markers[key]).forEach(m => map.removeLayer(m));
+                    if (map) {
+                        map.eachLayer((layer) => {
+                            if (layer instanceof L.Marker) map.removeLayer(layer);
+                        });
+                    }
                     this.markers[key] = {};
                 });
             },
@@ -633,80 +702,53 @@
             },
 
             locateUser(auto = false) {
-                if (!navigator.geolocation) {
-                    if (!auto) alert('{{ __('common.gps_not_supported') }}');
-                    return;
-                }
+                if (this.locationErrorTimer) clearTimeout(this.locationErrorTimer);
+                this.locationError = null;
+
                 if (this.userCircle) {
                     if (this.mapContinente) this.mapContinente.removeLayer(this.userCircle);
                     if (this.mapAcores) this.mapAcores.removeLayer(this.userCircle);
                     if (this.mapMadeira) this.mapMadeira.removeLayer(this.userCircle);
                 }
 
-                const MAX_ATTEMPTS = 3;
-                let attempt = 0;
+                window.CheckPraiaPermissions.requestLocation('home_nearby').then((position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const acc = position.coords.accuracy;
 
-                const attemptLocation = () => {
-                    attempt++;
-                    if (attempt > MAX_ATTEMPTS) {
-                        if (!auto) alert('{{ __('common.gps_unavailable') }}');
-                        return;
+                    $wire.set('latitude', lat);
+                    $wire.set('longitude', lon);
+                    $wire.call('findNearbyGreen');
+
+                    let map = this.mapContinente;
+                    if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
+                        map = this.mapAcores;
+                    } else if (lat > 32 && lat < 33.5 && lon > -17.5 && lon < -16) {
+                        map = this.mapMadeira;
                     }
 
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const acc = position.coords.accuracy;
-
-                            // Reject positions worse than 150m and retry
-                            if (acc > 150 && attempt < MAX_ATTEMPTS) {
-                                attemptLocation();
-                                return;
-                            }
-
-                            const lat = position.coords.latitude;
-                            const lon = position.coords.longitude;
-
-                            // Send coords to Livewire to find nearby green beaches
-                            $wire.set('latitude', lat);
-                            $wire.set('longitude', lon);
-                            $wire.call('findNearbyGreen');
-
-                            let map = this.mapContinente;
-                            if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
-                                map = this.mapAcores;
-                            } else if (lat > 32 && lat < 33.5 && lon > -17.5 && lon < -16) {
-                                map = this.mapMadeira;
-                            }
-
-                            map.setView([lat, lon], 12);
-                            this.userCircle = L.circle([lat, lon], {
-                                color: '#3b82f6',
-                                fillColor: '#93c5fd',
-                                fillOpacity: 0.25,
-                                radius: Math.max(acc, 50)
-                            }).addTo(map).bindPopup(`
-                                {{ __('common.gps_your_location') }}<br>
-                                <span class="text-[10px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
-                            `).openPopup();
-                        },
-                        (error) => {
-                            if (!auto && attempt >= MAX_ATTEMPTS) {
-                                const msgs = {
-                                    1: '{{ __('common.gps_denied') }}',
-                                    2: '{{ __('common.gps_unavailable') }}',
-                                    3: '{{ __('common.gps_timeout') }}',
-                                };
-                                alert(msgs[error.code] || '{{ __('common.gps_error') }}');
-                            } else if (error.code !== 1) {
-                                // Retry on timeout/unavailable (but not on denied)
-                                attemptLocation();
-                            }
-                        },
-                        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-                    );
-                };
-
-                attemptLocation();
+                    map.setView([lat, lon], 12);
+                    this.userCircle = L.circle([lat, lon], {
+                        color: '#3b82f6',
+                        fillColor: '#93c5fd',
+                        fillOpacity: 0.25,
+                        radius: Math.max(acc, 50)
+                    }).addTo(map).bindPopup(`
+                        {{ __('common.gps_your_location') }}<br>
+                        <span class="text-[10px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
+                    `).openPopup();
+                }).catch((err) => {
+                    if (auto) return;
+                    const msgs = {
+                        'GPS_NOT_SUPPORTED': '{{ __('common.gps_not_supported') }}',
+                        'GPS_DENIED': '{{ __('common.gps_denied') }}',
+                        'GPS_UNAVAILABLE': '{{ __('common.gps_unavailable') }}',
+                        'GPS_TIMEOUT': '{{ __('common.gps_timeout') }}',
+                        'GPS_ERROR': '{{ __('common.gps_error') }}',
+                    };
+                    this.locationError = msgs[err.message] || '{{ __('common.gps_error') }}';
+                    this.locationErrorTimer = setTimeout(() => this.locationError = null, 5000);
+                });
             },
 
             invalidateAllMaps() {

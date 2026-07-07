@@ -18,6 +18,10 @@ class FetchInfoAguaData implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 300;
+
+    public $tries = 1;
+
     protected ?Beach $beach;
 
     public function __construct(?Beach $beach = null)
@@ -27,15 +31,19 @@ class FetchInfoAguaData implements ShouldQueue
 
     public function handle(): void
     {
-        $beaches = $this->beach ? collect([$this->beach]) : Beach::where('is_active', true)->get();
+        $beaches = $this->beach ? collect([$this->beach]) : Beach::with('translations')->where('is_active', true)->get();
 
         if (!$this->beach) {
             Setting::set('last_infoagua_sync', now()->toIso8601String());
         }
 
+        $infoAgua = new InfoAguaClient();
+        $engine = new PredictionEngine();
+        $resolver = new ConsensusResolver();
+
         foreach ($beaches as $beach) {
             try {
-                $this->processBeach($beach);
+                $this->processBeach($beach, $infoAgua, $engine, $resolver);
             } catch (\Exception $e) {
                 logger()->warning('InfoÁgua fetch failed for beach ' . $beach->id, [
                     'error' => $e->getMessage(),
@@ -44,12 +52,8 @@ class FetchInfoAguaData implements ShouldQueue
         }
     }
 
-    private function processBeach(Beach $beach): void
+    private function processBeach(Beach $beach, InfoAguaClient $infoAgua, PredictionEngine $engine, ConsensusResolver $resolver): void
     {
-        $infoAgua = new InfoAguaClient();
-        $engine = new PredictionEngine();
-        $resolver = new ConsensusResolver();
-
         $result = $infoAgua->getWaterQualityByCoords(
             (float) $beach->latitude,
             (float) $beach->longitude,

@@ -16,25 +16,33 @@ class CaptureHourlySnapshots implements ShouldQueue
 
     public function handle(): void
     {
+        $now = now();
+        $capturedAt = $now->copy()->startOfHour();
+
         $beaches = Beach::with([
             'currentStatus',
             'latestOceanForecast',
             'latestWeatherForecast',
         ])->where('is_active', true)->get();
 
-        $now = now();
-        $capturedAt = $now->copy()->startOfHour();
+        if ($beaches->isEmpty()) return;
+
+        // Bulk eager-load latest quality snapshot per beach in 1 query
+        $beachIds = $beaches->pluck('id');
+        $latestQualities = \App\Models\WaterQualitySnapshot::whereIn('beach_id', $beachIds)
+            ->whereRaw('id IN (SELECT id FROM water_quality_snapshots wqs2 WHERE wqs2.beach_id = water_quality_snapshots.beach_id ORDER BY sampled_at DESC, id DESC LIMIT 1)')
+            ->get()
+            ->keyBy('beach_id');
+
+        $snapshots = [];
 
         foreach ($beaches as $beach) {
             $status = $beach->currentStatus;
             $ocean = $beach->latestOceanForecast;
             $weather = $beach->latestWeatherForecast;
-            $latestQuality = $beach->qualitySnapshots()
-                ->latest('sampled_at')
-                ->latest('id')
-                ->first();
+            $latestQuality = $latestQualities->get($beach->id);
 
-            BeachHourlySnapshot::create([
+            $snapshots[] = [
                 'beach_id' => $beach->id,
                 'flag' => $status?->flag ?? 'gray',
                 'source' => $status?->source ?? 'prediction',
@@ -45,9 +53,12 @@ class CaptureHourlySnapshots implements ShouldQueue
                 'air_temp' => $weather?->temp,
                 'water_quality' => $latestQuality?->quality_class,
                 'captured_at' => $capturedAt,
-            ]);
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
 
+        BeachHourlySnapshot::insert($snapshots);
         BeachHourlySnapshot::where('captured_at', '<', $now->copy()->startOfDay())->delete();
     }
 }

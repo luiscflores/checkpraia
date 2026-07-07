@@ -171,6 +171,8 @@ class BeachDetail extends Component
             ? __('beach.report_success_points', ['points' => $points])
             : __('beach.report_success');
         session()->flash('report_success', $msg);
+
+        $this->dispatch('report-submitted');
     }
 
     private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float

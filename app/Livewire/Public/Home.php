@@ -18,6 +18,8 @@ class Home extends Component
     public $longitude = null;
     public $nearbyGreen = [];
 
+    private ?array $cachedBeachesList = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'selectedRegion' => ['except' => ''],
@@ -109,9 +111,19 @@ class Home extends Component
         $this->dispatchBeachesUpdated();
     }
 
-    private function dispatchBeachesUpdated()
+    private function dispatchBeachesUpdated(): void
     {
-        $mapBeaches = $this->buildMapBeaches();
+        $beaches = $this->buildBeachesList();
+        $mapBeaches = collect($beaches)->map(fn ($b) => [
+            'id' => $b['id'],
+            'name' => $b['name'],
+            'latitude' => $b['latitude'],
+            'longitude' => $b['longitude'],
+            'flag' => $b['flag'],
+            'region' => $b['region'],
+            'municipality' => $b['municipality'],
+            'url' => $b['url'],
+        ])->values()->toArray();
         $this->dispatch('beaches-updated', beaches: $mapBeaches);
     }
 
@@ -121,7 +133,6 @@ class Home extends Component
             ? auth()->user()->favorites()->pluck('beach_id')->map(fn($id) => (int)$id)->toArray()
             : [];
 
-        // Build list ONCE and derive map beaches from same result — avoids double DB round-trip
         $beaches = $this->buildBeachesList();
         $mapBeaches = collect($beaches)->map(fn ($b) => [
             'id' => $b['id'],
@@ -144,6 +155,10 @@ class Home extends Component
 
     private function buildBeachesList(): array
     {
+        if ($this->cachedBeachesList !== null) {
+            return $this->cachedBeachesList;
+        }
+
         $query = Beach::with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true);
 
@@ -167,8 +182,12 @@ class Home extends Component
             });
         }
 
-        return $query->get()->sortByDesc(function ($beach) {
-            return in_array((int)$beach->id, $this->favoriteIds);
+        $result = $query->get()->sortBy(function ($beach) {
+            $isFav = in_array((int)$beach->id, $this->favoriteIds);
+            if ($isFav) {
+                return [0, $beach->name];
+            }
+            return [1, -$beach->latitude];
         })->map(function ($beach) {
             $status = $beach->currentStatus;
             $weather = $beach->latestWeatherForecast;
@@ -195,7 +214,10 @@ class Home extends Component
                 'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
                 'wind_direction' => $weather ? $weather->wind_direction : null,
             ];
-        })->toArray();
+        })->values()->toArray();
+
+        $this->cachedBeachesList = $result;
+        return $result;
     }
 
     private function buildMapBeaches(): array
@@ -210,5 +232,12 @@ class Home extends Component
             'municipality' => $b['municipality'],
             'url' => $b['url'],
         ])->values()->toArray();
+    }
+
+    public function updated($property): void
+    {
+        if (in_array($property, ['search', 'selectedRegion', 'selectedFlag'])) {
+            $this->cachedBeachesList = null;
+        }
     }
 }

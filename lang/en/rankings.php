@@ -27,4 +27,5 @@ return [
     'share_ranking_text' => 'I\'m ranked #:position with :score points on CheckPraia. Join me!',
     'share_my_rank' => 'My position',
     'share_rank_not_found' => 'You don\'t have a score yet. Report flags to appear on the rankings.',
+    'load_more' => 'Load more',
 ];

@@ -84,22 +84,23 @@ class FetchIpmaForecasts implements ShouldQueue
         ]);
 
 
-        // 2.5. Fetch and store tide forecast
+        // 2.5. Fetch and store tide forecast (bulk insert)
         $tideClient = new \App\Services\Tides\TideClient();
         $tides = $tideClient->getTideForecasts($beach);
 
-        // Atomically replace tide forecasts for this station
         \Illuminate\Support\Facades\DB::transaction(function () use ($beach, $tides) {
             \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)->delete();
 
-            foreach ($tides as $tideData) {
-                \App\Models\TideForecast::create([
-                    'tide_station_id' => $tideData['tide_station_id'],
-                    'tide_time' => $tideData['tide_time'],
-                    'tide_type' => $tideData['tide_type'],
-                    'tide_height' => $tideData['tide_height'],
-                    'moon_phase' => $tideData['moon_phase'] ?? null,
-                ]);
+            if (!empty($tides)) {
+                \App\Models\TideForecast::insert(array_map(fn ($t) => [
+                    'tide_station_id' => $t['tide_station_id'],
+                    'tide_time' => $t['tide_time'],
+                    'tide_type' => $t['tide_type'],
+                    'tide_height' => $t['tide_height'],
+                    'moon_phase' => $t['moon_phase'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $tides));
             }
         });
 
