@@ -3,76 +3,178 @@ set -euo pipefail
 
 PI_USER="${PI_USER:-pi}"
 PI_DIR="/home/$PI_USER"
-REPO_NAME="checkpraia.git"
 WORK_TREE="$PI_DIR/checkpraia"
-BARE_REPO="$PI_DIR/$REPO_NAME"
+BARE_REPO="$PI_DIR/checkpraia.git"
+PHP_VERSION="8.4"
 
-echo "=== 1. Instalar Docker ==="
-if ! command -v docker &>/dev/null; then
-    curl -fsSL https://get.docker.com | sh
-    sudo usermod -aG docker "$PI_USER"
-    echo "Docker installed. Log out and back in for group changes to take effect."
-else
-    echo "Docker already installed."
+echo ""
+echo "============================================"
+echo "  Setup Nativo - CheckPraia no Raspberry Pi"
+echo "============================================"
+echo ""
+
+# ── 1. Instalar dependencias do sistema ──────────────────────────────────
+echo "=== 1. Instalar dependencias do sistema ==="
+
+sudo apt-get update -y
+
+sudo apt-get install -y curl wget git unzip nginx supervisor sqlite3 cron
+
+# ── 2. Instalar PHP 8.4 (sury repository) ────────────────────────────────
+echo "=== 2. Instalar PHP $PHP_VERSION ==="
+
+if ! command -v php &>/dev/null || ! php -v | grep -q "$PHP_VERSION"; then
+    sudo curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/sury-php.gpg
+    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/sury-php.list
+    sudo apt-get update -y
+    sudo apt-get install -y \
+        php${PHP_VERSION}-fpm \
+        php${PHP_VERSION}-cli \
+        php${PHP_VERSION}-common \
+        php${PHP_VERSION}-curl \
+        php${PHP_VERSION}-mbstring \
+        php${PHP_VERSION}-xml \
+        php${PHP_VERSION}-zip \
+        php${PHP_VERSION}-sqlite3 \
+        php${PHP_VERSION}-gd \
+        php${PHP_VERSION}-intl \
+        php${PHP_VERSION}-opcache \
+        php${PHP_VERSION}-bcmath \
+        php${PHP_VERSION}-json
 fi
 
-echo "=== 2. Criar bare git repo ==="
-mkdir -p "$BARE_REPO"
-git init --bare "$BARE_REPO"
+# ── 3. Instalar Composer ─────────────────────────────────────────────────
+echo "=== 3. Instalar Composer ==="
 
-echo "=== 3. Criar working directory ==="
-mkdir -p "$WORK_TREE"
+if ! command -v composer &>/dev/null; then
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
+    php -r "unlink('composer-setup.php');"
+    echo "Composer installed."
+fi
 
-echo "=== 4. Configurar post-receive hook ==="
-cat > "$BARE_REPO/hooks/post-receive" << 'HOOK'
+# ── 4. Instalar Node.js + npm ────────────────────────────────────────────
+echo "=== 4. Instalar Node.js ==="
+
+if ! command -v node &>/dev/null; then
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+    sudo apt-get install -y nodejs
+    echo "Node.js installed."
+fi
+
+# ── 5. Configurar OPCache + JIT ──────────────────────────────────────────
+echo "=== 5. Configurar OPCache + JIT ==="
+
+sudo cp scripts/php-opcache-jit.ini /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null || true
+sudo phpenmod opcache 2>/dev/null || true
+
+# ── 6. Configurar nginx ──────────────────────────────────────────────────
+echo "=== 6. Configurar nginx ==="
+
+sudo cp scripts/checkpraia-nginx.conf /etc/nginx/sites-available/checkpraia
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
+
+# ── 7. Clonar repositorio (primeira vez) ──────────────────────────────────
+echo "=== 7. Clonar repositorio ==="
+
+if [ ! -d "$WORK_TREE" ]; then
+    git clone https://github.com/luiscflores/checkpraia.git "$WORK_TREE"
+    echo "Repo clonado em $WORK_TREE"
+fi
+
+cd "$WORK_TREE"
+
+mkdir -p storage bootstrap/cache database
+chmod -R 775 storage bootstrap/cache
+
+if [ ! -f .env ]; then
+    cp .env.example .env
+    php artisan key:generate --no-interaction
+    echo ">>> .env criado a partir de .env.example."
+    echo ">>> EDITA O .ENV com as chaves de API primeiro:"
+    echo "    nano $WORK_TREE/.env"
+fi
+
+# ── 8. Instalar dependencias do projeto ──────────────────────────────────
+echo "=== 8. Instalar dependencias PHP/JS ==="
+
+export COMPOSER_ALLOW_SUPERUSER=1
+composer install --no-dev --optimize-autoloader --no-interaction
+
+if [ -f package.json ]; then
+    npm ci --ignore-scripts --no-audit --no-fund
+    npm run build
+    rm -rf node_modules
+fi
+
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan storage:link --no-interaction 2>/dev/null || true
+
+# ── 9. Configurar Supervisor (queue worker) ──────────────────────────────
+echo "=== 9. Configurar Supervisor ==="
+
+sudo cp "$WORK_TREE/checkpraia-worker.conf" /etc/supervisor/conf.d/checkpraia-worker.conf
+sudo supervisorctl reread
+sudo supervisorctl update
+
+# ── 10. Configurar Cron (Laravel scheduler + auto-deploy) ────────────────
+echo "=== 10. Configurar Cron ==="
+
+CRON_SCHEDULER="* * * * * cd $WORK_TREE && php artisan schedule:run >> /dev/null 2>&1"
+CRON_DEPLOY="*/5 * * * * cd $WORK_TREE && bash scripts/deploy.sh >> $WORK_TREE/storage/logs/deploy.log 2>&1"
+
+(crontab -u "$PI_USER" -l 2>/dev/null || true; echo "$CRON_SCHEDULER") | crontab -u "$PI_USER" -
+(crontab -u "$PI_USER" -l 2>/dev/null || true; echo "$CRON_DEPLOY") | crontab -u "$PI_USER" -
+
+# ── 11. Criar bare git repo + post-receive (deploy direto) ───────────────
+echo "=== 11. Configurar bare git repo ==="
+
+if [ ! -d "$BARE_REPO" ]; then
+    git init --bare "$BARE_REPO"
+
+    cat > "$BARE_REPO/hooks/post-receive" << 'HOOK'
 #!/bin/bash
 set -euo pipefail
 
 TARGET="/home/pi/checkpraia"
-mkdir -p "$TARGET"
-git --work-tree="$TARGET" checkout -f
-
 cd "$TARGET"
+git --work-tree="$TARGET" checkout -f
+bash scripts/deploy.sh "$TARGET"
 
-# Garantir que .env existe (criado a partir de .env.example na primeira vez)
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        # Gerar APP_KEY
-        APP_KEY="base64:$(openssl rand -base64 32)"
-        if grep -q "^APP_KEY=" .env; then
-            sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
-        else
-            echo "APP_KEY=${APP_KEY}" >> .env
-        fi
-        echo ">>> .env criado a partir de .env.example com APP_KEY gerada."
-        echo ">>> Edita .env no Pi para adicionares chaves de API (VAPID, Google, etc.)"
-    else
-        echo "ERRO: .env.example não encontrado!"
-        exit 1
-    fi
-fi
-
-mkdir -p storage bootstrap/cache
-
-# Construir e fazer deploy
-docker compose up -d --build
-
-echo ">>> Deploy concluído!"
+echo ">>> Deploy concluido!"
 HOOK
 
-chmod +x "$BARE_REPO/hooks/post-receive"
+    chmod +x "$BARE_REPO/hooks/post-receive"
+
+    echo ""
+    echo "Bare repo criado em $BARE_REPO"
+    echo "Para fazer push direto: git push pi main"
+fi
+
+# ── 12. Arrancar servicos ────────────────────────────────────────────────
+echo "=== 12. Arrancar servicos ==="
+
+sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor
+sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor
 
 echo ""
 echo "============================================"
-echo "  Setup completo no Raspberry Pi!"
+echo "  Setup completo!"
 echo "============================================"
 echo ""
-echo "No teu computador, executa:"
+echo "  Aplicacao: http://192.168.1.212"
+echo "  Diretorio: $WORK_TREE"
 echo ""
-echo "  1. git remote add pi ssh://$PI_USER@<IP_DO_PI>$BARE_REPO"
-echo "  2. git push pi main"
+echo "  Proximo passo:"
+echo "    1. Editar .env: nano $WORK_TREE/.env"
+echo "    2. Correr deploy: cd $WORK_TREE && bash scripts/deploy.sh"
 echo ""
-echo "Depois do primeiro push, edita o .env no Pi para pores as chaves:"
-echo "  ssh $PI_USER@<IP_DO_PI> 'nano $WORK_TREE/.env'"
-echo "  ssh $PI_USER@<IP_DO_PI> 'cd $WORK_TREE && docker compose up -d --build'"
+echo "  Para fazer push direto do teu PC:"
+echo "    git push pi main"
+echo ""
+echo "  Ou espera que o cron (a cada 5min) faca pull do GitHub."
+echo ""

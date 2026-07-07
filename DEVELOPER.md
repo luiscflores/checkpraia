@@ -1,13 +1,13 @@
 # CheckPraia - Developer Setup Guide
 
-This guide helps you configure and run the CheckPraia platform (Laravel 13 + Livewire 4 + PostgreSQL) on your local computer.
+This guide helps you configure and run the CheckPraia platform (Laravel 13 + Livewire 4 + SQLite) on your local computer.
 
 ## Prerequisites
 Before starting, ensure you have the following installed on your machine:
 * **PHP 8.2 or 8.3+** (or PHP 8.5)
 * **Composer** (PHP dependency manager)
 * **Node.js 18+** & **NPM**
-* **Docker** & **Docker Compose** (for the PostgreSQL database)
+* **SQLite** (included with PHP, no separate server needed)
 * **Git**
 
 ---
@@ -39,14 +39,9 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-Open `.env` and adjust the PostgreSQL database credentials. By default, CheckPraia runs on a local Docker PostgreSQL container:
+Open `.env` and check the database settings. By default, CheckPraia uses SQLite:
 ```env
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=mls
-DB_USERNAME=postgres
-DB_PASSWORD=secret
+DB_CONNECTION=sqlite
 ```
 
 Generate the Laravel application key:
@@ -56,20 +51,16 @@ php artisan key:generate
 
 ---
 
-## 3. Database Initialization (Docker Compose)
+## 3. Database Initialization
 
-A standard local PostgreSQL instance can be launched via Docker. If you have Docker Compose set up, ensure you have a container running.
-Otherwise, boot a PostgreSQL instance directly:
+CheckPraia uses **SQLite** by default — no database server required:
+
 ```bash
-docker run --name mls_postgres_local -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=mls -p 5432:5432 -d postgres:16
+touch database/database.sqlite
+php artisan migrate --seed
 ```
 
-Once the database container is online, run the fresh migrations and seed the **76 official coastal beaches of Portugal**:
-```bash
-php artisan migrate:fresh --seed
-```
-
-This registers the default administrator user:
+This registers the **76 official coastal beaches of Portugal** and the default administrator user:
 * **Email**: `luis@checkpraia.pt`
 * **Password**: `password`
 
