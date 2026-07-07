@@ -181,7 +181,10 @@
                     <span class="shrink-0 w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-extrabold text-emerald-400"
                           x-text="i + 1"></span>
                     <div class="min-w-0 flex-1">
-                        <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate" x-text="beach.name"></p>
+                        <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate">
+                            <span x-show="beach.beachcam_slug" class="inline-block mr-0.5 shrink-0">📹</span>
+                            <span x-text="beach.name"></span>
+                        </p>
                         <p class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
                             <span x-text="beach.municipality"></span>
                             <span class="text-emerald-400 font-bold">·</span>
@@ -245,7 +248,10 @@
 
                     <div class="flex items-start justify-between gap-2.5 relative z-10">
                         <div class="min-w-0 flex-1">
-                            <h2 class="font-extrabold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate tracking-tight">{{ $beach['name'] }}</h2>
+                            <h2 class="font-extrabold text-base sm:text-lg text-theme group-hover:text-blue-400 transition-colors truncate tracking-tight">
+                                @if($beach['beachcam_slug'])<span class="inline-block mr-1 shrink-0" title="Tem câmara ao vivo">📹</span>@endif
+                                {{ $beach['name'] }}
+                            </h2>
                             <div class="flex items-center gap-1 mt-0.5 text-xs text-slate-400 font-medium">
                                 <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>

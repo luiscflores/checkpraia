@@ -61,7 +61,7 @@ class Home extends Component
 
         $geoService = app(GeoService::class);
 
-        $all = Beach::select(['id', 'name', 'slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+        $all = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
             ->with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true)
             ->whereHas('currentStatus', fn ($q) => $q->where('flag', 'green'))
@@ -81,6 +81,7 @@ class Home extends Component
                     'id' => $beach->id,
                     'name' => $beach->name,
                     'slug' => $beach->slug,
+                    'beachcam_slug' => $beach->beachcam_slug,
                     'latitude' => (float) $beach->latitude,
                     'longitude' => (float) $beach->longitude,
                     'distance_km' => round($distance, 1),
@@ -167,7 +168,7 @@ class Home extends Component
             return $this->cachedBeachesList;
         }
 
-        $query = Beach::select(['id', 'name', 'slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+        $query = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
             ->with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast', 'translations'])
             ->where('is_active', true);
 
@@ -207,6 +208,7 @@ class Home extends Component
                 'id' => $beach->id,
                 'name' => $beach->name,
                 'slug' => $beach->slug,
+                'beachcam_slug' => $beach->beachcam_slug,
                 'latitude' => (float) $beach->latitude,
                 'longitude' => (float) $beach->longitude,
                 'flag' => $status ? $status->flag : 'gray',
