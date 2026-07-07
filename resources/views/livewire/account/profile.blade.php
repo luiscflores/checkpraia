@@ -169,7 +169,7 @@
 
                             <div class="flex items-center gap-3">
                                 @php
-                                    $favFlag = $favorite->currentStatus ? $favorite->currentStatus->flag : 'gray';
+                                    $favFlag = $favorite->getDisplayFlag();
                                     $favColor = match($favFlag) {
                                         'green' => 'bg-emerald-500 text-slate-950',
                                         'yellow' => 'bg-amber-500 text-slate-950',

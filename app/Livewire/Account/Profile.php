@@ -118,7 +118,7 @@ class Profile extends Component
 
         // Fetch user favorites
         $favorites = $user->favorites()
-            ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality', 'blue_flag', 'accessible', 'is_active'])
+            ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality', 'blue_flag', 'accessible', 'is_active', 'is_supervised', 'season_start', 'season_end', 'lifeguard_start', 'lifeguard_end'])
             ->with(['currentStatus', 'translations'])
             ->get();
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Support\Facades\Cache;
@@ -26,6 +27,38 @@ class Beach extends Model
             'season_start' => 'date',
             'season_end' => 'date',
         ];
+    }
+
+    public function isInSeason(): bool
+    {
+        if (!$this->season_start || !$this->season_end) {
+            return true;
+        }
+        return now()->between($this->season_start, $this->season_end);
+    }
+
+    public function isInLifeguardHours(): bool
+    {
+        if (!$this->is_supervised || !$this->lifeguard_start || !$this->lifeguard_end) {
+            return true;
+        }
+        $now = now()->format('H:i:s');
+        return $now >= $this->lifeguard_start && $now <= $this->lifeguard_end;
+    }
+
+    public function getDisplayFlag(?User $user = null): string
+    {
+        $user ??= auth()->user();
+
+        if ($user && $user->is_admin) {
+            return $this->currentStatus?->flag ?? 'gray';
+        }
+
+        if ($this->isInSeason() && $this->isInLifeguardHours()) {
+            return $this->currentStatus?->flag ?? 'gray';
+        }
+
+        return 'gray';
     }
 
     public function getNameAttribute($value)

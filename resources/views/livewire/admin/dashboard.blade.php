@@ -370,7 +370,7 @@
                                     @if($beach->currentStatus)
                                         @php
                                             $flagStyles = ['green' => 'bg-emerald-500', 'yellow' => 'bg-amber-500', 'red' => 'bg-rose-500', 'blue_or_neutral' => 'bg-blue-500', 'gray' => 'bg-slate-500'];
-                                            $style = $flagStyles[$beach->currentStatus->flag] ?? 'bg-slate-500';
+                                            $style = $flagStyles[$beach->getDisplayFlag()] ?? 'bg-slate-500';
                                         @endphp
                                         <span class="w-2.5 h-2.5 rounded-full inline-block {{ $style }}"></span>
                                     @else

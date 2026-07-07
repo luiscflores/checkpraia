@@ -152,7 +152,7 @@
                 <h2 class="text-[11px] uppercase tracking-widest text-slate-400 font-extrabold mb-4">{{ __('beach.flag_title') }}</h2>
 
                 @php
-                    $flag = $beach->currentStatus ? $beach->currentStatus->flag : 'gray';
+                    $flag = $beach->getDisplayFlag();
                     $source = $beach->currentStatus ? $beach->currentStatus->source : 'prediction';
                     $confidence = $beach->currentStatus ? $beach->currentStatus->confidence : 100;
                     $flagName = match($flag) {
@@ -882,50 +882,7 @@
 
             <x-ads.slot slot="beach_detail_bottom" />
 
-            <!-- Restaurants -->
-            <div class="space-y-3" data-animate>
-                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
-                    <span>🍽️</span> {{ __('beach.dining_title') }}
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-animate-stagger="0.1">
-                    @forelse($beach->restaurants as $restaurant)
-                        <div class="glass-card p-4 rounded-2xl flex flex-col justify-between gap-3 relative group hover:border-blue-500/30 transition-all card-lift">
-                            <span class="absolute top-3 right-3 text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full {{ $restaurant->source === 'tripadvisor' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20' }}">
-                                {{ $restaurant->source }}
-                            </span>
-
-                            <div class="space-y-1">
-                                <h4 class="font-bold text-theme group-hover:text-blue-400 transition-colors text-sm pr-16">{{ $restaurant->name }}</h4>
-                                <p class="text-xs text-slate-400">{{ $restaurant->cuisine_type }}</p>
-                                <div class="flex items-center gap-2 text-xs">
-                                    <span class="text-yellow-400">★ {{ $restaurant->rating }}</span>
-                                    <span class="text-slate-500">{{ __('beach.dining_rating', ['rating' => $restaurant->rating, 'count' => $restaurant->reviews_count]) }}</span>
-                                </div>
-                                @if($restaurant->average_price)
-                                    <p class="text-xs text-slate-300">{{ __('beach.dining_avg_price', ['price' => $restaurant->average_price]) }}</p>
-                                @endif
-                                <p class="text-xs text-slate-500">{{ __('beach.dining_distance', ['distance' => round($restaurant->pivot->distance, 2)]) }}</p>
-                            </div>
-
-                            <div class="flex gap-2 pt-2 border-t border-theme-subtle">
-                                @if($restaurant->booking_url)
-                                    <a href="{{ $restaurant->booking_url }}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors active:scale-95" aria-label="{{ __('beach.dining_booking') }} {{ $restaurant->name }}">
-                                        {{ __('beach.dining_booking') }}
-                                    </a>
-                                @endif
-                                <a href="{{ $restaurant->external_url }}" target="_blank" class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors border border-slate-700 active:scale-95" aria-label="{{ __('beach.dining_view') }} {{ $restaurant->name }}">
-                                    {{ __('beach.dining_view') }}
-                                </a>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="col-span-2 glass-card p-6 rounded-xl border border-theme-medium text-center text-theme-muted text-xs">
-                            {{ __('beach.dining_no_results') }}
-                        </div>
-                    @endforelse
-                </div>
-            </div>
+            {{-- Restaurants (hidden until nearby dining is fixed) --}}
         </div>
     </div>
 

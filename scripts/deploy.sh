@@ -31,6 +31,9 @@ npm run build
 rm -rf node_modules
 
 php artisan migrate --force --seed
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 php artisan storage:link --no-interaction 2>/dev/null || true
 
 sudo chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true

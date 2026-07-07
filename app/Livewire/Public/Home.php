@@ -61,7 +61,7 @@ class Home extends Component
 
         $geoService = app(GeoService::class);
 
-        $all = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+        $all = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district', 'is_supervised', 'season_start', 'season_end', 'lifeguard_start', 'lifeguard_end'])
             ->with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true)
             ->whereHas('currentStatus', fn ($q) => $q->where('flag', 'green'))
@@ -75,7 +75,6 @@ class Home extends Component
                 );
                 $weather = $beach->latestWeatherForecast;
                 $ocean = $beach->latestOceanForecast;
-                $status = $beach->currentStatus;
 
                 return [
                     'id' => $beach->id,
@@ -90,12 +89,14 @@ class Home extends Component
                     'accessible' => (bool) $beach->accessible,
                     'region' => $beach->region,
                     'municipality' => $beach->municipality,
+                    'flag' => $beach->getDisplayFlag(),
                     'air_temp' => $weather ? (float) $weather->temp : null,
                     'water_temp' => $ocean ? (float) $ocean->water_temp : null,
                     'wave_height_min' => $ocean ? (float) $ocean->wave_height_min : null,
                     'wave_height_max' => $ocean ? (float) $ocean->wave_height_max : null,
                 ];
             })
+            ->filter(fn ($b) => $b['flag'] === 'green')
             ->sortBy('distance_km')
             ->take(5)
             ->values()
@@ -211,7 +212,7 @@ class Home extends Component
                 'beachcam_slug' => $beach->beachcam_slug,
                 'latitude' => (float) $beach->latitude,
                 'longitude' => (float) $beach->longitude,
-                'flag' => $status ? $status->flag : 'gray',
+                'flag' => $beach->getDisplayFlag(),
                 'source' => $status ? $status->source : 'prediction',
                 'url' => $beach->url,
                 'blue_flag' => (bool) $beach->blue_flag,
