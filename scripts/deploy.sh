@@ -14,8 +14,9 @@ git reset --hard origin/main
 
 mkdir -p storage bootstrap/cache database
 
-sudo chown -R www-data:www-data storage bootstrap/cache database 2>/dev/null || true
-chmod -R 775 storage bootstrap/cache database
+# Ensure pi owns everything for git/composer/npm to work
+sudo chown -R pi:pi . 2>/dev/null || true
+chmod -R u+rwX storage bootstrap/cache database 2>/dev/null || true
 
 if [ ! -f .env ]; then
     if [ -f .env.example ]; then
@@ -38,6 +39,10 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan storage:link --no-interaction 2>/dev/null || true
+
+# www-data needs write access to storage/cache/database
+sudo chown -R www-data:www-data storage bootstrap/cache database 2>/dev/null || true
+sudo chmod -R 775 storage bootstrap/cache database 2>/dev/null || true
 
 sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null || sudo systemctl restart "$PHP_FPM_SERVICE"
 
