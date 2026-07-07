@@ -8,6 +8,7 @@ use App\Models\Referral;
 use App\Models\ScoreTransaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class Profile extends Component
@@ -27,7 +28,10 @@ class Profile extends Component
         $user = Auth::user();
         $this->editName = $user->name;
         $this->editUsername = $user->username;
-        $this->editLocale = $user->locale ?? session('locale', app()->getLocale());
+        $this->editLocale = session('locale', app()->getLocale());
+        if (Schema::hasColumn('users', 'locale') && $user->locale) {
+            $this->editLocale = $user->locale;
+        }
     }
 
     public function updateProfile()

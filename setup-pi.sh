@@ -57,9 +57,19 @@ fi
 echo "=== 4. Instalar Node.js ==="
 
 if ! command -v node &>/dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
-    sudo apt-get install -y nodejs
-    echo "Node.js installed."
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armhf" ]; then
+        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-armv7l.tar.xz"
+    elif [ "$ARCH" = "aarch64" ]; then
+        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-arm64.tar.xz"
+    else
+        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz"
+    fi
+    curl -fsSL "$NODE_URL" | tar -xJ -C /tmp
+    sudo cp -a /tmp/node-v22.14.0-linux-*/bin/* /usr/local/bin/
+    sudo cp -a /tmp/node-v22.14.0-linux-*/lib/node_modules /usr/local/lib/
+    rm -rf /tmp/node-v22.14.0-linux-*
+    echo "Node.js $(node --version) installed."
 fi
 
 # ── 5. Configurar OPCache + JIT ──────────────────────────────────────────
@@ -155,8 +165,15 @@ HOOK
     echo "Para fazer push direto: git push pi main"
 fi
 
-# ── 12. Arrancar servicos ────────────────────────────────────────────────
-echo "=== 12. Arrancar servicos ==="
+# ── 12. Corrigir permissoes para o nginx/www-data ────────────────────────
+echo "=== 12. Corrigir permissoes ==="
+
+sudo chmod +x "/home/$PI_USER"
+sudo chown -R www-data:www-data "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
+sudo chmod -R 775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
+
+# ── 13. Arrancar servicos ────────────────────────────────────────────────
+echo "=== 13. Arrancar servicos ==="
 
 sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor
 sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor

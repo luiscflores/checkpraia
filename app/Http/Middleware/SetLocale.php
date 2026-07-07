@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 
 class SetLocale
@@ -40,8 +41,8 @@ class SetLocale
         URL::defaults(['locale' => $locale]);
         session(['locale' => $locale]);
 
-        if (auth()->check() && auth()->user()->locale !== $locale) {
-            auth()->user()->update(['locale' => $locale]);
+        if (auth()->check() && Schema::hasColumn('users', 'locale') && auth()->user()->locale !== $locale) {
+            auth()->user()->updateQuietly(['locale' => $locale]);
         }
 
         return $next($request);
@@ -55,7 +56,7 @@ class SetLocale
             return $locale;
         }
 
-        if (auth()->check()) {
+        if (auth()->check() && Schema::hasColumn('users', 'locale')) {
             $userLocale = auth()->user()->locale;
             if ($userLocale && in_array($userLocale, $supportedLocales)) {
                 return $userLocale;

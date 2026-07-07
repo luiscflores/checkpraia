@@ -14,7 +14,8 @@ git reset --hard origin/main
 
 mkdir -p storage bootstrap/cache database
 
-chmod -R 775 storage bootstrap/cache
+sudo chown -R www-data:www-data storage bootstrap/cache database 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache database
 
 if [ ! -f .env ]; then
     if [ -f .env.example ]; then
