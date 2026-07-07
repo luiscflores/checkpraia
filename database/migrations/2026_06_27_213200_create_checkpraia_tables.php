@@ -333,8 +333,10 @@ return new class extends Migration
             $table->decimal('air_temp', 4, 1)->nullable();
             $table->string('water_quality', 30)->nullable();
             $table->dateTime('captured_at');
+            $table->dateTime('vote_time')->nullable();
             $table->timestamps();
 
+            $table->unique(['beach_id', 'captured_at'], 'idx_beach_hourly_snapshots_unique');
             $table->index(['beach_id', 'captured_at']);
         });
 
