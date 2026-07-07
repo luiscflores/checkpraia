@@ -9,14 +9,14 @@ cd "$APP_DIR"
 
 echo ">>> Deploy: $APP_DIR"
 
+# Ensure pi owns everything before git pull (git needs write access)
+sudo chown -R pi:pi . 2>/dev/null || true
+chmod -R u+rwX . 2>/dev/null || true
+
 git fetch origin main
 git reset --hard origin/main
 
 mkdir -p storage bootstrap/cache database
-
-# Ensure pi owns everything for git/composer/npm to work
-sudo chown -R pi:pi . 2>/dev/null || true
-chmod -R u+rwX storage bootstrap/cache database 2>/dev/null || true
 
 if [ ! -f .env ]; then
     if [ -f .env.example ]; then
