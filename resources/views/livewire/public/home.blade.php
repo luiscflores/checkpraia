@@ -3,7 +3,7 @@
     @section('og_title', __('home.og_title'))
     @section('og_description', __('home.og_description'))
     @section('hreflang')
-        @foreach(['pt', 'en', 'es', 'fr'] as $locale)
+        @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale)
             <link rel="alternate" hreflang="{{ $locale }}" href="{{ url($locale === 'pt' ? '/' : "/{$locale}") }}">
         @endforeach
     @endsection
@@ -12,10 +12,10 @@
 
     <!-- Wave Background Decoration -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-        <svg class="wave-decoration absolute -top-20 left-0 w-[200%] h-auto opacity-[0.015] sm:opacity-[0.025]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6;">
+        <svg class="wave-decoration absolute -top-20 left-0 w-[200%] h-auto opacity-[0.05] sm:opacity-[0.08]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6;">
             <path d="M0,192L48,176C96,160,192,128,288,138.7C384,149,480,203,576,218.7C672,235,768,213,864,192C960,171,1056,149,1152,138.7C1248,128,1344,128,1392,128L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
         </svg>
-        <svg class="wave-decoration absolute -bottom-10 right-0 w-[180%] h-auto opacity-[0.01] sm:opacity-[0.02]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6; animation-delay: -3s;">
+        <svg class="wave-decoration absolute -bottom-10 right-0 w-[180%] h-auto opacity-[0.03] sm:opacity-[0.06]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6; animation-delay: -3s;">
             <path d="M0,64L48,74.7C96,85,192,107,288,112C384,117,480,107,576,112C672,117,768,139,864,144C960,149,1056,139,1152,128C1248,117,1344,107,1392,101.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
         </svg>
     </div>
@@ -167,7 +167,7 @@
                 <span>{{ __('home.green_nearby_title') }}</span>
             </h2>
             <span x-show="nearbyGreen.length > 0"
-                  class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  class="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                 <span x-text="nearbyGreen.length"></span> {{ __('home.green_nearby_count') }}
             </span>
         </div>
@@ -182,15 +182,15 @@
                           x-text="i + 1"></span>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate" x-text="beach.name"></p>
-                        <p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                        <p class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
                             <span x-text="beach.municipality"></span>
                             <span class="text-emerald-400 font-bold">·</span>
                             <span class="text-emerald-400 font-bold" x-text="beach.distance_km + ' km'"></span>
                         </p>
                         <div class="flex items-center gap-2 mt-1">
-                            <span x-show="beach.air_temp !== null" class="text-[10px] text-slate-400" x-text="'🌡️ ' + beach.air_temp + '°'"></span>
-                            <span x-show="beach.water_temp !== null" class="text-[10px] text-slate-400" x-text="'💧 ' + beach.water_temp + '°'"></span>
-                            <span x-show="beach.wave_height_max !== null" class="text-[10px] text-slate-400" x-text="'🌊 ' + beach.wave_height_max + 'm'"></span>
+                            <span x-show="beach.air_temp !== null" class="text-[11px] text-slate-400" x-text="'🌡️ ' + beach.air_temp + '°'"></span>
+                            <span x-show="beach.water_temp !== null" class="text-[11px] text-slate-400" x-text="'💧 ' + beach.water_temp + '°'"></span>
+                            <span x-show="beach.wave_height_max !== null" class="text-[11px] text-slate-400" x-text="'🌊 ' + beach.wave_height_max + 'm'"></span>
                         </div>
                     </div>
                 </a>
@@ -297,23 +297,23 @@
 
                     <div class="flex flex-wrap gap-1.5 relative z-10">
                         @if($beach['blue_flag'])
-                            <span class="bg-blue-600/15 border border-blue-500/20 text-blue-400 text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                            <span class="bg-blue-600/15 border border-blue-500/20 text-blue-400 text-[11px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
                                 {{ __('common.flag_blue_flag') }}
                             </span>
                         @endif
                         @if($beach['accessible'])
-                            <span class="bg-teal-600/15 border border-teal-500/20 text-teal-400 text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                            <span class="bg-teal-600/15 border border-teal-500/20 text-teal-400 text-[11px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
                                 {{ __('common.flag_accessible') }}
                             </span>
                         @endif
 
                         @if(in_array($beach['source'], ['report', 'consensus', 'community']))
-                            <span class="bg-emerald-600/15 border border-emerald-500/25 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 ml-auto shrink-0 shadow-sm shadow-emerald-500/5">
+                            <span class="bg-emerald-600/15 border border-emerald-500/25 text-emerald-400 text-[11px] px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 ml-auto shrink-0 shadow-sm shadow-emerald-500/5">
                                 <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 {{ __('common.flag_confirmed') }}
                             </span>
                         @else
-                            <span class="bg-blue-600/10 border border-blue-500/10 text-blue-400/80 text-[10px] px-2.5 py-0.5 rounded-md font-medium uppercase tracking-wider flex items-center gap-1 ml-auto shrink-0">
+                            <span class="bg-blue-600/10 border border-blue-500/10 text-blue-400/80 text-[11px] px-2.5 py-0.5 rounded-md font-medium uppercase tracking-wider flex items-center gap-1 ml-auto shrink-0">
                                 {{ __('common.flag_prediction') }}
                             </span>
                         @endif
@@ -327,7 +327,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l-.707.707"/>
                                     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>
                                 </svg>
-                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_air') }}</span>
+                                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_air') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
                                 {{ $beach['air_temp'] !== null ? $beach['air_temp'] . '°' : '—' }}
@@ -339,7 +339,7 @@
                                 <svg class="w-3.5 h-3.5 text-blue-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
                                 </svg>
-                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_water') }}</span>
+                                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_water') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
                                 {{ $beach['water_temp'] !== null ? $beach['water_temp'] . '°' : '—' }}
@@ -351,7 +351,7 @@
                                 <svg class="w-3.5 h-3.5 text-teal-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2 12c4-4 8 4 12 0s8-4 12 0M2 17c4-4 8 4 12 0s8-4 12 0"/>
                                 </svg>
-                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_waves') }}</span>
+                                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_waves') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
                                 {{ $beach['wave_height_max'] !== null ? $beach['wave_height_max'] . 'm' : '—' }}
@@ -363,12 +363,12 @@
                                 <svg class="w-3.5 h-3.5 text-slate-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7H4M16 11H8M18 15H6M19 19H9"/>
                                 </svg>
-                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_wind') }}</span>
+                                <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_wind') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 flex items-center justify-center gap-1 tabular-nums">
                                 <span>{{ $beach['wind_speed'] !== null ? (int)round($beach['wind_speed'] * 1.852) : '—' }}</span>
                                 @if($beach['wind_direction'] !== null)
-                                    <span class="text-[9px] font-extrabold text-slate-500 uppercase">{{ $beach['wind_direction'] }}</span>
+                                    <span class="text-[11px] font-extrabold text-slate-500 uppercase">{{ $beach['wind_direction'] }}</span>
                                 @endif
                             </span>
                         </div>
@@ -486,6 +486,18 @@
                     }
                 };
 
+                const fixZoomControlLinks = (el) => {
+                    setTimeout(() => {
+                        el.querySelectorAll('.leaflet-control-zoom a').forEach(a => {
+                            if (a.getAttribute('href') === '#') {
+                                a.removeAttribute('href');
+                                a.setAttribute('role', 'button');
+                                a.setAttribute('tabindex', '0');
+                            }
+                        });
+                    }, 200);
+                };
+
                 // Init main continental map immediately
                 this.mapContinente = L.map('map-continente', {
                     zoomControl: true,
@@ -494,6 +506,7 @@
                 }).setView([39.6, -8.2], 7);
                 this.mapContinente.on('popupopen', removePopupHref);
                 contEl.__leafletMap = this.mapContinente;
+                fixZoomControlLinks(contEl);
 
                 this.tileLayers.continente = this.createTileLayer();
                 this.tileLayers.continente.addTo(this.mapContinente);
@@ -735,7 +748,7 @@
                         radius: Math.max(acc, 50)
                     }).addTo(map).bindPopup(`
                         {{ __('common.gps_your_location') }}<br>
-                        <span class="text-[10px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
+                        <span class="text-[11px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
                     `).openPopup();
                 }).catch((err) => {
                     if (auto) return;

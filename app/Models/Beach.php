@@ -48,12 +48,10 @@ class Beach extends Model
     public function getUrlAttribute()
     {
         $locale = app()->getLocale();
-        $routeName = match ($locale) {
-            'en' => 'beach.show.en',
-            'es' => 'beach.show.es',
-            'fr' => 'beach.show.fr',
-            default => 'beach.show.pt',
-        };
+        $routeName = 'beach.show.' . $locale;
+        if (!\Illuminate\Support\Facades\Route::has($routeName)) {
+            $routeName = 'beach.show.pt';
+        }
         return route($routeName, ['locale' => $locale, 'slug' => $this->slug]);
     }
 

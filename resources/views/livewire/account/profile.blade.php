@@ -74,6 +74,15 @@
                         @error('editUsername') <span class="text-xs text-rose-400 block">{{ $message }}</span> @enderror
                     </div>
 
+                    <div class="space-y-1">
+                        <label class="text-xs text-theme-secondary font-bold block">{{ __('profile.language') }}</label>
+                        <select wire:model="editLocale" class="w-full glass-input px-3.5 py-2.5 rounded-xl text-base sm:text-sm">
+                            @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $code)
+                                <option value="{{ $code }}">{{ config('locales.flags.' . $code) }} {{ __("common.lang_{$code}") }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2.5 rounded-xl text-sm transition-all touch-target">
                             {{ __('profile.save_changes') }}

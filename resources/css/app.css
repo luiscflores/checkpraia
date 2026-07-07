@@ -395,8 +395,16 @@
 
 .wave-decoration {
     animation: wave-drift 10s ease-in-out infinite;
-    opacity: 0.04;
+    opacity: 0.035;
     pointer-events: none;
+}
+.wave-decoration:nth-child(2) {
+    animation-delay: -5s;
+    opacity: 0.025;
+}
+.wave-decoration:nth-child(3) {
+    animation-delay: -3s;
+    opacity: 0.02;
 }
 
 /* Livewire loading bar */
@@ -549,4 +557,79 @@
     .bottom-safe {
         padding-bottom: env(safe-area-inset-bottom);
     }
+}
+
+/* ── Beach/ocean wave background ──────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 220% 30% at 0% 100%, rgba(59,130,246,0.20) 0%, transparent 70%),
+    radial-gradient(ellipse 180% 24% at 30% 100%, rgba(56,189,248,0.16) 0%, transparent 70%),
+    radial-gradient(ellipse 260% 22% at 70% 100%, rgba(14,165,233,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 150% 12% at 50% 100%, rgba(255,255,255,0.06) 0%, transparent 60%);
+  animation: wave-swell 10s ease-in-out infinite alternate;
+}
+
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse 220% 30% at 0% 100%, rgba(37,99,235,0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 180% 24% at 30% 100%, rgba(2,132,199,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 260% 22% at 70% 100%, rgba(7,89,133,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 150% 12% at 50% 100%, rgba(0,0,0,0.06) 0%, transparent 60%);
+}
+
+@keyframes wave-swell {
+  0% { transform: translateX(-1%) translateY(0); }
+  50% { transform: translateX(1%) translateY(-0.5%); }
+  100% { transform: translateX(-1%) translateY(0.5%); }
+}
+
+/* Subtle wave line overlay */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 45vh;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.8;
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.25) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.25) 0%, transparent 100%);
+  background: repeating-linear-gradient(
+    98deg,
+    transparent 0%,
+    rgba(56,189,248,0.07) 0.5%,
+    transparent 1.2%,
+    transparent 6%
+  );
+  background-size: 200% 100%;
+  animation: wave-lines 4s linear infinite;
+}
+
+[data-theme="light"] body::after {
+  background: repeating-linear-gradient(
+    98deg,
+    transparent 0%,
+    rgba(2,132,199,0.10) 0.5%,
+    transparent 1.2%,
+    transparent 6%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes wave-lines {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* Ensure content sits above wave background */
+body > div:not(.wave-decoration) {
+  position: relative;
+  z-index: 1;
 }

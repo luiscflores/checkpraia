@@ -8,7 +8,7 @@
             <div class="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
             
             <div class="relative z-10">
-                <span class="text-[10px] uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-extrabold shadow-sm">
+                <span class="text-[11px] uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-extrabold shadow-sm">
                     Definições de Conta
                 </span>
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-theme tracking-tight mt-2.5">Área Pessoal</h1>

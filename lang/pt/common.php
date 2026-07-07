@@ -123,6 +123,7 @@ return [
     'moon_waning_crescent' => 'Lua Minguante',
 
     // Search & Filters
+    'search_clear' => 'Limpar pesquisa',
     'search_placeholder' => 'Pesquisar praia ou município...',
     'search_nearby' => 'Praias perto de mim',
     'search_nearby_short' => 'Perto de mim',

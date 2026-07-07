@@ -123,6 +123,7 @@ return [
     'moon_waning_crescent' => 'Luna Menguante',
 
     // Search & Filters
+    'search_clear' => 'Limpiar búsqueda',
     'search_placeholder' => 'Buscar playa o municipio...',
     'search_nearby' => 'Playas cerca de mí',
     'search_nearby_short' => 'Cerca de mí',

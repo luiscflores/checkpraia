@@ -32,7 +32,7 @@
 
     <!-- Hreflang / Alternate Language URLs (override per page for dynamic routes) -->
     @section('hreflang')
-        @foreach(['pt', 'en', 'es', 'fr'] as $locale)
+        @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale)
             <link rel="alternate" hreflang="{{ $locale }}" href="{{ url($locale === 'pt' ? '' : "/{$locale}") }}">
         @endforeach
     @show
@@ -43,7 +43,7 @@
     <meta property="og:description" content="@yield('og_description', __('common.meta_description'))">
     <meta property="og:type" content="@yield('og_type', 'website')">
     <meta property="og:url" content="@yield('canonical', url()->current())">
-    <meta property="og:image" content="@yield('og_image', asset('storage/logo.png'))">
+    <meta property="og:image" content="@yield('og_image', asset('logo.png'))">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="388">
     <meta property="og:site_name" content="{{ __('common.site_name') }}">
@@ -53,11 +53,13 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('og_title', __('common.site_name'))">
     <meta name="twitter:description" content="@yield('og_description', __('common.meta_description'))">
-    <meta name="twitter:image" content="@yield('og_image', asset('storage/logo.png'))">
+    <meta name="twitter:image" content="@yield('og_image', asset('logo.png'))">
 
     <!-- Fonts: Plus Jakarta Sans with display=swap to never block rendering -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
+    <link rel="preconnect" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
@@ -85,7 +87,7 @@
                 'url' => url('/'),
                 'logo' => [
                     '@type' => 'ImageObject',
-                    'url' => asset('storage/logo.png'),
+                    'url' => asset('logo.png'),
                     'width' => 1162,
                     'height' => 376,
                 ],
@@ -242,13 +244,28 @@
         [data-theme="light"] .glass-card .text-slate-300,
         [data-theme="light"] .bg-theme-card .text-slate-300 { color: #475569; }
         [data-theme="light"] .glass-card .text-slate-200 { color: #334155; }
+        [data-theme="light"] .glass-card .text-slate-400 { color: #475569; }
         [data-theme="light"] .bg-rose-950\/20 { background: rgba(254, 202, 202, 0.3); }
         [data-theme="light"] .text-rose-200 { color: #c53030; }
         [data-theme="light"] .text-red-300 { color: #c53030; }
         [data-theme="light"] .text-red-400 { color: #dc2626; }
+        [data-theme="light"] .text-rose-300 { color: #e11d48; }
+        [data-theme="light"] .text-rose-400 { color: #e11d48; }
+        [data-theme="light"] .text-emerald-300 { color: #047857; }
+        [data-theme="light"] .text-emerald-400 { color: #047857; }
+        [data-theme="light"] .text-amber-300 { color: #b45309; }
+        [data-theme="light"] .text-amber-400 { color: #b45309; }
+        [data-theme="light"] .text-teal-300 { color: #0f766e; }
+        [data-theme="light"] .text-teal-400 { color: #0f766e; }
+        [data-theme="light"] .text-blue-300 { color: #2563eb; }
+        [data-theme="light"] .text-blue-400 { color: #2563eb; }
+        [data-theme="light"] .text-sky-400 { color: #0284c7; }
+        [data-theme="light"] .text-indigo-400 { color: #4f46e5; }
+        [data-theme="light"] .text-violet-400 { color: #7c3aed; }
+        [data-theme="light"] .text-purple-400 { color: #9333ea; }
+        [data-theme="light"] .text-yellow-400 { color: #a16207; }
         [data-theme="light"] .bg-red-950\/10 { background: rgba(254, 202, 202, 0.2); }
         [data-theme="light"] .bg-blue-950\/10 { background: rgba(219, 234, 254, 0.4); }
-        [data-theme="light"] .text-blue-300 { color: #2563eb; }
     </style>
 
     @if(app()->environment('production'))
@@ -272,23 +289,44 @@
         Saltar para o conteúdo
     </a>
 
+    <!-- Ocean wave decorations (global, all pages) -->
+    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-64 sm:h-80 md:h-96 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.25">
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#3b82f6">
+            <path d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,208C960,192,1056,160,1152,154.7C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        </svg>
+    </div>
+    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-72 sm:h-[26rem] md:h-[28rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.18">
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#06b6d4">
+            <path d="M0,64L60,85.3C120,107,240,149,360,154.7C480,160,600,128,720,138.7C840,149,960,203,1080,208C1200,213,1320,171,1380,149.3L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"/>
+        </svg>
+    </div>
+    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-[20rem] sm:h-[30rem] md:h-[32rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.12">
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#0ea5e9">
+            <path d="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,192C672,213,768,203,864,176C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
+        </svg>
+    </div>
+
     <div class="w-full flex-1 flex flex-col relative">
 
         <!-- Header -->
         <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300 pt-safe" role="banner">
             <div class="w-full max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-3 flex items-center justify-between pl-safe pr-safe">
                 <a href="{{ route('home') }}" class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
-                    <img src="{{ asset('storage/logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
+                    <img src="{{ asset('logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
                 </a>
 
                 <!-- Desktop Navigation Menu -->
                 <nav class="hidden md:flex items-center gap-4 lg:gap-6" aria-label="{{ __('common.nav_map') }}">
-                    <a href="{{ route('home') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('home*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('home*') ? 'aria-current="page"' : '' }}>
-                        {{ __('common.nav_map') }}
-                        @if(request()->routeIs('home*'))
+                    @if(request()->routeIs('home*'))
+                        <span class="relative text-xs font-bold uppercase tracking-wider text-blue-400 font-extrabold" aria-current="page">
+                            {{ __('common.nav_map') }}
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
-                        @endif
-                    </a>
+                        </span>
+                    @else
+                        <a href="{{ route('home') }}#map" class="relative text-xs font-bold uppercase tracking-wider text-theme-secondary hover:text-theme hover:scale-105">
+                            {{ __('common.nav_map') }}
+                        </a>
+                    @endif
                     <a href="{{ route('rankings') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400 font-extrabold' : 'text-theme-secondary hover:text-theme hover:scale-105' }}" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_rankings') }}
                         @if(request()->routeIs('rankings*'))
@@ -327,15 +365,15 @@
                     <!-- Desktop Language Switcher -->
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" @click.outside="open = false" class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-theme-secondary hover:text-theme transition-all px-2 py-1.5 rounded-lg hover:bg-white/5" aria-label="{{ __('common.language') }}" aria-haspopup="true" :aria-expanded="open">
-                            <span class="text-base leading-none">{{ ['pt' => '🇵🇹', 'en' => '🇬🇧', 'es' => '🇪🇸', 'fr' => '🇫🇷'][app()->getLocale()] ?? '🇵🇹' }}</span>
+                            <span class="text-base leading-none">{{ config('locales.flags.' . app()->getLocale(), '🇵🇹') }}</span>
                             <svg class="w-3 h-3 transition-transform duration-200" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                         <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1 w-36 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
-                            @foreach(['pt' => '🇵🇹', 'en' => '🇬🇧', 'es' => '🇪🇸', 'fr' => '🇫🇷'] as $code => $flag)
+                            @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $code)
                                 <form method="POST" action="{{ route('locale.switch', $code) }}">
                                     @csrf
                                     <button type="submit" class="w-full text-left flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold transition-colors hover:bg-white/5 {{ app()->getLocale() === $code ? 'text-blue-400 bg-blue-500/5' : 'text-theme-secondary' }}">
-                                        <span class="text-base">{{ $flag }}</span>
+                                        <span class="text-base">{{ config('locales.flags.' . $code) }}</span>
                                         <span>{{ __("common.lang_{$code}") }}</span>
                                     </button>
                                 </form>
@@ -349,14 +387,14 @@
                     <!-- Mobile Language Switcher -->
                     <div x-data="{ open: false }" class="relative md:hidden">
                         <button @click="open = !open" @click.outside="open = false" class="theme-toggle-btn touch-target" aria-label="{{ __('common.language') }}" aria-haspopup="true" :aria-expanded="open">
-                            <span class="text-lg leading-none">{{ ['pt' => '🇵🇹', 'en' => '🇬🇧', 'es' => '🇪🇸', 'fr' => '🇫🇷'][app()->getLocale()] ?? '🇵🇹' }}</span>
+                            <span class="text-lg leading-none">{{ config('locales.flags.' . app()->getLocale(), '🇵🇹') }}</span>
                         </button>
                         <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1 w-36 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
-                            @foreach(['pt' => '🇵🇹', 'en' => '🇬🇧', 'es' => '🇪🇸', 'fr' => '🇫🇷'] as $code => $flag)
+                            @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $code)
                                 <form method="POST" action="{{ route('locale.switch', $code) }}">
                                     @csrf
                                     <button type="submit" class="w-full text-left flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold transition-colors hover:bg-white/5 {{ app()->getLocale() === $code ? 'text-blue-400 bg-blue-500/5' : 'text-theme-secondary' }}">
-                                        <span class="text-base">{{ $flag }}</span>
+                                        <span class="text-base">{{ config('locales.flags.' . $code) }}</span>
                                         <span>{{ __("common.lang_{$code}") }}</span>
                                     </button>
                                 </form>
@@ -416,9 +454,10 @@
         <!-- Main Content Area -->
         <main id="main-content" class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-6 pb-32 md:pb-12 pb-safe" role="main">
             {{ $slot }}
+        </main>
 
-            <!-- Footer Area -->
-            <footer class="w-full border-t border-theme-subtle py-6 mt-12 text-theme-muted text-xs space-y-4" role="contentinfo">
+        <!-- Footer Area -->
+        <footer class="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 border-t border-theme-subtle py-6 mt-4 text-theme-muted text-xs space-y-4" role="contentinfo">
                 <div class="p-4 rounded-xl border border-red-500/20 bg-red-950/10 text-red-300 leading-relaxed shadow-sm" role="alert">
                     <span class="font-bold text-red-400 uppercase tracking-wide block mb-1"><span aria-hidden="true">⚠️</span> {{ __('common.footer_disclaimer_title') }}:</span>
                     {{ __('common.footer_disclaimer') }}
@@ -437,7 +476,6 @@
                     </div>
                 </div>
             </footer>
-        </main>
 
         <!-- PWA Install Banner -->
         <div x-data="pwaInstallHandler()"
@@ -481,35 +519,49 @@
             ]; @endphp
             @foreach($navItems as $item)
                 @php $active = request()->routeIs(explode('|', $item['pattern'])); @endphp
-                <a href="{{ route($item['route']) }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-blue-400 font-bold' : 'text-theme-secondary hover:text-theme' }}" {{ $active ? 'aria-current="page"' : '' }}>
-                    <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
-                    <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
-                    @if($active)
+                @if($active)
+                    <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-blue-400 font-bold" aria-current="page">
+                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
+                        <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
                         <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
-                    @endif
-                </a>
+                    </span>
+                @else
+                    <a href="{{ route($item['route']) }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
+                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
+                        <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
+                    </a>
+                @endif
             @endforeach
             @auth
                 @if(auth()->user()->is_admin)
                     @php $active = request()->routeIs('admin.*'); @endphp
-                    <a href="{{ route('admin.dashboard') }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-teal-400 font-bold' : 'text-theme-secondary hover:text-theme' }}" {{ $active ? 'aria-current="page"' : '' }}>
-                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
-                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
-                        @if($active)
+                    @if($active)
+                        <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-teal-400 font-bold" aria-current="page">
+                            <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
+                            <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
                             <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
-                        @endif
-                    </a>
+                        </span>
+                    @else
+                        <a href="{{ route('admin.dashboard') }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
+                            <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
+                            <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
+                        </a>
+                    @endif
                 @endif
             @endauth
             @guest
                 @php $active = request()->routeIs('login'); @endphp
-                <a href="{{ route('login') }}" class="relative flex flex-col items-center gap-0 text-[9px] min-w-0 flex-1 px-0.5 py-0.5 transition-all duration-200 {{ $active ? 'text-blue-400 font-bold' : 'text-theme-secondary hover:text-theme' }}">
-                    <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
-                    <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
-                    @if($active)
-                        <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
-                    @endif
-                </a>
+                @if($active)
+                    <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-blue-400 font-bold" aria-current="page">
+                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
+                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
+                    </span>
+                @else
+                    <a href="{{ route('login') }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
+                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
+                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
+                    </a>
+                @endif
             @endguest
         </nav>
 

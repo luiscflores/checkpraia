@@ -9,28 +9,22 @@ use Illuminate\Support\Facades\URL;
 
 class SetLocale
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next)
     {
-        $supportedLocales = ['pt', 'en', 'es', 'fr'];
+        $supportedLocales = config('locales.supported', ['pt', 'en', 'es', 'fr']);
+        $defaultLocale = config('locales.default', 'pt');
         $firstSegment = $request->segment(1);
 
-        // Check if the route is one of the administrative, API or Livewire paths to skip redirecting
         $path = $request->path();
         if (
-            $request->is('api/*') || 
-            $request->is('livewire/*') || 
-            $request->is('filament/*') || 
-            $request->is('_debugbar/*') || 
-            $request->is('auth/*') || 
-            str_contains($path, '.') // skips files like favicon.ico, manifest.json
+            $request->is('api/*') ||
+            $request->is('livewire/*') ||
+            $request->is('filament/*') ||
+            $request->is('_debugbar/*') ||
+            $request->is('auth/*') ||
+            str_contains($path, '.')
         ) {
-            $locale = session('locale');
-            if (!$locale || !in_array($locale, $supportedLocales)) {
-                $locale = $request->getPreferredLanguage($supportedLocales) ?: 'pt';
-            }
+            $locale = $this->resolveLocale($request, $supportedLocales, $defaultLocale);
             App::setLocale($locale);
             URL::defaults(['locale' => $locale]);
             return $next($request);
@@ -39,16 +33,35 @@ class SetLocale
         if (in_array($firstSegment, $supportedLocales)) {
             $locale = $firstSegment;
         } else {
-            $locale = session('locale');
-            if (!$locale || !in_array($locale, $supportedLocales)) {
-                $locale = $request->getPreferredLanguage($supportedLocales) ?: 'pt';
-            }
+            $locale = $this->resolveLocale($request, $supportedLocales, $defaultLocale);
         }
 
         App::setLocale($locale);
         URL::defaults(['locale' => $locale]);
         session(['locale' => $locale]);
 
+        if (auth()->check() && auth()->user()->locale !== $locale) {
+            auth()->user()->update(['locale' => $locale]);
+        }
+
         return $next($request);
+    }
+
+    private function resolveLocale(Request $request, array $supportedLocales, string $defaultLocale): string
+    {
+        $locale = session('locale');
+
+        if ($locale && in_array($locale, $supportedLocales)) {
+            return $locale;
+        }
+
+        if (auth()->check()) {
+            $userLocale = auth()->user()->locale;
+            if ($userLocale && in_array($userLocale, $supportedLocales)) {
+                return $userLocale;
+            }
+        }
+
+        return $request->getPreferredLanguage($supportedLocales) ?: $defaultLocale;
     }
 }

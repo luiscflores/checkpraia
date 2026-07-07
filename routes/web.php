@@ -8,14 +8,23 @@ use App\Livewire\Account\Profile;
 use App\Livewire\Admin\Dashboard;
 use App\Http\Controllers\Auth\GoogleAuthController;
 
-Route::pattern('locale', 'pt|en|es|fr');
+Route::pattern('locale', implode('|', config('locales.supported', ['pt', 'en', 'es', 'fr'])));
 
 Route::post('/locale/{locale}', function ($locale) {
-    if (!in_array($locale, ['pt', 'en', 'es', 'fr'])) {
-        $locale = 'pt';
+    $supported = config('locales.supported', ['pt', 'en', 'es', 'fr']);
+    $default = config('locales.default', 'pt');
+
+    if (!in_array($locale, $supported)) {
+        $locale = $default;
     }
+
     session(['locale' => $locale]);
     app()->setLocale($locale);
+
+    if (auth()->check()) {
+        auth()->user()->update(['locale' => $locale]);
+    }
+
     return redirect()->back();
 })->name('locale.switch');
 
@@ -59,8 +68,18 @@ Route::prefix('{locale}')->group(function () {
 Route::get('/sitemap.xml', function () {
     $beaches = \App\Models\Beach::select('slug', 'updated_at')->get();
 
+    $segments = [];
+    foreach (config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale) {
+        $segments[$locale] = match ($locale) {
+            'en' => 'beaches',
+            'es' => 'playas',
+            'fr' => 'plages',
+            default => 'praias',
+        };
+    }
+
     return response()->view('sitemap', [
-        'locales' => ['pt' => 'praias', 'en' => 'beaches', 'es' => 'playas', 'fr' => 'plages'],
+        'locales' => $segments,
         'beaches' => $beaches,
         'staticPages' => [
             ['loc' => url('/'), 'priority' => '1.0', 'changefreq' => 'hourly'],

@@ -6,8 +6,11 @@
     @section('og_type', 'place')
     @section('canonical', $beach->url)
     @section('hreflang')
-        @foreach(['pt' => 'beach.show.pt', 'en' => 'beach.show.en', 'es' => 'beach.show.es', 'fr' => 'beach.show.fr'] as $locale => $route)
-            <link rel="alternate" hreflang="{{ $locale }}" href="{{ route($route, ['locale' => $locale, 'slug' => $beach->slug]) }}">
+        @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale)
+            @php $routeName = 'beach.show.' . $locale; @endphp
+            @if(Route::has($routeName))
+                <link rel="alternate" hreflang="{{ $locale }}" href="{{ route($routeName, ['locale' => $locale, 'slug' => $beach->slug]) }}">
+            @endif
         @endforeach
     @endsection
     @section('ld_json')
@@ -42,7 +45,7 @@
         ],
         'latitude' => (float) $beach->latitude,
         'longitude' => (float) $beach->longitude,
-        'image' => asset('storage/logo.png'),
+        'image' => asset('logo.png'),
         'isAccessibleForFree' => true,
         'publicAccess' => true,
         'openingHours' => 'Mo-Su 09:00-19:00',
@@ -70,16 +73,16 @@
 
         <div class="relative z-10">
             <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-[10px] uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-extrabold shadow-sm">
+                <span class="text-[11px] uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-extrabold shadow-sm">
                     {{ $beach->region }}
                 </span>
                 @if($beach->blue_flag)
-                    <span class="text-[10px] uppercase tracking-wider font-extrabold text-white bg-blue-600/80 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1 shadow-sm">
+                    <span class="text-[11px] uppercase tracking-wider font-extrabold text-white bg-blue-600/80 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1 shadow-sm">
                         <span>🔷</span> {{ __('common.flag_blue_flag') }}
                     </span>
                 @endif
                 @if($beach->accessible)
-                    <span class="text-[10px] uppercase tracking-wider font-extrabold text-white bg-teal-600/80 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1 shadow-sm">
+                    <span class="text-[11px] uppercase tracking-wider font-extrabold text-white bg-teal-600/80 px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1 shadow-sm">
                         <span>♿</span> {{ __('common.flag_accessible') }}
                     </span>
                 @endif
@@ -134,7 +137,7 @@
             <div class="glass-card p-6 rounded-3xl text-center flex flex-col items-center justify-center relative overflow-hidden border border-theme-subtle/50 animate-fade-in-up" data-animate>
                 <div class="absolute w-48 h-48 rounded-full blur-3xl opacity-15 -top-12 -left-12 bg-blue-500 animate-float"></div>
 
-                <h2 class="text-[10px] uppercase tracking-widest text-slate-400 font-extrabold mb-4">{{ __('beach.flag_title') }}</h2>
+                <h2 class="text-[11px] uppercase tracking-widest text-slate-400 font-extrabold mb-4">{{ __('beach.flag_title') }}</h2>
 
                 @php
                     $flag = $beach->currentStatus ? $beach->currentStatus->flag : 'gray';
@@ -198,7 +201,7 @@
 
                 @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
                     <div class="mt-5 w-full max-w-xs space-y-2">
-                        <span class="text-[10px] text-slate-400 uppercase font-extrabold tracking-wider block">{{ __('beach.weather_title') }}</span>
+                        <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider block">{{ __('beach.weather_title') }}</span>
                         <div class="h-8 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[3px]">
                             @if($prediction->green_probability > 0)
                                 <div class="bg-emerald-500 rounded-l-full transition-all duration-500 flex items-center justify-center text-xs font-black text-slate-950" 
@@ -373,19 +376,19 @@
                             @endphp
                             <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-xl transition-colors {{ $isCurrentUser ? 'bg-blue-500/5 border border-blue-500/10' : 'hover:bg-white/[0.02]' }}">
                                 <div class="flex items-center gap-2 min-w-0">
-                                    <span class="w-6 h-6 rounded-full bg-theme-card border border-theme-subtle flex items-center justify-center text-[10px] font-bold text-theme-secondary shrink-0">
+                                    <span class="w-6 h-6 rounded-full bg-theme-card border border-theme-subtle flex items-center justify-center text-[11px] font-bold text-theme-secondary shrink-0">
                                         {{ strtoupper(substr($report->user->name ?? '?', 0, 1)) }}
                                     </span>
                                     <span class="text-xs font-semibold text-theme truncate {{ $isCurrentUser ? 'text-blue-400' : '' }}">
                                         {{ $report->user->name ?? __('common.anonymous') }}
                                         @if($isCurrentUser)
-                                            <span class="text-[9px] text-blue-400 font-bold">(tu)</span>
+                                            <span class="text-[11px] text-blue-400 font-bold">(tu)</span>
                                         @endif
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
-                                    <span class="text-[10px] text-theme-muted font-medium tabular-nums">{{ $report->reported_at->timezone($beach->timezone)->format('H:i') }}</span>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border {{ $voteFlagColor }}">
+                                    <span class="text-[11px] text-theme-muted font-medium tabular-nums">{{ $report->reported_at->timezone($beach->timezone)->format('H:i') }}</span>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border {{ $voteFlagColor }}">
                                         {{ $voteFlagLabel }}
                                     </span>
                                 </div>
@@ -431,7 +434,7 @@
                                     <span class="text-[11px] text-theme-muted font-medium tabular-nums">
                                         {{ $snapshot->captured_at->timezone($beach->timezone)->format('H:i') }}
                                     </span>
-                                    <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border {{ $dotColor }} text-white">
+                                    <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border {{ $dotColor }} text-white">
                                         @switch($snapshot->flag)
                                             @case('green') {{ __('common.flag_green') }} @break
                                             @case('yellow') {{ __('common.flag_yellow') }} @break
@@ -463,7 +466,7 @@
                         <span class="text-lg font-extrabold text-theme block">{{ $ocean && $ocean->wave_height_max !== null ? $ocean->wave_height_max . 'm' : __('common.weather_not_available') }}</span>
                     </div>
                     @if($ocean && $ocean->wave_direction)
-                        <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.dir_label', ['value' => $ocean->wave_direction]) }}</span>
+                        <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.dir_label', ['value' => $ocean->wave_direction]) }}</span>
                     @endif
                 </div>
 
@@ -478,7 +481,7 @@
                         <span class="text-lg font-extrabold text-theme block">{{ $ocean && $ocean->wave_period_max !== null ? $ocean->wave_period_max . 's' : __('common.weather_not_available') }}</span>
                     </div>
                     @if($ocean && $ocean->wave_period_min !== null)
-                        <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.min_label', ['value' => $ocean->wave_period_min . 's']) }}</span>
+                        <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.min_label', ['value' => $ocean->wave_period_min . 's']) }}</span>
                     @endif
                 </div>
 
@@ -492,7 +495,7 @@
                         <span class="text-xs text-slate-400 uppercase font-bold block">{{ __('common.weather_water') }}</span>
                         <span class="text-lg font-extrabold text-theme block">{{ $ocean && $ocean->water_temp !== null ? $ocean->water_temp . '°C' : __('common.weather_not_available') }}</span>
                     </div>
-                    <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.sst_avg') }}</span>
+                    <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.sst_avg') }}</span>
                 </div>
 
                 <!-- Wind -->
@@ -506,7 +509,7 @@
                         <span class="text-lg font-extrabold text-theme block">{{ $weather && $weather->wind_speed !== null ? (int)round($weather->wind_speed * 1.852) . ' km/h' : __('common.weather_not_available') }}</span>
                     </div>
                     @if($weather && $weather->wind_direction)
-                        <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.dir_label', ['value' => $weather->wind_direction]) }}</span>
+                        <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.dir_label', ['value' => $weather->wind_direction]) }}</span>
                     @endif
                 </div>
 
@@ -522,9 +525,9 @@
                         <span class="text-lg font-extrabold text-theme block">{{ $weather && $weather->temp !== null ? $weather->temp . '°C' : __('common.weather_not_available') }}</span>
                     </div>
                     @if($weather && $weather->precipitation !== null)
-                        <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.precip_label', ['value' => $weather->precipitation . 'mm']) }}</span>
+                        <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.precip_label', ['value' => $weather->precipitation . 'mm']) }}</span>
                     @else
-                        <span class="text-[10px] text-slate-500 block truncate font-medium">{{ __('beach.no_rain') }}</span>
+                        <span class="text-[11px] text-slate-500 block truncate font-medium">{{ __('beach.no_rain') }}</span>
                     @endif
                 </div>
 
@@ -557,7 +560,7 @@
                         <span class="text-xs text-slate-400 uppercase font-bold block">{{ __('common.weather_water') }}</span>
                         <span class="text-lg font-extrabold block {{ $qualityColor }}">{{ $qualityText }}</span>
                     </div>
-                    <span class="text-[9px] {{ $qualityStale ? 'text-amber-400 font-bold' : 'text-slate-500' }} block truncate leading-tight">
+                    <span class="text-[11px] {{ $qualityStale ? 'text-amber-400 font-bold' : 'text-slate-500' }} block truncate leading-tight">
                         {{ $quality && $quality->sampled_at ? __('beach.quality_analysis', ['date' => $quality->sampled_at->timezone($beach->timezone)->format('d/m/y')]) : __('beach.quality_analysis_none') }}
                         @if($qualityStale) · <span class="font-bold">{{ __('beach.quality_days', ['days' => $qualityDays]) }}</span> @endif
                     </span>
@@ -628,7 +631,7 @@
                                     <circle cx="{{ $nowPct }}" cy="{{ $nowY }}" r="5" fill="#f59e0b" fill-opacity="0.4" class="animate-ping"/>
                                     <circle cx="{{ $nowPct }}" cy="{{ $nowY }}" r="3" fill="#f59e0b" stroke="#0f172a" stroke-width="1"/>
                                 </svg>
-                                <span class="absolute text-[9px] font-bold text-amber-500 bg-slate-950/80 px-1.5 py-0.5 rounded border border-amber-500/20" style="left: calc({{ $nowPct }}% - 22px); top: 6px;">{{ __('beach.tide_now') }}</span>
+                                <span class="absolute text-[11px] font-bold text-amber-500 bg-slate-950/80 px-1.5 py-0.5 rounded border border-amber-500/20" style="left: calc({{ $nowPct }}% - 22px); top: 6px;">{{ __('beach.tide_now') }}</span>
                             </div>
                         @endif
 
@@ -636,7 +639,7 @@
                             <div class="space-y-4 pt-2">
                                 <div class="relative pl-6 border-l-2 border-slate-800 space-y-6">
                                     <div class="relative flex items-center">
-                                        <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_today_label') }}</span>
+                                        <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_today_label') }}</span>
                                     </div>
 
                                     @foreach($tidesToday as $tide)
@@ -655,11 +658,11 @@
                                             <div class="flex-1 flex items-center justify-between pl-2">
                                                 <div class="flex items-center gap-2.5">
                                                     <span class="text-sm font-bold text-theme tabular-nums">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
-                                                    <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
+                                                    <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
                                                         {{ $tide->tide_type === 'high' ? __('beach.tide_high_name') : __('beach.tide_low_name') }}
                                                     </span>
                                                     @if($isNext)
-                                                        <span class="text-[9px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
+                                                        <span class="text-[11px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
                                                     @endif
                                                 </div>
                                                 <span class="text-sm font-extrabold text-theme tabular-nums">{{ $tide->tide_height }}m</span>
@@ -669,7 +672,7 @@
 
                                     @if($tidesTomorrow->isNotEmpty())
                                         <div class="relative flex items-center pt-2">
-                                            <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_tomorrow_label') }}</span>
+                                            <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_tomorrow_label') }}</span>
                                         </div>
 
                                         @foreach($tidesTomorrow as $tide)
@@ -684,11 +687,11 @@
                                                 <div class="flex-1 flex items-center justify-between pl-2">
                                                     <div class="flex items-center gap-2.5">
                                                         <span class="text-sm font-bold text-theme tabular-nums">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
-                                                        <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
+                                                        <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
                                                             {{ $tide->tide_type === 'high' ? __('beach.tide_high_name') : __('beach.tide_low_name') }}
                                                         </span>
                                                         @if($isNext)
-                                                            <span class="text-[9px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
+                                                            <span class="text-[11px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
                                                         @endif
                                                     </div>
                                                     <span class="text-sm font-extrabold text-theme tabular-nums">{{ $tide->tide_height }}m</span>
@@ -721,7 +724,7 @@
                             </div>
 
                             <div class="w-full max-w-xs space-y-1 pt-2">
-                                <div class="flex justify-between text-[10px] text-slate-500 font-bold uppercase">
+                                <div class="flex justify-between text-[11px] text-slate-500 font-bold uppercase">
                                     <span>{{ __('common.moon_new') }}</span>
                                     <span>{{ __('beach.moon_cycle', ['currentd' => round($moonPhase * 29.53, 1), 'totald' => '29.5']) }}</span>
                                 </div>
@@ -740,7 +743,7 @@
                                             <span class="text-xl block select-none">{{ $item['icon'] }}</span>
                                             <span class="font-bold text-theme block leading-tight truncate">{{ $item['name'] }}</span>
                                             <span class="text-slate-400 block font-medium">{{ $item['date']->timezone($beach->timezone)->format('d/m') }}</span>
-                                            <span class="text-[9px] text-slate-500 block">{{ __('beach.moon_in_days', ['days' => (int)round($item['days_until'])]) }}</span>
+                                            <span class="text-[11px] text-slate-500 block">{{ __('beach.moon_in_days', ['days' => (int)round($item['days_until'])]) }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -759,7 +762,7 @@
                         <div>
                             <h3 class="text-base font-extrabold text-theme tracking-tight">{{ __('common.about_title') }}</h3>
                             @if($beach->features && $beach->features->beach_type)
-                                <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{{ $beach->features->beach_type }}</span>
+                                <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{{ $beach->features->beach_type }}</span>
                             @endif
                         </div>
                     </div>
@@ -813,7 +816,7 @@
                                     $serviceFields = ['parking', 'bathrooms', 'showers', 'accessible', 'amphibious_chair', 'first_aid', 'lifeguard_post', 'bar', 'restaurant', 'surf_school', 'equipment_rental'];
                                     $activeServices = count(array_filter($serviceFields, fn($f) => $beach->services->$f));
                                 @endphp
-                                <span class="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/15">
+                                <span class="text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/15">
                                     {{ $activeServices === 1 ? __('common.about_services_count_singular', ['count' => $activeServices]) : __('common.about_services_count', ['count' => $activeServices]) }}
                                 </span>
                             @endif
@@ -833,7 +836,7 @@
                                     @php $groupServices = array_filter($services, fn($label, $field) => $beach->services->$field, ARRAY_FILTER_USE_BOTH); @endphp
                                     @if(count($groupServices))
                                         <div>
-                                            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block mb-1.5">{{ $groupName }}</span>
+                                            <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-1.5">{{ $groupName }}</span>
                                             <div class="flex flex-wrap gap-1.5">
                                                 @foreach($groupServices as $field => $label)
                                                     <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-lg shadow-sm">
@@ -963,6 +966,16 @@
                             closeBtn.setAttribute('role', 'button');
                         }
                     });
+
+                    setTimeout(() => {
+                        el.querySelectorAll('.leaflet-control-zoom a').forEach(a => {
+                            if (a.getAttribute('href') === '#') {
+                                a.removeAttribute('href');
+                                a.setAttribute('role', 'button');
+                                a.setAttribute('tabindex', '0');
+                            }
+                        });
+                    }, 200);
 
                     let tileCounter = 0;
                     const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

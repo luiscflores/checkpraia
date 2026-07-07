@@ -22,4 +22,10 @@ return [
     'confirmations' => 'Confirmations',
     'score' => 'Score',
     'position_aria' => 'Position :position',
+    'share_ranking' => 'Partager ma position',
+    'share_ranking_title' => 'Je suis #:position sur CheckPraia !',
+    'share_ranking_text' => 'Je suis classé #:position avec :score points sur CheckPraia. Rejoins-moi !',
+    'share_my_rank' => 'Ma position',
+    'share_rank_not_found' => 'Tu n\'as pas encore de score. Signale des drapeaux pour apparaître dans le classement.',
+    'load_more' => 'Charger plus',
 ];

@@ -2,7 +2,9 @@
 
 return [
     'title' => 'CheckPraia',
-    'page_title' => 'CheckPraia - Mapa de Playas',
+    'page_title' => 'CheckPraia - Mapa de Playas: Banderas, Mar y Meteorología',
+    'og_title' => 'CheckPraia - Banderas de las Playas de Portugal en Tiempo Real',
+    'og_description' => 'Bandera actual, temperatura del agua, olas y viento para todas las playas de Portugal. Pronósticos y reportes de la comunidad.',
     'filter_all' => 'Todas',
     'azores' => 'Azores',
     'madeira' => 'Madeira',

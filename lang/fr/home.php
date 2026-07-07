@@ -2,7 +2,9 @@
 
 return [
     'title' => 'CheckPraia',
-    'page_title' => 'CheckPraia - Carte des Plages',
+    'page_title' => 'CheckPraia - Carte des Plages: Drapeaux, Mer et Météo',
+    'og_title' => 'CheckPraia - Drapeaux des Plages du Portugal en Temps Réel',
+    'og_description' => 'Drapeau actuel, température de l\'eau, vagues et vent pour toutes les plages du Portugal. Prévisions et signalements communautaires.',
     'filter_all' => 'Toutes',
     'azores' => 'Açores',
     'madeira' => 'Madère',

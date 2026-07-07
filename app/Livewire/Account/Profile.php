@@ -2,51 +2,67 @@
 
 namespace App\Livewire\Account;
 
-use Livewire\Component;
-use App\Models\User;
+use App\Livewire\Actions\Logout;
 use App\Models\FlagReport;
 use App\Models\Referral;
 use App\Models\ScoreTransaction;
-use App\Models\Beach;
-use App\Livewire\Actions\Logout;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class Profile extends Component
 {
     public $editName;
+
     public $editUsername;
+
+    public $editLocale;
 
     public function mount()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login');
         }
 
         $user = Auth::user();
         $this->editName = $user->name;
         $this->editUsername = $user->username;
+        $this->editLocale = $user->locale ?? session('locale', app()->getLocale());
     }
 
     public function updateProfile()
     {
-        if (!Auth::check()) { $this->addError('profile', 'Sessão expirada.'); return; }
+        if (! Auth::check()) {
+            $this->addError('profile', 'Sessão expirada.');
+
+            return;
+        }
         $user = Auth::user();
         $this->validate([
             'editName' => 'required|string|max:255',
-            'editUsername' => 'required|string|alpha_dash|unique:users,username,' . $user->id,
+            'editUsername' => 'required|string|alpha_dash|unique:users,username,'.$user->id,
+            'editLocale' => 'nullable|string|in:'.implode(',', config('locales.supported', ['pt', 'en', 'es', 'fr'])),
         ]);
 
         $user->update([
             'name' => $this->editName,
             'username' => $this->editUsername,
+            'locale' => $this->editLocale,
         ]);
+
+        if ($this->editLocale) {
+            session(['locale' => $this->editLocale]);
+            app()->setLocale($this->editLocale);
+        }
 
         session()->flash('profile_success', 'Perfil atualizado com sucesso.');
     }
 
     public function removeFavorite($beachId)
     {
-        if (!Auth::check()) { return; }
+        if (! Auth::check()) {
+            return;
+        }
         $user = Auth::user();
         $user->favorites()->detach($beachId);
         session()->flash('favorite_removed', __('common.favorite_removed'));
@@ -55,12 +71,15 @@ class Profile extends Component
     public function logout(Logout $logout)
     {
         $logout();
+
         return redirect()->route('home');
     }
 
     public function deleteAccount()
     {
-        if (!Auth::check()) { return; }
+        if (! Auth::check()) {
+            return;
+        }
         $user = Auth::user();
         $user->reports()->delete();
         $user->scoreTransactions()->delete();
@@ -68,6 +87,7 @@ class Profile extends Component
         $user->favorites()->detach();
         Auth::logout();
         $user->delete();
+
         return redirect()->route('home');
     }
 
@@ -78,16 +98,22 @@ class Profile extends Component
         // Fetch score transactions
         $transactions = ScoreTransaction::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
+            ->take(50)
             ->get();
 
         // Fetch user visit reports
-        $reports = FlagReport::with('beach')
+        $reports = FlagReport::select(['id', 'beach_id', 'flag', 'status', 'distance_to_beach', 'gps_accuracy', 'reported_at', 'resolved_at'])
+            ->with('beach:id,name,slug,latitude,longitude,region,municipality')
             ->where('user_id', $user->id)
             ->orderBy('reported_at', 'desc')
+            ->take(50)
             ->get();
 
         // Fetch user favorites
-        $favorites = $user->favorites()->with('currentStatus')->get();
+        $favorites = $user->favorites()
+            ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality', 'blue_flag', 'accessible', 'is_active'])
+            ->with('currentStatus')
+            ->get();
 
         // Fetch referral invitations counts
         $referralProgress = Referral::where('referrer_user_id', $user->id)

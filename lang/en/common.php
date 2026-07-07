@@ -123,6 +123,7 @@ return [
     'moon_waning_crescent' => 'Waning Crescent',
 
     // Search & Filters
+    'search_clear' => 'Clear search',
     'search_placeholder' => 'Search beach or municipality...',
     'search_nearby' => 'Beaches near me',
     'search_nearby_short' => 'Near me',

@@ -123,6 +123,7 @@ return [
     'moon_waning_crescent' => 'Dernier Croissant',
 
     // Search & Filters
+    'search_clear' => 'Effacer la recherche',
     'search_placeholder' => 'Rechercher une plage ou municipalité...',
     'search_nearby' => 'Plages près de moi',
     'search_nearby_short' => 'Près de moi',

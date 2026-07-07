@@ -44,4 +44,9 @@ return [
     'flag_label' => 'Bandera :flag',
     'transactions' => 'Transacciones',
     'no_transactions' => 'No se encontraron transacciones.',
+    'share_app' => 'Compartir App',
+    'share_app_title' => 'CheckPraia - Banderas de Playas en Tiempo Real',
+    'share_app_text' => 'Uso CheckPraia para ver la bandera, temperatura del agua y condiciones del mar de las playas de Portugal. ¡Pruébalo!',
+    'share_card_download' => 'Descargar Tarjeta',
+    'share_copied' => '¡Enlace copiado!',
 ];

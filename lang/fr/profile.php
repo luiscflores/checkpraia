@@ -44,4 +44,9 @@ return [
     'flag_label' => 'Drapeau :flag',
     'transactions' => 'Transactions',
     'no_transactions' => 'Aucune transaction trouvée.',
+    'share_app' => 'Partager l\'App',
+    'share_app_title' => 'CheckPraia - Drapeaux des Plages en Temps Réel',
+    'share_app_text' => 'J\'utilise CheckPraia pour voir le drapeau, la température de l\'eau et les conditions maritimes des plages du Portugal. Essayez!',
+    'share_card_download' => 'Télécharger la Carte',
+    'share_copied' => 'Lien copié !',
 ];

@@ -67,7 +67,7 @@
             <div class="glass-card p-4 rounded-xl text-center">
                 <span class="text-xs text-theme-secondary uppercase font-bold tracking-wider block">Utilizadores</span>
                 <span class="text-2xl font-black text-theme block mt-1">{{ $totalUsers }}</span>
-                <span class="text-[10px] text-theme-muted block mt-0.5">{{ $adminUsers }} admin · {{ $suspendedUsers }} suspensos</span>
+                <span class="text-sm text-theme-muted block mt-0.5">{{ $adminUsers }} admin · {{ $suspendedUsers }} suspensos</span>
             </div>
             <div class="glass-card p-4 rounded-xl text-center">
                 <span class="text-xs text-theme-secondary uppercase font-bold tracking-wider block">Confirmações Hoje</span>
@@ -88,18 +88,18 @@
             <div class="glass-card p-4 rounded-xl text-center">
                 <span class="text-xs text-theme-secondary uppercase font-bold tracking-wider block">Total Praias</span>
                 <span class="text-2xl font-black text-theme block mt-1">{{ $totalBeaches }}</span>
-                <span class="text-[10px] text-theme-muted block mt-0.5">{{ $activeBeaches }} ativas</span>
+                <span class="text-sm text-theme-muted block mt-0.5">{{ $activeBeaches }} ativas</span>
             </div>
             <div class="glass-card p-4 rounded-xl text-center">
                 <span class="text-xs text-theme-secondary uppercase font-bold tracking-wider block">Praias com Estado</span>
                 <span class="text-2xl font-black text-teal-400 block mt-1">{{ $beachesWithStatus }}</span>
-                <span class="text-[10px] text-theme-muted block mt-0.5">de {{ $totalBeaches }} totais</span>
+                <span class="text-sm text-theme-muted block mt-0.5">de {{ $totalBeaches }} totais</span>
             </div>
             <div class="glass-card p-4 rounded-xl text-center">
                 <span class="text-xs text-theme-secondary uppercase font-bold tracking-wider block">Fila (Queue)</span>
                 @if($systemInfo['queue_size'] >= 0)
                     <span class="text-2xl font-black text-amber-400 block mt-1">{{ $systemInfo['queue_size'] }}</span>
-                    <span class="text-[10px] text-theme-muted block mt-0.5">tarefas pendentes</span>
+                    <span class="text-sm text-theme-muted block mt-0.5">tarefas pendentes</span>
                 @else
                     <span class="text-sm font-black text-amber-400 block mt-1">N/A</span>
                 @endif
@@ -116,9 +116,9 @@
 
         {{-- Flag distribution --}}
         <div class="glass-card p-5 rounded-2xl space-y-3">
-            <h3 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
+            <h2 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
                 <span>🏁</span> Distribuição de Bandeiras
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Estado atual das bandeiras nas praias com informação disponível.</p>
             <div class="flex flex-wrap gap-2">
                 @php
@@ -136,9 +136,9 @@
 
         {{-- Últimos ajustes --}}
         <div class="glass-card p-5 rounded-2xl space-y-3">
-            <h3 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
+            <h2 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
                 <span>📋</span> Últimos Ajustes Administrativos
-            </h3>
+            </h2>
             <div class="space-y-2">
                 @forelse($adjustmentsList as $adj)
                     <div class="bg-theme-card border border-theme-subtle p-3 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center text-sm gap-1.5">
@@ -162,9 +162,9 @@
 
         {{-- Atalhos rápidos --}}
         <div class="glass-card p-5 rounded-2xl space-y-3">
-            <h3 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
+            <h2 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
                 <span>⚡</span> Atalhos Rápidos
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Ações frequentes num clique.</p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button wire:click="syncIpmaDataSync" wire:loading.attr="disabled" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs transition-all disabled:opacity-50 touch-target flex items-center justify-center gap-1.5">
@@ -192,9 +192,9 @@
         <div class="glass-card p-5 rounded-2xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+                    <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                         <span>👥</span> Gestão de Utilizadores
-                    </h3>
+                    </h2>
                     <p class="text-xs text-theme-muted">Pesquisar, ajustar pontuações, suspender/reativar e gerir privilégios de administrador.</p>
                 </div>
                 <div class="flex gap-2">
@@ -223,7 +223,7 @@
                                     <div class="font-semibold text-theme flex items-center gap-1.5">
                                         {{ $usr->name }}
                                         @if($usr->is_admin)
-                                            <span class="text-[10px] bg-teal-600/20 text-teal-400 px-1.5 py-0.5 rounded font-bold leading-none">Admin</span>
+                                            <span class="text-sm bg-teal-600/20 text-teal-400 px-1.5 py-0.5 rounded font-bold leading-none">Admin</span>
                                         @endif
                                     </div>
                                     <span class="text-xs text-theme-muted">@ {{ $usr->username }}</span>
@@ -234,9 +234,9 @@
                                 </td>
                                 <td class="py-3 px-3 text-center hidden sm:table-cell">
                                     @if($usr->is_suspended)
-                                        <span class="text-[10px] bg-rose-600/20 text-rose-400 px-2 py-0.5 rounded font-bold">Suspenso</span>
+                                        <span class="text-sm bg-rose-600/20 text-rose-400 px-2 py-0.5 rounded font-bold">Suspenso</span>
                                     @else
-                                        <span class="text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Ativo</span>
+                                        <span class="text-sm bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Ativo</span>
                                     @endif
                                 </td>
                                 <td class="py-3 px-3 text-right">
@@ -268,9 +268,9 @@
 
             {{-- Audit History --}}
             <div class="pt-4 border-t border-theme-subtle space-y-2">
-                <h4 class="text-xs font-bold text-theme-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <h3 class="text-xs font-bold text-theme-secondary uppercase tracking-wider flex items-center gap-1.5">
                     <span>📋</span> Histórico de Ajustes de Pontuação
-                </h4>
+                </h3>
                 <div class="space-y-1.5 max-h-48 overflow-y-auto">
                     @forelse($adjustmentsList as $adj)
                         <div class="text-xs text-theme-secondary flex items-center gap-2 py-1.5 px-2 rounded-lg bg-theme-card/30">
@@ -291,7 +291,7 @@
         @if($selectedUser)
             <div class="glass-card p-5 rounded-2xl border border-blue-500/30 bg-blue-950/10 space-y-4">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-bold text-blue-300 flex items-center gap-1.5">
+                    <h2 class="text-sm font-bold text-blue-300 flex items-center gap-1.5">
                         <span>⭐</span> Ajustar Pontuação: <span class="text-white">{{ $selectedUser->name }}</span>
                         <span class="text-theme-muted font-normal">(@{{ $selectedUser->username }})</span>
                     </h3>
@@ -324,9 +324,9 @@
         <div class="glass-card p-5 rounded-2xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+                    <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                         <span>🏖️</span> Gestão de Praias
-                    </h3>
+                    </h2>
                     <p class="text-xs text-theme-muted">Ativar ou desativar praias. Uma praia desativada não aparece no mapa nem na lista pública.</p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -361,9 +361,9 @@
                                 <td class="py-3 px-3 text-theme-secondary text-xs hidden md:table-cell">{{ $beach->region }}</td>
                                 <td class="py-3 px-3 text-center">
                                     @if($beach->is_active)
-                                        <span class="text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Ativa</span>
+                                        <span class="text-sm bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Ativa</span>
                                     @else
-                                        <span class="text-[10px] bg-rose-600/20 text-rose-400 px-2 py-0.5 rounded font-bold">Inativa</span>
+                                        <span class="text-sm bg-rose-600/20 text-rose-400 px-2 py-0.5 rounded font-bold">Inativa</span>
                                     @endif
                                 </td>
                                 <td class="py-3 px-3 text-center hidden sm:table-cell">
@@ -463,9 +463,9 @@
     <div x-show="activeTab === 'sincronizacao'" x-cloak class="space-y-6">
         {{-- API Status --}}
         <div class="glass-card p-5 rounded-2xl space-y-4">
-            <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+            <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                 <span>🔌</span> Estado das APIs Externas
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Estado operacional e última sincronização de cada fonte de dados externa.</p>
 
             <div class="space-y-3">
@@ -491,7 +491,7 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <span class="font-extrabold text-xs uppercase {{ $ipmaColor }}">{{ $ipmaStatus }}</span>
-                        <span class="text-[10px] text-theme-muted">Última: {{ $systemInfo['last_ipma_sync'] }}</span>
+                        <span class="text-sm text-theme-muted">Última: {{ $systemInfo['last_ipma_sync'] }}</span>
                     </div>
                 </div>
 
@@ -505,7 +505,7 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <span class="font-extrabold text-xs uppercase {{ $infoaguaColor }}">{{ $infoaguaStatus }}</span>
-                        <span class="text-[10px] text-theme-muted">Última: {{ $systemInfo['last_infoagua_sync'] }}</span>
+                        <span class="text-sm text-theme-muted">Última: {{ $systemInfo['last_infoagua_sync'] }}</span>
                     </div>
                 </div>
 
@@ -519,7 +519,7 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <span class="font-extrabold text-xs uppercase text-emerald-400">Ativo (Sob Demanda)</span>
-                        <span class="text-[10px] text-theme-muted">Sob demanda</span>
+                        <span class="text-sm text-theme-muted">Sob demanda</span>
                     </div>
                 </div>
             </div>
@@ -527,16 +527,16 @@
 
         {{-- Sync Controls --}}
         <div class="glass-card p-5 rounded-2xl space-y-4">
-            <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+            <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                 <span>🔄</span> Sincronização de Dados
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Escolhe entre execução em segundo plano (fila) ou síncrona (imediata). A opção síncrona é útil para testes ou quando a fila não está configurada.</p>
 
             {{-- Async / Queue --}}
             <div class="space-y-3">
-                <h4 class="text-xs font-bold text-theme-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <h3 class="text-xs font-bold text-theme-secondary uppercase tracking-wider flex items-center gap-1.5">
                     <span>⏳</span> Execução em Segundo Plano (Fila/Queue)
-                </h4>
+                </h3>
                 <p class="text-xs text-theme-muted">As tarefas são enviadas para a fila e processadas em segundo plano. Recomendado para execução regular.</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button wire:click="syncIpmaData" wire:loading.attr="disabled" class="bg-blue-600/20 hover:bg-blue-600/30 active:scale-95 text-blue-300 font-bold py-3 rounded-xl text-sm border border-blue-500/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
@@ -556,9 +556,9 @@
 
             {{-- Direct Sync --}}
             <div class="pt-4 border-t border-theme-subtle space-y-3">
-                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                     <span>⚡</span> Execução Síncrona (Imediata)
-                </h4>
+                </h3>
                 <p class="text-xs text-theme-muted">Os dados são processados de imediato, sem fila. Pode demorar alguns segundos. Útil para testes após configuração.</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button wire:click="syncIpmaDataSync" wire:loading.attr="disabled" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
@@ -575,9 +575,9 @@
 
         {{-- Database Ops --}}
         <div class="glass-card p-5 rounded-2xl space-y-4">
-            <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+            <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                 <span>🗄️</span> Operações de Base de Dados
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Executar migrações ou seeders. ⚠️ Estas operações alteram a estrutura e os dados da base de dados.</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button wire:click="runMigrations" wire:loading.attr="disabled" wire:confirm="Tens a certeza que queres executar migrações?" class="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 touch-target">
@@ -597,9 +597,9 @@
         <div class="glass-card p-5 rounded-2xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+                    <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                         <span>⚙️</span> Definições do Sistema
-                    </h3>
+                    </h2>
                     <p class="text-xs text-theme-muted">Pares chave-valor para configurar o comportamento do site. Cria, edita ou remove definições conforme necessário.</p>
                 </div>
             </div>
@@ -649,7 +649,7 @@
 
             {{-- Add new setting --}}
             <div class="pt-4 border-t border-theme-subtle space-y-3">
-                <h4 class="text-xs font-bold text-theme-secondary uppercase tracking-wider">Adicionar Nova Definição</h4>
+                <h3 class="text-xs font-bold text-theme-secondary uppercase tracking-wider">Adicionar Nova Definição</h3>
                 <form wire:submit.prevent="addSetting" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                     <div class="space-y-1">
                         <label for="new-key" class="text-xs text-theme-muted">Chave</label>
@@ -668,9 +668,9 @@
 
         {{-- Suggested settings --}}
         <div class="glass-card p-5 rounded-2xl space-y-3">
-            <h3 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
+            <h2 class="text-sm font-bold text-theme uppercase tracking-wider flex items-center gap-1.5">
                 <span>💡</span> Definições Sugeridas
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Exemplos de definições que podes criar para controlar o comportamento do site:</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div class="bg-theme-card border border-theme-subtle p-3 rounded-xl text-xs">
@@ -706,9 +706,9 @@
 
         {{-- System Info --}}
         <div class="glass-card p-5 rounded-2xl space-y-4">
-            <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+            <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                 <span>🖥️</span> Informação do Sistema
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Versões e configuração atual do ambiente de execução.</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div class="bg-theme-card border border-theme-subtle p-3 rounded-xl">
@@ -748,9 +748,9 @@
 
         {{-- Cache Management --}}
         <div class="glass-card p-5 rounded-2xl space-y-4">
-            <h3 class="text-lg font-bold text-theme flex items-center gap-1.5">
+            <h2 class="text-lg font-bold text-theme flex items-center gap-1.5">
                 <span>🧹</span> Gestão de Cache
-            </h3>
+            </h2>
             <p class="text-xs text-theme-muted">Limpar vários tipos de cache. Útil após alterações a configurações, views, ou para resolver problemas de atualização de dados.</p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button wire:click="clearCache" wire:loading.attr="disabled" class="bg-slate-600 hover:bg-slate-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs transition-all disabled:opacity-50 touch-target flex items-center justify-center gap-1.5">

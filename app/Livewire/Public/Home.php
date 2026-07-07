@@ -2,20 +2,25 @@
 
 namespace App\Livewire\Public;
 
-use Livewire\Component;
 use App\Models\Beach;
 use App\Services\GeoService;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class Home extends Component
 {
     public $search = '';
+
     public $selectedRegion = '';
+
     public $selectedFlag = '';
+
     public $favoriteIds = [];
 
     public $latitude = null;
+
     public $longitude = null;
+
     public $nearbyGreen = [];
 
     private ?array $cachedBeachesList = null;
@@ -28,8 +33,9 @@ class Home extends Component
 
     public function toggleFavorite($beachId)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             session()->flash('favorite_error', __('common.favorite_login_required'));
+
             return;
         }
 
@@ -37,11 +43,11 @@ class Home extends Component
 
         if (in_array($beachId, $this->favoriteIds)) {
             $user->favorites()->detach($beachId);
-            $this->favoriteIds = array_values(array_filter($this->favoriteIds, fn($id) => (int)$id !== (int)$beachId));
+            $this->favoriteIds = array_values(array_filter($this->favoriteIds, fn ($id) => (int) $id !== (int) $beachId));
             session()->flash('favorite_success', __('common.favorite_removed'));
         } else {
             $user->favorites()->attach($beachId);
-            $this->favoriteIds[] = (int)$beachId;
+            $this->favoriteIds[] = (int) $beachId;
             session()->flash('favorite_success', __('common.favorite_added'));
         }
     }
@@ -55,20 +61,22 @@ class Home extends Component
 
         $geoService = app(GeoService::class);
 
-        $all = Beach::with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
+        $all = Beach::select(['id', 'name', 'slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+            ->with(['currentStatus', 'translations', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true)
-            ->whereHas('currentStatus', fn($q) => $q->where('flag', 'green'))
+            ->whereHas('currentStatus', fn ($q) => $q->where('flag', 'green'))
             ->get()
             ->map(function ($beach) use ($geoService) {
                 $distance = $geoService->haversine(
-                    (float)$this->latitude,
-                    (float)$this->longitude,
-                    (float)$beach->latitude,
-                    (float)$beach->longitude
+                    (float) $this->latitude,
+                    (float) $this->longitude,
+                    (float) $beach->latitude,
+                    (float) $beach->longitude
                 );
                 $weather = $beach->latestWeatherForecast;
                 $ocean = $beach->latestOceanForecast;
                 $status = $beach->currentStatus;
+
                 return [
                     'id' => $beach->id,
                     'name' => $beach->name,
@@ -77,14 +85,14 @@ class Home extends Component
                     'longitude' => (float) $beach->longitude,
                     'distance_km' => round($distance, 1),
                     'url' => $beach->url,
-                    'blue_flag' => (bool)$beach->blue_flag,
-                    'accessible' => (bool)$beach->accessible,
+                    'blue_flag' => (bool) $beach->blue_flag,
+                    'accessible' => (bool) $beach->accessible,
                     'region' => $beach->region,
                     'municipality' => $beach->municipality,
-                    'air_temp' => $weather ? (float)$weather->temp : null,
-                    'water_temp' => $ocean ? (float)$ocean->water_temp : null,
-                    'wave_height_min' => $ocean ? (float)$ocean->wave_height_min : null,
-                    'wave_height_max' => $ocean ? (float)$ocean->wave_height_max : null,
+                    'air_temp' => $weather ? (float) $weather->temp : null,
+                    'water_temp' => $ocean ? (float) $ocean->water_temp : null,
+                    'wave_height_min' => $ocean ? (float) $ocean->wave_height_min : null,
+                    'wave_height_max' => $ocean ? (float) $ocean->wave_height_max : null,
                 ];
             })
             ->sortBy('distance_km')
@@ -130,7 +138,7 @@ class Home extends Component
     public function render()
     {
         $this->favoriteIds = auth()->check()
-            ? auth()->user()->favorites()->pluck('beach_id')->map(fn($id) => (int)$id)->toArray()
+            ? auth()->user()->favorites()->pluck('beach_id')->map(fn ($id) => (int) $id)->toArray()
             : [];
 
         $beaches = $this->buildBeachesList();
@@ -159,16 +167,17 @@ class Home extends Component
             return $this->cachedBeachesList;
         }
 
-        $query = Beach::with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast'])
+        $query = Beach::select(['id', 'name', 'slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+            ->with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast'])
             ->where('is_active', true);
 
         if ($this->search) {
-            $searchVal = '%' . strtolower(trim($this->search)) . '%';
+            $searchVal = '%'.strtolower(trim($this->search)).'%';
             $query->where(function ($q) use ($searchVal) {
                 $q->where(DB::raw('lower(name)'), 'like', $searchVal)
-                  ->orWhere(DB::raw('lower(municipality)'), 'like', $searchVal)
-                  ->orWhere(DB::raw('lower(district)'), 'like', $searchVal)
-                  ->orWhere(DB::raw('lower(region)'), 'like', $searchVal);
+                    ->orWhere(DB::raw('lower(municipality)'), 'like', $searchVal)
+                    ->orWhere(DB::raw('lower(district)'), 'like', $searchVal)
+                    ->orWhere(DB::raw('lower(region)'), 'like', $searchVal);
             });
         }
 
@@ -183,15 +192,17 @@ class Home extends Component
         }
 
         $result = $query->get()->sortBy(function ($beach) {
-            $isFav = in_array((int)$beach->id, $this->favoriteIds);
+            $isFav = in_array((int) $beach->id, $this->favoriteIds);
             if ($isFav) {
                 return [0, $beach->name];
             }
+
             return [1, -$beach->latitude];
         })->map(function ($beach) {
             $status = $beach->currentStatus;
             $weather = $beach->latestWeatherForecast;
             $ocean = $beach->latestOceanForecast;
+
             return [
                 'id' => $beach->id,
                 'name' => $beach->name,
@@ -201,15 +212,15 @@ class Home extends Component
                 'flag' => $status ? $status->flag : 'gray',
                 'source' => $status ? $status->source : 'prediction',
                 'url' => $beach->url,
-                'blue_flag' => (bool)$beach->blue_flag,
-                'accessible' => (bool)$beach->accessible,
+                'blue_flag' => (bool) $beach->blue_flag,
+                'accessible' => (bool) $beach->accessible,
                 'region' => $beach->region,
                 'municipality' => $beach->municipality,
-                'is_favorited' => in_array((int)$beach->id, $this->favoriteIds),
-                'air_temp' => $weather ? (float)$weather->temp : null,
-                'water_temp' => $ocean ? (float)$ocean->water_temp : null,
-                'wave_height_min' => $ocean ? (float)$ocean->wave_height_min : null,
-                'wave_height_max' => $ocean ? (float)$ocean->wave_height_max : null,
+                'is_favorited' => in_array((int) $beach->id, $this->favoriteIds),
+                'air_temp' => $weather ? (float) $weather->temp : null,
+                'water_temp' => $ocean ? (float) $ocean->water_temp : null,
+                'wave_height_min' => $ocean ? (float) $ocean->wave_height_min : null,
+                'wave_height_max' => $ocean ? (float) $ocean->wave_height_max : null,
                 'wave_direction' => $ocean ? $ocean->wave_direction : null,
                 'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
                 'wind_direction' => $weather ? $weather->wind_direction : null,
@@ -217,6 +228,7 @@ class Home extends Component
         })->values()->toArray();
 
         $this->cachedBeachesList = $result;
+
         return $result;
     }
 

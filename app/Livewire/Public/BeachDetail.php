@@ -2,17 +2,19 @@
 
 namespace App\Livewire\Public;
 
-use Livewire\Component;
-use App\Models\Beach;
-use App\Models\FlagReport;
-use App\Models\WaterQualitySnapshot;
-use App\Models\OfficialAlert;
-use App\Models\TideForecast;
 use App\Domain\Community\ConsensusResolver;
 use App\Domain\Gamification\ScoreManager;
+use App\Models\Beach;
+use App\Models\BeachHourlySnapshot;
+use App\Models\FlagPrediction;
+use App\Models\FlagReport;
+use App\Models\OfficialAlert;
+use App\Models\ScoreTransaction;
+use App\Models\TideForecast;
 use App\Services\GeoService;
 use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\RateLimiter;
+use Livewire\Component;
 
 class BeachDetail extends Component
 {
@@ -25,7 +27,7 @@ class BeachDetail extends Component
 
     private function loadTodayReports(): void
     {
-        $this->todayReports = FlagReport::where('beach_id', $this->beach->id)
+        $this->todayReports = FlagReport::where('beach_id', $this->beachId)
             ->where('reported_at', '>=', now()->startOfDay())
             ->where('status', '!=', 'cancelled')
             ->with('user')
@@ -39,42 +41,47 @@ class BeachDetail extends Component
     }
 
     public $slug;
-    public $beach;
+
+    public $beachId;
+
+    public $beachLatitude;
+
+    public $beachLongitude;
+
+    public $beachTideStationId;
+
     public $isFavorited = false;
 
     public function mount($slug)
     {
-        $this->beach = Beach::with([
-            'currentStatus',
-            'translations',
-            'services',
-            'features',
-            'restaurants',
-            'latestOceanForecast',
-            'latestWeatherForecast',
-            'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
-        ])->where('slug', $slug)->firstOrFail();
+        $beach = Beach::where('slug', $slug)->firstOrFail(['id', 'latitude', 'longitude', 'tide_station_id', 'slug']);
+
+        $this->beachId = $beach->id;
+        $this->beachLatitude = (float) $beach->latitude;
+        $this->beachLongitude = (float) $beach->longitude;
+        $this->beachTideStationId = $beach->tide_station_id;
 
         $this->isFavorited = auth()->check() && auth()->user()->favorites()
-            ->where('beach_id', $this->beach->id)
+            ->where('beach_id', $this->beachId)
             ->exists();
     }
 
     public function toggleFavorite()
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             session()->flash('favorite_error', __('common.favorite_login_required'));
+
             return;
         }
 
         $user = auth()->user();
 
         if ($this->isFavorited) {
-            $user->favorites()->detach($this->beach->id);
+            $user->favorites()->detach($this->beachId);
             $this->isFavorited = false;
             session()->flash('favorite_success', __('common.favorite_removed'));
         } else {
-            $user->favorites()->attach($this->beach->id);
+            $user->favorites()->attach($this->beachId);
             $this->isFavorited = true;
             session()->flash('favorite_success', __('common.favorite_added'));
         }
@@ -82,28 +89,31 @@ class BeachDetail extends Component
 
     public function submitReport($flag, $lat, $lon, $accuracy = null)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             $this->addError('report', __('common.favorite_login_required'));
+
             return;
         }
 
         $user = auth()->user();
         if ($user->is_suspended) {
             $this->addError('report', __('beach.report_error'));
+
             return;
         }
 
-        $throttleKey = 'report:' . $user->id;
+        $throttleKey = 'report:'.$user->id;
         if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             $this->addError('report', __('beach.report_rate_limit'));
+
             return;
         }
         RateLimiter::hit($throttleKey, 60);
 
         // If user already voted today, cancel their old vote so the new one replaces it
         $existingVote = FlagReport::where('user_id', $user->id)
-            ->where('beach_id', $this->beach->id)
+            ->where('beach_id', $this->beachId)
             ->where('reported_at', '>=', now()->startOfDay())
             ->where('status', '!=', 'cancelled')
             ->first();
@@ -111,6 +121,7 @@ class BeachDetail extends Component
         if ($existingVote) {
             if ($existingVote->flag === $flag) {
                 $this->addError('report', __('beach.report_same_flag'));
+
                 return;
             }
             $existingVote->status = 'cancelled';
@@ -118,15 +129,15 @@ class BeachDetail extends Component
             $existingVote->save();
         }
 
-        $distance = $this->calculateDistance((float)$lat, (float)$lon, (float)$this->beach->latitude, (float)$this->beach->longitude);
+        $distance = $this->calculateDistance((float) $lat, (float) $lon, (float) $this->beachLatitude, (float) $this->beachLongitude);
 
-        $scoreManager = new ScoreManager();
+        $scoreManager = new ScoreManager;
         $weight = $scoreManager->getVoteWeight($user);
 
         // Save report (confirmed immediately — points awarded straight away)
         $report = FlagReport::create([
             'user_id' => $user->id,
-            'beach_id' => $this->beach->id,
+            'beach_id' => $this->beachId,
             'flag' => $flag,
             'vote_weight' => $weight,
             'status' => 'pending',
@@ -137,11 +148,11 @@ class BeachDetail extends Component
             'reported_at' => now(),
         ]);
 
-        $resolver = new ConsensusResolver();
+        $resolver = new ConsensusResolver;
 
         // Points only once per hour per beach
-        $hasPointsThisHour = \App\Models\ScoreTransaction::where('user_id', $user->id)
-            ->whereHas('report', fn($q) => $q->where('beach_id', $this->beach->id))
+        $hasPointsThisHour = ScoreTransaction::where('user_id', $user->id)
+            ->whereHas('report', fn ($q) => $q->where('beach_id', $this->beachId))
             ->where('created_at', '>=', now()->startOfHour())
             ->exists();
 
@@ -153,17 +164,16 @@ class BeachDetail extends Component
             $resolver->resolveReport($report);
         }
 
-        $resolver->resolveCurrentStatus($this->beach);
+        $beach = Beach::find($this->beachId);
+        $resolver->resolveCurrentStatus($beach);
 
         // Notify subscribers (favorites + nearby)
         try {
-            app(PushNotificationService::class)->notifyBeachVote($this->beach, $report);
+            app(PushNotificationService::class)->notifyBeachVote($beach, $report);
         } catch (\Exception $e) {
             logger()->error('Push notification failed', ['error' => $e->getMessage()]);
         }
 
-        // Reload beach relation to refresh view
-        $this->beach->load('currentStatus');
         $this->loadTodayReports();
 
         $points = $report->scoreTransaction?->points;
@@ -184,28 +194,39 @@ class BeachDetail extends Component
     {
         $this->loadTodayReports();
 
-        $latestOcean = $this->beach->latestOceanForecast;
-        $latestWeather = $this->beach->latestWeatherForecast;
-        $latestQuality = $this->beach->qualitySnapshots->first();
-        $latestPrediction = \App\Models\FlagPrediction::where('beach_id', $this->beach->id)
+        $beach = Beach::with([
+            'currentStatus',
+            'translations',
+            'services',
+            'features',
+            'restaurants',
+            'latestOceanForecast',
+            'latestWeatherForecast',
+            'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
+        ])->findOrFail($this->beachId);
+
+        $latestOcean = $beach->latestOceanForecast;
+        $latestWeather = $beach->latestWeatherForecast;
+        $latestQuality = $beach->qualitySnapshots->first();
+        $latestPrediction = FlagPrediction::where('beach_id', $this->beachId)
             ->orderBy('calculated_at', 'desc')
             ->first();
 
-        $todaySnapshots = \App\Models\BeachHourlySnapshot::where('beach_id', $this->beach->id)
+        $todaySnapshots = BeachHourlySnapshot::where('beach_id', $this->beachId)
             ->where('captured_at', '>=', now()->startOfDay())
             ->orderBy('captured_at')
             ->get();
 
         $activeAlerts = OfficialAlert::where(function ($q) {
-            $q->where('beach_id', $this->beach->id)
-              ->orWhereNull('beach_id');
+            $q->where('beach_id', $this->beachId)
+                ->orWhereNull('beach_id');
         })
             ->where('started_at', '<=', now())
             ->where(function ($q) {
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
             })->get();
 
-        $tides = TideForecast::where('tide_station_id', $this->beach->tide_station_id)
+        $tides = TideForecast::where('tide_station_id', $this->beachTideStationId)
             ->whereBetween('tide_time', [now()->startOfDay(), now()->endOfDay()->addHours(12)])
             ->orderBy('tide_time', 'asc')
             ->get();
@@ -240,8 +261,12 @@ class BeachDetail extends Component
                 $prev = null;
                 $next = null;
                 foreach ($tides as $tide) {
-                    if ($tide->tide_time->lte($t)) $prev = $tide;
-                    if ($tide->tide_time->gte($t) && !$next) $next = $tide;
+                    if ($tide->tide_time->lte($t)) {
+                        $prev = $tide;
+                    }
+                    if ($tide->tide_time->gte($t) && ! $next) {
+                        $next = $tide;
+                    }
                 }
                 $height = $prev ? $prev->tide_height : ($next ? $next->tide_height : $tides->first()->tide_height);
                 if ($prev && $next && $prev->tide_time->ne($next->tide_time)) {
@@ -256,10 +281,11 @@ class BeachDetail extends Component
             }
         }
 
-        $tidesToday = $tides->filter(fn($t) => $t->tide_time->isToday());
-        $tidesTomorrow = $tides->filter(fn($t) => $t->tide_time->isTomorrow());
+        $tidesToday = $tides->filter(fn ($t) => $t->tide_time->isToday());
+        $tidesTomorrow = $tides->filter(fn ($t) => $t->tide_time->isTomorrow());
 
         return view('livewire.public.beach-detail', [
+            'beach' => $beach,
             'ocean' => $latestOcean,
             'weather' => $latestWeather,
             'quality' => $latestQuality,
