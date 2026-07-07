@@ -67,6 +67,7 @@ return [
     'weather_forecast_today' => 'Previsão para Hoje',
     'weather_forecast' => 'Previsão',
     'weather_not_available' => '—',
+    'live' => 'Ao Vivo',
 
     // Beach attributes
     'beach_supervised' => 'Praia Vigiada',

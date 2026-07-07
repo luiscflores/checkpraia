@@ -67,6 +67,7 @@ return [
     'weather_forecast_today' => 'Today\'s Forecast',
     'weather_forecast' => 'Forecast',
     'weather_not_available' => '—',
+    'live' => 'Live',
 
     // Beach attributes
     'beach_supervised' => 'Supervised Beach',

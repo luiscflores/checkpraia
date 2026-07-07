@@ -67,6 +67,7 @@ return [
     'weather_forecast_today' => 'Prévisions du Jour',
     'weather_forecast' => 'Prévisions',
     'weather_not_available' => '—',
+    'live' => 'En Direct',
 
     // Beach attributes
     'beach_supervised' => 'Plage Surveillée',

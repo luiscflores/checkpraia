@@ -104,6 +104,18 @@
                     aria-label="{{ $isFavorited ? __('common.favorite_remove') : __('common.favorite_add') }}">
                 <span>{{ $isFavorited ? '★' : '☆' }} {{ $isFavorited ? __('common.favorite_remove') : __('common.favorite_add') }}</span>
             </button>
+            @if($beach->beachcam_slug)
+                <a href="https://beachcam.meo.pt/livecams/{{ $beach->beachcam_slug }}/"
+                   target="_blank"
+                   rel="noopener"
+                   class="flex-1 md:flex-none justify-center bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-3 rounded-2xl border border-emerald-500/30 text-sm font-bold transition-all active:scale-90 flex items-center gap-2 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20"
+                   aria-label="Ver {{ $beach->name }} ao vivo">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m0-4v4m0 0H5a2 2 0 01-2-2V8a2 2 0 012-2h10a2 2 0 012 2v4z"/>
+                    </svg>
+                    <span>{{ __('common.live') }}</span>
+                </a>
+            @endif
             <a href="https://www.google.com/maps/dir/?api=1&destination={{ $beach->latitude }},{{ $beach->longitude }}" 
                target="_blank" 
                class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-2xl border border-blue-500/30 text-sm font-bold transition-all active:scale-90 flex items-center gap-2 shadow-lg shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/20"
