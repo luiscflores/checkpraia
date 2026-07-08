@@ -220,7 +220,11 @@ class BeachDetail extends Component
         $todaySnapshots = BeachHourlySnapshot::where('beach_id', $this->beachId)
             ->where('captured_at', '>=', $startOfDay)
             ->orderBy('captured_at')
-            ->get();
+            ->get()
+            ->each(function ($snapshot) use ($beach) {
+                // Pre-compute so the blade never needs to call Beach model methods directly
+                $snapshot->within_hours = $beach->isTimeInLifeguardHours($snapshot->captured_at);
+            });
 
         $activeAlerts = OfficialAlert::where(function ($q) {
             $q->where('beach_id', $this->beachId)

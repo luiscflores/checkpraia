@@ -446,7 +446,7 @@
                         @endphp
                         @foreach($todaySnapshots as $snapshot)
                             @php
-                                $isWithinHours = $beach->isTimeInLifeguardHours($snapshot->captured_at);
+                                $isWithinHours = $snapshot->within_hours ?? true;
                                 $isAdmin = auth()->check() && auth()->user()->is_admin;
                                 $displayFlag = ($isWithinHours || $isAdmin) ? $snapshot->flag : 'gray';
 
