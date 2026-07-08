@@ -25,6 +25,59 @@ Route::post('/locale/{locale}', function ($locale) {
         auth()->user()->update(['locale' => $locale]);
     }
 
+    $referrer = request()->headers->get('referer');
+    if ($referrer) {
+        $parsedUrl = parse_url($referrer);
+        $path = $parsedUrl['path'] ?? '';
+        
+        // Don't translate internal / debug / auth paths
+        if (
+            !str_starts_with($path, '/api') &&
+            !str_starts_with($path, '/livewire') &&
+            !str_starts_with($path, '/filament') &&
+            !str_starts_with($path, '/_debugbar') &&
+            !str_starts_with($path, '/auth') &&
+            !str_contains($path, '.')
+        ) {
+            $trimmedPath = trim($path, '/');
+            $segments = explode('/', $trimmedPath);
+            
+            $beachPrefixes = [
+                'en' => 'beaches',
+                'es' => 'playas',
+                'fr' => 'plages',
+                'pt' => 'praias',
+            ];
+            
+            if (count($segments) > 0 && $segments[0] !== '') {
+                if (in_array($segments[0], $supported)) {
+                    // The URL is already localized with a prefix.
+                    $segments[0] = $locale;
+                    
+                    if (isset($segments[1]) && in_array($segments[1], $beachPrefixes)) {
+                        $segments[1] = $beachPrefixes[$locale];
+                    }
+                    
+                    $newPath = '/' . implode('/', $segments);
+                } else {
+                    // The URL is NOT localized with a prefix.
+                    if (in_array($segments[0], $beachPrefixes)) {
+                        $segments[0] = $beachPrefixes[$locale];
+                    }
+                    $newPath = '/' . $locale . '/' . implode('/', $segments);
+                }
+            } else {
+                $newPath = '/' . $locale;
+            }
+            
+            if (isset($parsedUrl['query'])) {
+                $newPath .= '?' . $parsedUrl['query'];
+            }
+            
+            return redirect($newPath);
+        }
+    }
+
     return redirect()->back();
 })->name('locale.switch');
 

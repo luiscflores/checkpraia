@@ -169,7 +169,7 @@ class Home extends Component
             return $this->cachedBeachesList;
         }
 
-        $query = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district'])
+        $query = Beach::select(['id', 'name', 'slug', 'beachcam_slug', 'latitude', 'longitude', 'blue_flag', 'accessible', 'region', 'municipality', 'district', 'is_supervised', 'season_start', 'season_end', 'lifeguard_start', 'lifeguard_end'])
             ->with(['currentStatus', 'latestWeatherForecast', 'latestOceanForecast', 'translations'])
             ->where('is_active', true);
 
@@ -185,12 +185,6 @@ class Home extends Component
 
         if ($this->selectedRegion) {
             $query->where('region', $this->selectedRegion);
-        }
-
-        if ($this->selectedFlag) {
-            $query->whereHas('currentStatus', function ($q) {
-                $q->where('flag', $this->selectedFlag);
-            });
         }
 
         $result = $query->get()->sortBy(function ($beach) {
@@ -228,7 +222,13 @@ class Home extends Component
                 'wind_speed' => $weather && $weather->wind_speed !== null ? (float) $weather->wind_speed : null,
                 'wind_direction' => $weather ? $weather->wind_direction : null,
             ];
-        })->values()->toArray();
+        });
+
+        if ($this->selectedFlag) {
+            $result = $result->filter(fn ($b) => $b['flag'] === $this->selectedFlag);
+        }
+
+        $result = $result->values()->toArray();
 
         $this->cachedBeachesList = $result;
 

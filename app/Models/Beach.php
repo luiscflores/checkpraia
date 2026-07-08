@@ -34,16 +34,21 @@ class Beach extends Model
         if (!$this->season_start || !$this->season_end) {
             return true;
         }
-        return now()->between($this->season_start, $this->season_end);
+        return now($this->timezone)->between($this->season_start, $this->season_end);
     }
 
-    public function isInLifeguardHours(): bool
+    public function isTimeInLifeguardHours(\Carbon\Carbon $time): bool
     {
         if (!$this->is_supervised || !$this->lifeguard_start || !$this->lifeguard_end) {
             return true;
         }
-        $now = now()->format('H:i:s');
-        return $now >= $this->lifeguard_start && $now <= $this->lifeguard_end;
+        $formattedTime = $time->copy()->timezone($this->timezone)->format('H:i:s');
+        return $formattedTime >= $this->lifeguard_start && $formattedTime <= $this->lifeguard_end;
+    }
+
+    public function isInLifeguardHours(): bool
+    {
+        return $this->isTimeInLifeguardHours(now());
     }
 
     public function getDisplayFlag(?User $user = null): string

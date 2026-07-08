@@ -11,7 +11,7 @@ new class extends Component
     /**
      * Delete the currently authenticated user.
      */
-    public function deleteUser(Logout $logout): void
+    public function deleteUser(Logout $logout)
     {
         $this->validate([
             'password' => ['required', 'string', 'current_password'],
@@ -19,7 +19,7 @@ new class extends Component
 
         tap(Auth::user(), $logout(...))->delete();
 
-        $this->redirect('/', navigate: true);
+        return redirect()->route('home');
     }
 }; ?>
 

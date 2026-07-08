@@ -75,6 +75,8 @@ return [
     'report_success' => 'Drapeau mis à jour ! Ton vote a remplacé le précédent.',
     'report_success_points' => 'Drapeau mis à jour ! Tu as gagné :points point(s).',
     'report_same_flag' => 'Tu as déjà voté cette couleur aujourd\'hui. Choisis une couleur différente pour modifier ton vote.',
+    'no_lifeguards_warning' => 'Hors des heures de surveillance (:start à :end). Aucun sauveteur en service.',
+    'report_outside_lifeguard_hours' => 'Le vote est uniquement disponible pendant les heures de surveillance (:start à :end).',
 
     // Dining
     'dining_title' => '🍴 Où Manger à Proximité',

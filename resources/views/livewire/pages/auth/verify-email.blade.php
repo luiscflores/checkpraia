@@ -27,11 +27,11 @@ new #[Layout('components.layouts.app')] class extends Component
     /**
      * Log the current user out of the application.
      */
-    public function logout(Logout $logout): void
+    public function logout(Logout $logout)
     {
         $logout();
 
-        $this->redirect('/', navigate: true);
+        return redirect()->route('home');
     }
 }; ?>
 

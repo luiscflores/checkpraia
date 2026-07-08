@@ -75,6 +75,8 @@ return [
     'report_success' => 'Flag updated! Your vote replaced the previous one.',
     'report_success_points' => 'Flag updated! You earned :points point(s).',
     'report_same_flag' => 'You already voted this color today. Pick a different color to change your vote.',
+    'no_lifeguards_warning' => 'Outside surveillance hours (:start to :end). No lifeguards on duty.',
+    'report_outside_lifeguard_hours' => 'Voting is only available during lifeguard hours (:start to :end).',
 
     // Dining
     'dining_title' => '🍴 Nearby Dining',

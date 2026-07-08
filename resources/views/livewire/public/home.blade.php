@@ -151,6 +151,11 @@
                 <span>❄️</span>
                 <span>{{ __('common.flag_blue_or_neutral') }}</span>
             </button>
+            <button wire:click="$set('selectedFlag', 'gray')" 
+                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'gray' ? 'bg-slate-600/10 border-slate-500/30 text-slate-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                <span>{{ __('common.flag_none') }}</span>
+            </button>
         </div>
     </div>
 

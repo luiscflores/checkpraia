@@ -92,6 +92,15 @@ class BeachDetail extends Component
             return;
         }
 
+        $beach = Beach::findOrFail($this->beachId);
+        if (!$beach->isInLifeguardHours()) {
+            $this->addError('report', __('beach.report_outside_lifeguard_hours', [
+                'start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'),
+                'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i'),
+            ]));
+            return;
+        }
+
         $throttleKey = 'report:'.$user->id;
         if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
             $seconds = RateLimiter::availableIn($throttleKey);

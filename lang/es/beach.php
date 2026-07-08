@@ -75,6 +75,8 @@ return [
     'report_success' => '¡Bandera actualizada! Tu voto reemplazó al anterior.',
     'report_success_points' => '¡Bandera actualizada! Ganaste :points punto(s).',
     'report_same_flag' => 'Ya votaste este color hoy. Elige un color diferente para cambiar tu voto.',
+    'no_lifeguards_warning' => 'Fuera del horario de vigilancia (:start a :end). No hay socorristas de servicio.',
+    'report_outside_lifeguard_hours' => 'La votación solo está disponible durante el horario de los socorristas (:start a :end).',
 
     // Dining
     'dining_title' => '🍴 Dónde Comer Cerca',

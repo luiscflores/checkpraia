@@ -89,7 +89,7 @@ class Profile extends Component
         $user->scoreTransactions()->delete();
         $user->referrals()->delete();
         $user->favorites()->detach();
-        Auth::logout();
+        app(Logout::class)();
         $user->delete();
 
         return redirect()->route('home');

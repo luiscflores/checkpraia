@@ -197,62 +197,70 @@
                     </div>
                 </div>
 
-                <div class="mt-6 space-y-1.5">
-                    <p class="text-sm font-bold text-slate-200">
-                        {{ __('common.flag_prediction') }}: 
-                        <span class="text-blue-400">
-                            {{ $source === 'community' ? __('beach.flag_community') : ($source === 'alert' ? __('beach.flag_official') : __('beach.flag_predicted')) }}
-                        </span>
-                    </p>
-                    <div class="flex items-center justify-center gap-3">
-                        <span class="text-xs text-slate-400">{{ __('common.flag_confirmed') }}: <span class="font-extrabold text-theme">{{ $confidence }}%</span></span>
-                        <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                        <span class="text-xs text-slate-400">{{ __('common.weather_forecast') }}: <span class="font-bold text-theme">{{ $beach->currentStatus ? $beach->currentStatus->updated_at->timezone($beach->timezone)->format('H:i') : $beach->updated_at->timezone($beach->timezone)->format('H:i') }}</span></span>
+                @if($flag === 'gray')
+                    <div class="mt-6 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 max-w-xs text-center animate-fade-in">
+                        <p class="text-xs text-amber-400 font-bold leading-relaxed">
+                            ⚠️ {{ __('beach.no_lifeguards_warning', ['start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'), 'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i')]) }}
+                        </p>
                     </div>
-                </div>
-
-                @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
-                    <div class="mt-5 w-full max-w-xs space-y-2">
-                        <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider block">{{ __('beach.weather_title') }}</span>
-                        <div class="h-8 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[3px]">
-                            @if($prediction->green_probability > 0)
-                                <div class="bg-emerald-500 rounded-l-full transition-all duration-500 flex items-center justify-center text-xs font-black text-slate-950" 
-                                     style="width: {{ $prediction->green_probability }}%" 
-                                     title="{{ __('common.flag_green') }}: {{ $prediction->green_probability }}%">
-                                    {{ $prediction->green_probability }}%
-                                </div>
-                            @endif
-                            @if($prediction->yellow_probability > 0)
-                                <div class="bg-amber-500 transition-all duration-500 flex items-center justify-center text-xs font-black text-slate-950" 
-                                     style="width: {{ $prediction->yellow_probability }}%" 
-                                     title="{{ __('common.flag_yellow') }}: {{ $prediction->yellow_probability }}%">
-                                    {{ $prediction->yellow_probability }}%
-                                </div>
-                            @endif
-                            @if($prediction->red_probability > 0)
-                                <div class="bg-rose-500 rounded-r-full transition-all duration-500 flex items-center justify-center text-xs font-black text-white" 
-                                     style="width: {{ $prediction->red_probability }}%" 
-                                     title="{{ __('common.flag_red') }}: {{ $prediction->red_probability }}%">
-                                    {{ $prediction->red_probability }}%
-                                </div>
-                            @endif
+                @else
+                    <div class="mt-6 space-y-1.5">
+                        <p class="text-sm font-bold text-slate-200">
+                            {{ __('common.flag_prediction') }}: 
+                            <span class="text-blue-400">
+                                {{ $source === 'community' ? __('beach.flag_community') : ($source === 'alert' ? __('beach.flag_official') : __('beach.flag_predicted')) }}
+                            </span>
+                        </p>
+                        <div class="flex items-center justify-center gap-3">
+                            <span class="text-xs text-slate-400">{{ __('common.flag_confirmed') }}: <span class="font-extrabold text-theme">{{ $confidence }}%</span></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                            <span class="text-xs text-slate-400">{{ __('common.weather_forecast') }}: <span class="font-bold text-theme">{{ $beach->currentStatus ? $beach->currentStatus->updated_at->timezone($beach->timezone)->format('H:i') : $beach->updated_at->timezone($beach->timezone)->format('H:i') }}</span></span>
                         </div>
-                        
-                        @php
-                            $g = $prediction->green_probability;
-                            $y = $prediction->yellow_probability;
-                            $r = $prediction->red_probability;
-                            $helperText = __('beach.helper_stable');
-                            if ($g >= 30 && $y >= 30) {
-                                $helperText = __('beach.helper_mixed_green_yellow');
-                            } elseif ($y >= 30 && $r >= 30) {
-                                $helperText = __('beach.helper_mixed_yellow_red');
-                            } elseif ($g >= 30 && $r >= 30) {
-                                $helperText = __('beach.helper_volatile');
-                            }
-                        @endphp
-                        <span class="text-[11px] text-slate-400 block leading-tight font-medium">💡 {{ $helperText }}</span>
                     </div>
+
+                    @if($source === 'prediction' && isset($prediction) && $prediction->selected_flag !== 'gray')
+                        <div class="mt-5 w-full max-w-xs space-y-2">
+                            <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider block">{{ __('beach.weather_title') }}</span>
+                            <div class="h-8 w-full rounded-full bg-slate-800/80 flex overflow-hidden shadow-inner border border-theme-subtle p-[3px]">
+                                @if($prediction->green_probability > 0)
+                                    <div class="bg-emerald-500 rounded-l-full transition-all duration-500 flex items-center justify-center text-xs font-black text-slate-950" 
+                                         style="width: {{ $prediction->green_probability }}%" 
+                                         title="{{ __('common.flag_green') }}: {{ $prediction->green_probability }}%">
+                                        {{ $prediction->green_probability }}%
+                                    </div>
+                                @endif
+                                @if($prediction->yellow_probability > 0)
+                                    <div class="bg-amber-500 transition-all duration-500 flex items-center justify-center text-xs font-black text-slate-950" 
+                                         style="width: {{ $prediction->yellow_probability }}%" 
+                                         title="{{ __('common.flag_yellow') }}: {{ $prediction->yellow_probability }}%">
+                                        {{ $prediction->yellow_probability }}%
+                                    </div>
+                                @endif
+                                @if($prediction->red_probability > 0)
+                                    <div class="bg-rose-500 rounded-r-full transition-all duration-500 flex items-center justify-center text-xs font-black text-white" 
+                                         style="width: {{ $prediction->red_probability }}%" 
+                                         title="{{ __('common.flag_red') }}: {{ $prediction->red_probability }}%">
+                                        {{ $prediction->red_probability }}%
+                                    </div>
+                                @endif
+                            </div>
+                            
+                            @php
+                                $g = $prediction->green_probability;
+                                $y = $prediction->yellow_probability;
+                                $r = $prediction->red_probability;
+                                $helperText = __('beach.helper_stable');
+                                if ($g >= 30 && $y >= 30) {
+                                    $helperText = __('beach.helper_mixed_green_yellow');
+                                } elseif ($y >= 30 && $r >= 30) {
+                                    $helperText = __('beach.helper_mixed_yellow_red');
+                                } elseif ($g >= 30 && $r >= 30) {
+                                    $helperText = __('beach.helper_volatile');
+                                }
+                            @endphp
+                            <span class="text-[11px] text-slate-400 block leading-tight font-medium">💡 {{ $helperText }}</span>
+                        </div>
+                    @endif
                 @endif
 
                 @if($beach->currentStatus && $beach->currentStatus->reason)
@@ -272,47 +280,53 @@
                     </svg>
                     <span>{{ __('beach.report_title') }}</span>
                 </h3>
-                <p class="text-sm text-slate-400 leading-relaxed font-medium">
-                    {{ __('beach.report_description') }}
-                </p>
-
-                @auth
-                    <div aria-live="polite" aria-atomic="true">
-                        @if (session()->has('report_success'))
-                            <div class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl font-medium animate-fade-in" role="status">
-                                ✔️ {{ session('report_success') }}
-                            </div>
-                        @endif
-
-                        @error('report')
-                            <div class="p-3 bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs rounded-xl font-medium animate-fade-in" role="alert">
-                                ❌ {{ $message }}
-                            </div>
-                        @enderror
-                    </div>
-
-                    <div x-show="locating" class="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs rounded-2xl flex items-center gap-2.5 animate-fade-in" role="status" aria-live="polite">
-                        <span class="animate-spin text-lg" aria-hidden="true">🌀</span>
-                        <span>{{ __('common.search_nearby') }}...</span>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-2.5" x-show="!locating" role="group" aria-label="{{ __('beach.select_flag') }}">
-                        <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 active:scale-90 text-slate-950 font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-emerald-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/20" aria-label="{{ __('beach.report_confirm_green') }}">
-                            🟢 {{ __('common.flag_green') }}
-                        </button>
-                        <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-amber-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/20" aria-label="{{ __('beach.report_confirm_yellow') }}">
-                            🟡 {{ __('common.flag_yellow') }}
-                        </button>
-                        <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 active:scale-90 text-white font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-rose-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/20" aria-label="{{ __('beach.report_confirm_red') }}">
-                            🔴 {{ __('common.flag_red') }}
-                        </button>
-                    </div>
+                @if(!$beach->isInLifeguardHours())
+                    <p class="text-sm text-amber-400 leading-relaxed font-bold bg-amber-500/5 border border-amber-500/10 p-3.5 rounded-2xl text-center">
+                        🔒 {{ __('beach.report_outside_lifeguard_hours', ['start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'), 'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i')]) }}
+                    </p>
                 @else
-                    <div class="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/60 text-center text-xs text-slate-400 font-medium">
-                        {{ __('common.favorite_login_required') }}
-                        <a href="{{ route('profile') }}" class="text-blue-400 hover:underline font-bold">{{ __('common.nav_login') }}</a>.
-                    </div>
-                @endauth
+                    <p class="text-sm text-slate-400 leading-relaxed font-medium">
+                        {{ __('beach.report_description') }}
+                    </p>
+
+                    @auth
+                        <div aria-live="polite" aria-atomic="true">
+                            @if (session()->has('report_success'))
+                                <div class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 text-xs rounded-xl font-medium animate-fade-in" role="status">
+                                    ✔️ {{ session('report_success') }}
+                                </div>
+                            @endif
+
+                            @error('report')
+                                <div class="p-3 bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs rounded-xl font-medium animate-fade-in" role="alert">
+                                    ❌ {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <div x-show="locating" class="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs rounded-2xl flex items-center gap-2.5 animate-fade-in" role="status" aria-live="polite">
+                            <span class="animate-spin text-lg" aria-hidden="true">🌀</span>
+                            <span>{{ __('common.search_nearby') }}...</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5" x-show="!locating" role="group" aria-label="{{ __('beach.select_flag') }}">
+                            <button @click="triggerReport('green')" class="bg-emerald-500 hover:bg-emerald-400 active:scale-90 text-slate-950 font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-emerald-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/20" aria-label="{{ __('beach.report_confirm_green') }}">
+                                🟢 {{ __('common.flag_green') }}
+                            </button>
+                            <button @click="triggerReport('yellow')" class="bg-amber-500 hover:bg-amber-400 active:scale-90 text-slate-950 font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-amber-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/20" aria-label="{{ __('beach.report_confirm_yellow') }}">
+                                🟡 {{ __('common.flag_yellow') }}
+                            </button>
+                            <button @click="triggerReport('red')" class="bg-rose-500 hover:bg-rose-400 active:scale-90 text-white font-bold py-3.5 rounded-2xl text-xs transition-all shadow-md shadow-rose-500/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/20" aria-label="{{ __('beach.report_confirm_red') }}">
+                                🔴 {{ __('common.flag_red') }}
+                            </button>
+                        </div>
+                    @else
+                        <div class="p-4 bg-slate-800/80 rounded-2xl border border-slate-700/60 text-center text-xs text-slate-400 font-medium">
+                            {{ __('common.favorite_login_required') }}
+                            <a href="{{ route('profile') }}" class="text-blue-400 hover:underline font-bold">{{ __('common.nav_login') }}</a>.
+                        </div>
+                    @endauth
+                @endif
             </div>
 
             @if($todayReports && $todayReports->isNotEmpty())
@@ -432,9 +446,13 @@
                         @endphp
                         @foreach($todaySnapshots as $snapshot)
                             @php
-                                $dotColor = $flagColors[$snapshot->flag] ?? 'bg-slate-500';
-                                $changed = $prevFlag && $prevFlag !== $snapshot->flag;
-                                $prevFlag = $snapshot->flag;
+                                $isWithinHours = $beach->isTimeInLifeguardHours($snapshot->captured_at);
+                                $isAdmin = auth()->check() && auth()->user()->is_admin;
+                                $displayFlag = ($isWithinHours || $isAdmin) ? $snapshot->flag : 'gray';
+
+                                $dotColor = $flagColors[$displayFlag] ?? 'bg-slate-500';
+                                $changed = $prevFlag && $prevFlag !== $displayFlag;
+                                $prevFlag = $displayFlag;
                                 $displayTime = $snapshot->vote_time 
                                     ? $snapshot->vote_time->timezone($beach->timezone) 
                                     : $snapshot->captured_at->timezone($beach->timezone);
@@ -450,14 +468,14 @@
                                         <span class="text-[11px] text-theme-muted font-medium tabular-nums">
                                             {{ $displayTime->format('H:i') }}
                                         </span>
-                                        @if($snapshot->source === 'community')
+                                        @if($snapshot->source === 'community' && ($isWithinHours || $isAdmin))
                                             <span class="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-500/20 bg-blue-500/10 text-blue-400">
                                                 👤 {{ __('beach.flag_user_vote') }}
                                             </span>
                                         @endif
                                     </div>
                                     <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border {{ $dotColor }} text-white">
-                                        @switch($snapshot->flag)
+                                        @switch($displayFlag)
                                             @case('green') {{ __('common.flag_green') }} @break
                                             @case('yellow') {{ __('common.flag_yellow') }} @break
                                             @case('red') {{ __('common.flag_red') }} @break
@@ -632,9 +650,16 @@
                                             <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.2"/>
                                             <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
                                         </linearGradient>
+                                        <filter id="tideGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                            <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                            <feMerge>
+                                                <feMergeNode in="blur" />
+                                                <feMergeNode in="SourceGraphic" />
+                                            </feMerge>
+                                        </filter>
                                     </defs>
                                     <polygon fill="url(#tideGradient)" points="0,95 {{ trim($tideCurvePoints) }} 100,95"></polygon>
-                                    <polyline fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="{{ trim($tideCurvePoints) }}"></polyline>
+                                    <polyline fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#tideGlow)" points="{{ trim($tideCurvePoints) }}"></polyline>
                                     
                                     @php
                                         $nowPct = 0;
@@ -658,70 +683,81 @@
                         @endif
 
                         @if($tides->isNotEmpty())
-                            <div class="space-y-4 pt-2">
-                                <div class="relative pl-6 border-l-2 border-slate-800 space-y-6">
-                                    <div class="relative flex items-center">
-                                        <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_today_label') }}</span>
-                                    </div>
-
-                                    @foreach($tidesToday as $tide)
-                                        @php
-                                            $isPast = $tide->tide_time->isPast();
-                                            $isNext = $nextTide && $nextTide->tide_time->eq($tide->tide_time);
-                                        @endphp
-                                        <div class="relative flex items-center justify-between gap-4 py-1 {{ $isPast ? 'opacity-40' : '' }}">
-                                            <div class="absolute -left-[31px] w-4 h-4 rounded-full border-2 {{ $tide->tide_type === 'high' ? 'border-sky-400 bg-slate-900' : 'border-amber-400 bg-slate-900' }} flex items-center justify-center z-10">
+                            <div class="space-y-5 pt-2">
+                                <div>
+                                    <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold block mb-2.5">{{ __('beach.tide_today_label') }}</span>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        @foreach($tidesToday as $tide)
+                                            @php
+                                                $isPast = $tide->tide_time->isPast();
+                                                $isNext = $nextTide && $nextTide->tide_time->eq($tide->tide_time);
+                                                $typeColor = $tide->tide_type === 'high' ? 'sky' : 'amber';
+                                                $borderClass = $isNext 
+                                                    ? 'border-blue-500 bg-blue-500/5 shadow-lg shadow-blue-500/5' 
+                                                    : 'border-theme-subtle/50 bg-slate-900/30';
+                                            @endphp
+                                            <div class="glass-card p-3 rounded-2xl border flex items-center justify-between gap-3 relative transition-all {{ $borderClass }} {{ $isPast ? 'opacity-40' : 'hover:border-'.$typeColor.'-500/30 hover:bg-slate-900/50' }}">
                                                 @if($isNext)
-                                                    <div class="absolute -inset-1 rounded-full animate-ping border {{ $tide->tide_type === 'high' ? 'border-sky-400/40' : 'border-amber-400/40' }}"></div>
-                                                    <div class="w-1.5 h-1.5 rounded-full {{ $tide->tide_type === 'high' ? 'bg-sky-400' : 'bg-amber-400' }}"></div>
+                                                    <div class="absolute -top-2 -right-2 bg-blue-500 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                                                        {{ __('beach.tide_next_label') }}
+                                                    </div>
                                                 @endif
-                                            </div>
-
-                                            <div class="flex-1 flex items-center justify-between pl-2">
-                                                <div class="flex items-center gap-2.5">
-                                                    <span class="text-sm font-bold text-theme tabular-nums">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
-                                                    <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
-                                                        {{ $tide->tide_type === 'high' ? __('beach.tide_high_name') : __('beach.tide_low_name') }}
-                                                    </span>
-                                                    @if($isNext)
-                                                        <span class="text-[11px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
-                                                    @endif
-                                                </div>
-                                                <span class="text-sm font-extrabold text-theme tabular-nums">{{ $tide->tide_height }}m</span>
-                                            </div>
-                                        </div>
-                                    @endforeach
-
-                                    @if($tidesTomorrow->isNotEmpty())
-                                        <div class="relative flex items-center pt-2">
-                                            <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold -ml-[31px] px-2 py-0.5 bg-slate-900 rounded border border-theme-subtle/80 z-10">{{ __('beach.tide_tomorrow_label') }}</span>
-                                        </div>
-
-                                        @foreach($tidesTomorrow as $tide)
-                                            @php $isNext = $nextTide && $nextTide->tide_time->eq($tide->tide_time); @endphp
-                                            <div class="relative flex items-center justify-between gap-4 py-1">
-                                                <div class="absolute -left-[31px] w-4 h-4 rounded-full border-2 {{ $tide->tide_type === 'high' ? 'border-sky-400 bg-slate-900' : 'border-amber-400 bg-slate-900' }} flex items-center justify-center z-10">
-                                                    @if($isNext)
-                                                        <div class="absolute -inset-1 rounded-full animate-ping border {{ $tide->tide_type === 'high' ? 'border-sky-400/40' : 'border-amber-400/40' }}"></div>
-                                                        <div class="w-1.5 h-1.5 rounded-full {{ $tide->tide_type === 'high' ? 'bg-sky-400' : 'bg-amber-400' }}"></div>
-                                                    @endif
-                                                </div>
-                                                <div class="flex-1 flex items-center justify-between pl-2">
-                                                    <div class="flex items-center gap-2.5">
-                                                        <span class="text-sm font-bold text-theme tabular-nums">{{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}</span>
-                                                        <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded font-bold {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }}">
+                                                
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400' : 'bg-amber-500/10 text-amber-400' }}">
+                                                        <span>{{ $tide->tide_type === 'high' ? '▲' : '▼' }}</span>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold block">
                                                             {{ $tide->tide_type === 'high' ? __('beach.tide_high_name') : __('beach.tide_low_name') }}
                                                         </span>
-                                                        @if($isNext)
-                                                            <span class="text-[11px] uppercase font-extrabold text-slate-950 bg-blue-400 px-1.5 py-0.5 rounded leading-none">{{ __('beach.tide_next_label') }}</span>
-                                                        @endif
+                                                        <span class="text-sm font-black text-theme tabular-nums">
+                                                            {{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}
+                                                        </span>
                                                     </div>
-                                                    <span class="text-sm font-extrabold text-theme tabular-nums">{{ $tide->tide_height }}m</span>
+                                                </div>
+                                                <div class="text-right shrink-0">
+                                                    <span class="text-xs font-extrabold text-theme tabular-nums">
+                                                        {{ $tide->tide_height }}m
+                                                    </span>
                                                 </div>
                                             </div>
                                         @endforeach
-                                    @endif
+                                    </div>
                                 </div>
+
+                                @if($tidesTomorrow->isNotEmpty())
+                                    <div class="pt-1">
+                                        <span class="text-[11px] text-slate-400 uppercase tracking-widest font-extrabold block mb-2.5">{{ __('beach.tide_tomorrow_label') }}</span>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            @foreach($tidesTomorrow as $tide)
+                                                @php
+                                                    $typeColor = $tide->tide_type === 'high' ? 'sky' : 'amber';
+                                                @endphp
+                                                <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 flex items-center justify-between gap-3 relative transition-all hover:border-{{ $typeColor }}-500/30 hover:bg-slate-900/50">
+                                                    <div class="flex items-center gap-2.5 min-w-0">
+                                                        <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 {{ $tide->tide_type === 'high' ? 'bg-sky-500/10 text-sky-400' : 'bg-amber-500/10 text-amber-400' }}">
+                                                            <span>{{ $tide->tide_type === 'high' ? '▲' : '▼' }}</span>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <span class="text-[9px] text-slate-400 uppercase tracking-wider font-extrabold block">
+                                                                {{ $tide->tide_type === 'high' ? __('beach.tide_high_name') : __('beach.tide_low_name') }}
+                                                            </span>
+                                                            <span class="text-sm font-black text-theme tabular-nums">
+                                                                {{ $tide->tide_time->timezone($beach->timezone)->format('H:i') }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right shrink-0">
+                                                        <span class="text-xs font-extrabold text-theme tabular-nums">
+                                                            {{ $tide->tide_height }}m
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @else
                             <p class="text-xs text-slate-500 text-center py-4">{{ __('beach.tide_none') }}</p>
@@ -776,6 +812,13 @@
             </div>
 
             <!-- Description & Services -->
+            @php
+                $translateFeature = function ($val) {
+                    if (!$val) return '';
+                    $key = 'common.feature_val_' . $val;
+                    return Illuminate\Support\Facades\Lang::has($key) ? __($key) : $val;
+                };
+            @endphp
             <div class="glass-card overflow-hidden rounded-3xl border border-theme-subtle/40 animate-fade-in-up" data-animate>
                 <div class="relative px-5 pt-5 pb-3">
                     <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/60 via-sky-400/40 to-transparent"></div>
@@ -784,51 +827,57 @@
                         <div>
                             <h3 class="text-base font-extrabold text-theme tracking-tight">{{ __('common.about_title') }}</h3>
                             @if($beach->features && $beach->features->beach_type)
-                                <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{{ $beach->features->beach_type }}</span>
+                                <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">{{ $translateFeature($beach->features->beach_type) }}</span>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                <div class="px-5 pb-4">
-                    <div class="relative pl-4 border-l-2 border-blue-500/30">
-                        <p class="text-sm text-slate-300 leading-relaxed">
+                <div class="px-5 pb-5">
+                    <div class="relative pl-4 border-l-2 border-blue-500/40 py-1 bg-blue-500/[0.02] rounded-r-xl pr-2">
+                        <p class="text-[14px] text-slate-200 leading-relaxed font-medium">
                             {{ $beach->description ?: 'Praia oficial vigiada com excelente época balnear e águas de classificação periódica ótima.' }}
                         </p>
                     </div>
-                </div>
 
-                @if($beach->features && ($beach->features->coast_orientation || $beach->features->bottom_type || $beach->features->slope || $beach->features->exposure_direction))
-                    <div class="px-5 pb-1">
-                        <div class="flex flex-wrap gap-1.5">
+                    @if($beach->features && ($beach->features->coast_orientation || $beach->features->bottom_type || $beach->features->slope || $beach->features->exposure_direction))
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
                             @if($beach->features->coast_orientation)
-                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-full">
-                                    <span>🧭</span> {{ $beach->features->coast_orientation }}
-                                </span>
+                                <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 text-center space-y-1 transition-all hover:border-blue-500/20 card-lift">
+                                    <span class="text-lg block select-none">🧭</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold block">{{ __('common.about_features_orientation_title') }}</span>
+                                    <span class="text-xs font-black text-theme block truncate">{{ $translateFeature($beach->features->coast_orientation) }}</span>
+                                </div>
                             @endif
                             @if($beach->features->bottom_type)
-                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-full">
-                                    <span>🏖️</span> {{ __('common.about_features_bottom', ['value' => $beach->features->bottom_type]) }}
-                                </span>
+                                <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 text-center space-y-1 transition-all hover:border-blue-500/20 card-lift">
+                                    <span class="text-lg block select-none">🏖️</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold block">{{ __('common.about_features_bottom_title') }}</span>
+                                    <span class="text-xs font-black text-theme block truncate">{{ $translateFeature($beach->features->bottom_type) }}</span>
+                                </div>
                             @endif
                             @if($beach->features->slope)
-                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-full">
-                                    <span>📐</span> {{ __('common.about_features_slope', ['value' => $beach->features->slope]) }}
-                                </span>
+                                <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 text-center space-y-1 transition-all hover:border-blue-500/20 card-lift">
+                                    <span class="text-lg block select-none">📐</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold block">{{ __('common.about_features_slope_title') }}</span>
+                                    <span class="text-xs font-black text-theme block truncate">{{ $translateFeature($beach->features->slope) }}</span>
+                                </div>
                             @endif
                             @if($beach->features->exposure_direction)
-                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-full">
-                                    <span>🌊</span> {{ __('common.about_features_exposure', ['value' => $beach->features->exposure_direction]) }}
-                                </span>
+                                <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 text-center space-y-1 transition-all hover:border-blue-500/20 card-lift">
+                                    <span class="text-lg block select-none">🌊</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold block">{{ __('common.about_features_exposure_title') }}</span>
+                                    <span class="text-xs font-black text-theme block truncate">{{ $translateFeature($beach->features->exposure_direction) }}</span>
+                                </div>
                             @endif
                         </div>
-                    </div>
-                @endif
+                    @endif
+                </div>
 
                 <!-- Services -->
                 <div class="border-t border-white/[0.04] [data-theme=light]:border-black/[0.04]">
-                    <div class="px-5 py-3.5">
-                        <div class="flex items-center justify-between mb-3">
+                    <div class="px-5 py-4">
+                        <div class="flex items-center justify-between mb-4">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 {{ __('common.about_services') }}
@@ -844,28 +893,21 @@
                             @endif
                         </div>
 
-                        @if($beach->services)
-                            @php
-                                $serviceGroups = [
-                                    __('common.service_group_access') => ['accessible' => __('common.service_accessible'), 'parking' => __('common.service_parking'), 'amphibious_chair' => __('common.service_amphibious_chair')],
-                                    __('common.service_group_comfort') => ['bathrooms' => __('common.service_bathrooms'), 'showers' => __('common.service_showers'), 'bar' => __('common.service_bar'), 'restaurant' => __('common.service_restaurant')],
-                                    __('common.service_group_safety') => ['lifeguard_post' => __('common.service_lifeguard_post'), 'first_aid' => __('common.service_first_aid')],
-                                    __('common.service_group_activities') => ['surf_school' => __('common.service_surf_school'), 'equipment_rental' => __('common.service_equipment_rental')],
-                                ];
-                            @endphp
-                            <div class="space-y-2.5">
-                                @foreach($serviceGroups as $groupName => $services)
-                                    @php $groupServices = array_filter($services, fn($label, $field) => $beach->services->$field, ARRAY_FILTER_USE_BOTH); @endphp
-                                    @if(count($groupServices))
-                                        <div>
-                                            <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block mb-1.5">{{ $groupName }}</span>
-                                            <div class="flex flex-wrap gap-1.5">
-                                                @foreach($groupServices as $field => $label)
-                                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1.5 rounded-lg shadow-sm">
-                                                        {{ $label }}
-                                                    </span>
-                                                @endforeach
+                        @if($beach->services && $activeServices > 0)
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                @foreach($serviceFields as $field)
+                                    @if($beach->services->$field)
+                                        @php
+                                            $label = __('common.service_' . $field);
+                                            $parts = explode(' ', $label, 2);
+                                            $emoji = $parts[0] ?? '📋';
+                                            $text = $parts[1] ?? $label;
+                                        @endphp
+                                        <div class="glass-card p-3 rounded-2xl border border-theme-subtle/50 bg-slate-900/30 flex items-center gap-3 hover:border-blue-500/20 hover:bg-slate-900/40 transition-all card-lift">
+                                            <div class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 shadow-sm border border-blue-500/10 text-lg">
+                                                {{ $emoji }}
                                             </div>
+                                            <span class="text-xs font-bold text-slate-200 truncate leading-tight">{{ $text }}</span>
                                         </div>
                                     @endif
                                 @endforeach

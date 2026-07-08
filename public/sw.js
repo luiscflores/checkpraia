@@ -1,7 +1,7 @@
-const VERSION = 'checkpraia-v4';
-const TILE_CACHE = 'checkpraia-tiles-v4';
-const STATIC_CACHE = 'checkpraia-static-v4';
-const PAGE_CACHE = 'checkpraia-pages-v4';
+const VERSION = 'checkpraia-v5';
+const TILE_CACHE = 'checkpraia-tiles-v5';
+const STATIC_CACHE = 'checkpraia-static-v5';
+const PAGE_CACHE = 'checkpraia-pages-v5';
 
 const MAX_TILES = 500;
 
@@ -91,6 +91,29 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = request.url;
 
+  // Intercept logout and wipe private page cache
+  try {
+    const u = new URL(url);
+    if (u.pathname === '/logout') {
+      event.respondWith(
+        fetch(request).then(async (response) => {
+          const cache = await caches.open(PAGE_CACHE);
+          const keys = await cache.keys();
+          await Promise.all(
+            keys.map((key) => {
+              const path = new URL(key.url).pathname;
+              if (!PRECACHE_URLS.includes(path)) {
+                return cache.delete(key);
+              }
+            })
+          );
+          return response;
+        })
+      );
+      return;
+    }
+  } catch (e) { /* ignore */ }
+
   // 1. Map tiles: cache-first with LRU limit
   if (isTileRequest(url)) {
     event.respondWith(
@@ -138,6 +161,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
+          // If the network response is an opaque redirect (status 0) or redirect status code,
+          // bypass the cache fallback and return the redirect directly so the browser redirects.
+          if (response.type === 'opaqueredirect' || [301, 302, 303, 307, 308].includes(response.status)) {
+            return response;
+          }
+
           if (response.ok) {
             const cloned = response.clone();
             caches.open(PAGE_CACHE).then((cache) => cache.put(request, cloned));
