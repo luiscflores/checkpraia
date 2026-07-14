@@ -70,7 +70,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
         session()->flash('auth_success', __('auth.register.success'));
 
-        $this->redirect(route('profile', absolute: false));
+        $this->redirect(route('profile', ['auto_subscribe' => 1], absolute: false));
     }
 }; ?>
 

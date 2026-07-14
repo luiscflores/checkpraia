@@ -34,8 +34,7 @@ return [
     'footer_disclaimer' => 'La bandera mostrada por CheckPraia resulta de pronósticos automáticos o informes de la comunidad. No constituye información oficial. Verifica siempre la bandera en la playa y sigue a los socorristas.',
     'footer_about' => 'Acerca de',
     'footer_contact' => 'Contacto',
-    'footer_terms' => 'Términos',
-    'footer_privacy' => 'Privacidad',
+    'footer_legal' => 'Términos & Privacidad',
     'footer_copyright' => 'CheckPraia',
 
     // Language Switcher
@@ -68,6 +67,17 @@ return [
     'weather_forecast_today' => 'Pronóstico de Hoy',
     'weather_forecast' => 'Pronóstico',
     'weather_not_available' => '—',
+    'today' => 'Hoy',
+    'tomorrow' => 'Mañana',
+    'weather_condition_clear' => 'Cielo despejado',
+    'weather_condition_partly_cloudy' => 'Parcialmente nublado',
+    'weather_condition_fog' => 'Niebla',
+    'weather_condition_drizzle' => 'Llovizna',
+    'weather_condition_rain' => 'Lluvia',
+    'weather_condition_snow' => 'Nieve',
+    'weather_condition_rain_showers' => 'Chubascos',
+    'weather_condition_snow_showers' => 'Chubascos de nieve',
+    'weather_condition_thunderstorm' => 'Tormenta',
     'live' => 'En Directo',
 
     // Beach attributes
@@ -201,6 +211,8 @@ return [
     'pwa_install_description' => 'Instala la aplicación para una mejor experiencia y acceso sin conexión.',
     'pwa_install_button' => 'Instalar',
     'pwa_install_dismiss' => 'Ahora no',
+    'pwa_ios_instructions' => 'En Safari, toca el botón de compartir y luego "Añadir a pantalla de inicio".',
+    'pwa_generic_instructions' => 'Usa el menú del navegador y selecciona "Instalar app" o "Añadir a pantalla de inicio".',
 
     // About page
     'about_page_title' => 'Acerca de CheckPraia',
@@ -223,6 +235,9 @@ return [
     'about_page_feature_maps' => 'Mapas interactivos',
     'about_page_feature_offline' => 'Soporte offline',
     'about_page_feature_multilang' => 'Multi-idioma (PT, EN, ES, FR)',
+    'about_page_install_title' => 'Instalar la App',
+    'about_page_install_description' => 'Instala CheckPraia en tu dispositivo para una experiencia más rápida, acceso sin conexión y notificaciones push.',
+    'about_page_install_button' => 'Instalar CheckPraia',
 
     // Terms page
     'terms_page_title' => 'Términos de Servicio',

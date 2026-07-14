@@ -16,6 +16,9 @@ return [
     'flag_verified_by' => 'Verified by :count users',
     'today_votes_title' => "Today's Confirmations",
     'history_title' => "Today's Evolution",
+    'history_entries' => 'entries',
+    'history_show_more' => 'Show :count more entries',
+    'history_show_less' => 'Show less',
     'flag_report' => 'Report Flag',
 
     // Weather
@@ -77,6 +80,8 @@ return [
     'report_same_flag' => 'You already voted this color today. Pick a different color to change your vote.',
     'no_lifeguards_warning' => 'Outside surveillance hours (:start to :end). No lifeguards on duty.',
     'report_outside_lifeguard_hours' => 'Voting is only available during lifeguard hours (:start to :end).',
+    'report_too_far' => 'You are :distance km from the beach. Voting is only allowed within :max km.',
+    'admin_override_active' => 'Admin mode active — you can vote anytime without distance limits.',
 
     // Dining
     'dining_title' => '🍴 Nearby Dining',
@@ -144,4 +149,7 @@ return [
     'gps_button' => 'GPS',
     'start_label' => 'Start: :date',
     'select_flag' => 'Select flag color',
+
+    // Weather forecast
+    'weather_forecast_title' => 'Weather Forecast',
 ];

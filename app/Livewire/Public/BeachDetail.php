@@ -13,6 +13,7 @@ use App\Models\ScoreTransaction;
 use App\Models\TideForecast;
 use App\Services\GeoService;
 use App\Services\PushNotificationService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
@@ -92,8 +93,10 @@ class BeachDetail extends Component
             return;
         }
 
+        $isAdmin = $user->is_admin;
+
         $beach = Beach::findOrFail($this->beachId);
-        if (!$beach->isInLifeguardHours()) {
+        if (!$isAdmin && !$beach->isInLifeguardHours()) {
             $this->addError('report', __('beach.report_outside_lifeguard_hours', [
                 'start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'),
                 'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i'),
@@ -130,8 +133,13 @@ class BeachDetail extends Component
 
         $distance = $this->calculateDistance((float) $lat, (float) $lon, (float) $this->beachLatitude, (float) $this->beachLongitude);
 
+        if (!$isAdmin && $distance > $this->maxDistanceKm()) {
+            $this->addError('report', __('beach.report_too_far', ['distance' => round($distance, 1), 'max' => $this->maxDistanceKm()]));
+            return;
+        }
+
         $scoreManager = new ScoreManager;
-        $weight = $scoreManager->getVoteWeight($user);
+        $weight = $isAdmin ? 10 : $scoreManager->getVoteWeight($user);
 
         // Save report (confirmed immediately — points awarded straight away)
         $report = FlagReport::create([
@@ -293,6 +301,11 @@ class BeachDetail extends Component
         $tidesToday = $tides->filter(fn ($t) => $t->tide_time->isToday());
         $tidesTomorrow = $tides->filter(fn ($t) => $t->tide_time->isTomorrow());
 
+        // Daily weather forecast (cached 1h)
+        $dailyForecast = Cache::remember("beach_daily_forecast:{$beach->id}", 3600, function () use ($beach) {
+            return (new \App\Services\Ipma\IpmaClient())->getDailyForecast($beach->latitude, $beach->longitude);
+        });
+
         return view('livewire.public.beach-detail', [
             'todayReports' => $todayReports,
             'beach' => $beach,
@@ -311,6 +324,7 @@ class BeachDetail extends Component
             'moonPhase' => TideForecast::moonPhase(),
             'upcomingMoonPhases' => TideForecast::upcomingMoonPhases(),
             'todaySnapshots' => $todaySnapshots,
+            'dailyForecast' => $dailyForecast,
         ])->layout('components.layouts.app');
     }
 }

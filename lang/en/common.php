@@ -34,8 +34,7 @@ return [
     'footer_disclaimer' => 'The flag shown by CheckPraia results from automated forecasts or community reports. It is not official information. Always check the flag at the beach and follow the lifeguards.',
     'footer_about' => 'About',
     'footer_contact' => 'Contact',
-    'footer_terms' => 'Terms',
-    'footer_privacy' => 'Privacy',
+    'footer_legal' => 'Terms & Privacy',
     'footer_copyright' => 'CheckPraia',
 
     // Language Switcher
@@ -68,6 +67,17 @@ return [
     'weather_forecast_today' => 'Today\'s Forecast',
     'weather_forecast' => 'Forecast',
     'weather_not_available' => '—',
+    'today' => 'Today',
+    'tomorrow' => 'Tomorrow',
+    'weather_condition_clear' => 'Clear sky',
+    'weather_condition_partly_cloudy' => 'Partly cloudy',
+    'weather_condition_fog' => 'Fog',
+    'weather_condition_drizzle' => 'Drizzle',
+    'weather_condition_rain' => 'Rain',
+    'weather_condition_snow' => 'Snow',
+    'weather_condition_rain_showers' => 'Rain showers',
+    'weather_condition_snow_showers' => 'Snow showers',
+    'weather_condition_thunderstorm' => 'Thunderstorm',
     'live' => 'Live',
 
     // Beach attributes
@@ -201,6 +211,8 @@ return [
     'pwa_install_description' => 'Install the app for a better experience and offline access.',
     'pwa_install_button' => 'Install',
     'pwa_install_dismiss' => 'Not now',
+    'pwa_ios_instructions' => 'In Safari, tap the Share button and then "Add to Home Screen".',
+    'pwa_generic_instructions' => 'Use the browser menu and select "Install app" or "Add to home screen".',
 
     // About page
     'about_page_title' => 'About CheckPraia',
@@ -223,6 +235,9 @@ return [
     'about_page_feature_maps' => 'Interactive maps',
     'about_page_feature_offline' => 'Offline support',
     'about_page_feature_multilang' => 'Multi-language (PT, EN, ES, FR)',
+    'about_page_install_title' => 'Install the App',
+    'about_page_install_description' => 'Install CheckPraia on your device for a faster experience, offline access and push notifications.',
+    'about_page_install_button' => 'Install CheckPraia',
 
     // Terms page
     'terms_page_title' => 'Terms of Service',

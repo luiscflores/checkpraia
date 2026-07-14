@@ -16,7 +16,7 @@ class IpmaClient
             $response = Http::retry($cfg['retry_times'], $cfg['retry_gap'])->timeout($cfg['timeout'])->get($cfg['weather_url'], [
                 'latitude' => $latitude,
                 'longitude' => $longitude,
-                'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index,visibility',
+                'current' => 'temperature_2m,precipitation,wind_speed_10m,wind_direction_10m,uv_index,visibility,weather_code',
                 'wind_speed_unit' => $cfg['wind_speed_unit'],
                 'timezone' => $cfg['timezone'],
             ]);
@@ -52,6 +52,7 @@ class IpmaClient
                         'visibility' => $visibility,
                         'temp' => $airTemp,
                         'uv_index' => $uv,
+                        'weather_code' => (int) ($current['weather_code'] ?? 0),
                         'forecasted_at' => now(),
                     ];
                 }
@@ -103,6 +104,91 @@ class IpmaClient
             logger()->error('Open-Meteo Marine API failed: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Fetch 7-day daily weather forecast for a beach.
+     */
+    public function getDailyForecast(float $latitude, float $longitude): array
+    {
+        try {
+            $cfg = config('services.openmeteo');
+            $response = Http::retry($cfg['retry_times'], $cfg['retry_gap'])->timeout($cfg['timeout'])->get($cfg['weather_url'], [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max',
+                'timezone' => $cfg['timezone'],
+                'forecast_days' => 7,
+            ]);
+
+            if ($response->successful()) {
+                $daily = $response->json('daily', []);
+                $dates = $daily['time'] ?? [];
+                $result = [];
+
+                for ($i = 0, $len = count($dates); $i < $len; $i++) {
+                    $code = (int) ($daily['weather_code'][$i] ?? 0);
+                    $result[] = [
+                        'date' => $dates[$i],
+                        'weather_code' => $code,
+                        'condition' => $this->getWeatherCondition($code),
+                        'icon' => $this->getWeatherIcon($code),
+                        'temp_max' => (float) ($daily['temperature_2m_max'][$i] ?? 0),
+                        'temp_min' => (float) ($daily['temperature_2m_min'][$i] ?? 0),
+                        'precipitation' => (float) ($daily['precipitation_sum'][$i] ?? 0),
+                        'precipitation_probability' => (int) ($daily['precipitation_probability_max'][$i] ?? 0),
+                        'wind_speed' => (float) ($daily['wind_speed_10m_max'][$i] ?? 0),
+                        'wind_direction' => $this->getCompassDirection((int) ($daily['wind_direction_10m_dominant'][$i] ?? 0)),
+                        'uv_index' => (float) ($daily['uv_index_max'][$i] ?? 0),
+                    ];
+                }
+
+                return $result;
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            logger()->error('Open-Meteo daily forecast failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Map WMO weather code to a condition string key.
+     */
+    public function getWeatherCondition(int $code): string
+    {
+        return match (true) {
+            $code === 0 => 'clear',
+            $code <= 3 => 'partly_cloudy',
+            $code <= 49 => 'fog',
+            $code <= 59 => 'drizzle',
+            $code <= 69 => 'rain',
+            $code <= 79 => 'snow',
+            $code <= 82 => 'rain_showers',
+            $code <= 86 => 'snow_showers',
+            $code <= 99 => 'thunderstorm',
+            default => 'clear',
+        };
+    }
+
+    /**
+     * Map WMO weather code to an emoji icon.
+     */
+    public function getWeatherIcon(int $code): string
+    {
+        return match (true) {
+            $code === 0 => '☀️',
+            $code <= 3 => '⛅',
+            $code <= 49 => '🌫️',
+            $code <= 59 => '🌦️',
+            $code <= 69 => '🌧️',
+            $code <= 79 => '❄️',
+            $code <= 82 => '🌧️',
+            $code <= 86 => '🌨️',
+            $code <= 99 => '⛈️',
+            default => '☀️',
+        };
     }
 
     /**

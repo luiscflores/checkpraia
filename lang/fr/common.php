@@ -34,8 +34,7 @@ return [
     'footer_disclaimer' => 'Le drapeau affiché par CheckPraia résulte de prévisions automatiques ou de signalements de la communauté. Il ne constitue pas une information officielle. Vérifie toujours le drapeau sur la plage et suis les maîtres-nageurs.',
     'footer_about' => 'À propos',
     'footer_contact' => 'Contact',
-    'footer_terms' => 'Conditions',
-    'footer_privacy' => 'Confidentialité',
+    'footer_legal' => 'Conditions & Confidentialité',
     'footer_copyright' => 'CheckPraia',
 
     // Language Switcher
@@ -68,6 +67,17 @@ return [
     'weather_forecast_today' => 'Prévisions du Jour',
     'weather_forecast' => 'Prévisions',
     'weather_not_available' => '—',
+    'today' => "Aujourd'hui",
+    'tomorrow' => 'Demain',
+    'weather_condition_clear' => 'Ciel dégagé',
+    'weather_condition_partly_cloudy' => 'Partiellement nuageux',
+    'weather_condition_fog' => 'Brouillard',
+    'weather_condition_drizzle' => 'Bruine',
+    'weather_condition_rain' => 'Pluie',
+    'weather_condition_snow' => 'Neige',
+    'weather_condition_rain_showers' => 'Averses',
+    'weather_condition_snow_showers' => 'Averses de neige',
+    'weather_condition_thunderstorm' => 'Orage',
     'live' => 'En Direct',
 
     // Beach attributes
@@ -196,6 +206,13 @@ return [
     'push_test_failed' => 'Échec de l\'envoi de la notification de test.',
     'push_nearby_km' => 'À :km km de votre position',
     'no_thanks' => 'Non merci',
+    // PWA Install
+    'pwa_install_title' => 'Installer CheckPraia',
+    'pwa_install_description' => 'Installez l\'application pour une meilleure expérience et un accès hors ligne.',
+    'pwa_install_button' => 'Installer',
+    'pwa_install_dismiss' => 'Pas maintenant',
+    'pwa_ios_instructions' => 'Dans Safari, appuyez sur le bouton Partager puis "Ajouter à l\'écran d\'accueil".',
+    'pwa_generic_instructions' => 'Utilisez le menu du navigateur et sélectionnez "Installer l\'app" ou "Ajouter à l\'écran d\'accueil".',
     // About page
     'about_page_title' => 'À propos de CheckPraia',
     'about_page_subtitle' => 'Ton application de confiance pour consulter les conditions des plages portugaises en temps réel.',
@@ -217,6 +234,9 @@ return [
     'about_page_feature_maps' => 'Cartes interactives',
     'about_page_feature_offline' => 'Support hors ligne',
     'about_page_feature_multilang' => 'Multi-langue (PT, EN, ES, FR)',
+    'about_page_install_title' => 'Installez l\'App',
+    'about_page_install_description' => 'Installez CheckPraia sur votre appareil pour une expérience plus rapide, un accès hors ligne et des notifications push.',
+    'about_page_install_button' => 'Installer CheckPraia',
 
     // Terms page
     'terms_page_title' => 'Conditions d\'Utilisation',

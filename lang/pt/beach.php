@@ -16,6 +16,9 @@ return [
     'flag_verified_by' => 'Verificado por :count utilizadores',
     'today_votes_title' => 'Confirmações de Hoje',
     'history_title' => 'Evolução Hoje',
+    'history_entries' => 'registos',
+    'history_show_more' => 'Ver mais :count registos',
+    'history_show_less' => 'Mostrar menos',
     'flag_report' => 'Reportar Bandeira',
 
     // Weather
@@ -77,6 +80,8 @@ return [
     'report_same_flag' => 'Já votaste nesta cor hoje. Escolhe uma cor diferente para alterar o teu voto.',
     'no_lifeguards_warning' => 'Fora do horário de vigilância (:start às :end). Não existem nadadores-salvadores de serviço.',
     'report_outside_lifeguard_hours' => 'A votação só está disponível durante o horário dos nadadores-salvadores (:start às :end).',
+    'report_too_far' => 'Estás a :distance km da praia. A votação só é permitida até :max km de distância.',
+    'admin_override_active' => 'Modo admin ativo — podes votar a qualquer hora e sem limite de distância.',
 
     // Dining
     'dining_title' => '🍴 Onde Comer por Perto',
@@ -144,4 +149,7 @@ return [
     'gps_button' => 'GPS',
     'start_label' => 'Início: :date',
     'select_flag' => 'Selecionar cor da bandeira',
+
+    // Weather forecast
+    'weather_forecast_title' => 'Previsão Meteorológica',
 ];

@@ -83,11 +83,36 @@
                         </select>
                     </div>
 
+                    <!-- Push Notifications Toggle -->
+                    <div x-data="pushHandler()" x-init="$watch('ready', v => { if(v && !subscribed && new URLSearchParams(window.location.search).get('auto_subscribe') === '1') { toggle(); history.replaceState(null, '', window.location.pathname); } })" class="space-y-2">
+                        <div class="flex items-center justify-between p-3.5 bg-theme-card rounded-xl border border-theme-subtle">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg">🔔</span>
+                                <div>
+                                    <span class="text-xs font-bold text-theme block">{{ __('profile.push_notifications') }}</span>
+                                    <span class="text-[11px] text-theme-muted" x-show="!loading">
+                                        <template x-if="subscribed">
+                                            <span class="text-emerald-400">{{ __('common.push_enabled') }}</span>
+                                        </template>
+                                        <template x-if="!subscribed">
+                                            <span x-text="'{{ __('common.push_enable') }}'"></span>
+                                        </template>
+                                    </span>
+                                    <span class="text-[11px] text-theme-muted" x-show="loading">{{ __('profile.updating') }}...</span>
+                                </div>
+                            </div>
+                            <button @click="toggle()" :disabled="loading" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-2 focus:ring-offset-theme-card disabled:opacity-50" :class="subscribed ? 'bg-blue-600' : 'bg-theme-subtle'" role="switch" :aria-checked="subscribed" :aria-label="subscribed ? '{{ __('common.push_enabled') }}' : '{{ __('common.push_enable') }}'">
+                                <span class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out translate" :class="subscribed ? 'translate-x-5' : 'translate-x-0'"></span>
+                            </button>
+                        </div>
+                        <p x-show="ready && !subscribed" class="text-[11px] text-theme-muted px-1">{{ __('profile.push_notifications_description') }}</p>
+                    </div>
+
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold py-3 sm:py-2.5 rounded-xl text-sm transition-all touch-target">
                             {{ __('profile.save_changes') }}
                         </button>
-                        <button type="button" wire:click="logout" class="bg-theme-card active:scale-[0.98] text-theme-secondary font-semibold px-5 sm:px-4 py-3 sm:py-2.5 rounded-xl text-sm border border-theme-medium transition-all touch-target hover:text-theme">
+                        <button type="button" wire:click="logout" @click="localStorage.removeItem('checkpraia-active-region')" class="bg-theme-card active:scale-[0.98] text-theme-secondary font-semibold px-5 sm:px-4 py-3 sm:py-2.5 rounded-xl text-sm border border-theme-medium transition-all touch-target hover:text-theme">
                             {{ __('profile.logout') }}
                         </button>
                     </div>
@@ -97,10 +122,10 @@
             <!-- Referrals Card -->
             <div class="glass-card p-6 rounded-3xl space-y-4 relative overflow-hidden animate-fade-in-up" data-animate>
                 <h3 class="text-lg font-bold text-theme flex items-center gap-2">
-                    👥 {{ __('profile.referral_program') }}
+                    👥 {{ __('profile.invite_friend') }}
                 </h3>
                 <p class="text-xs text-theme-secondary leading-relaxed">
-                    {{ __('profile.referral_description') }}
+                    {{ __('profile.invite_description') }}
                 </p>
 
                 @php $referralLink = route('register', ['ref' => auth()->user()->referral_code]); @endphp
@@ -112,14 +137,11 @@
                     </div>
                 </div>
 
-                <!-- Share App Button -->
-                <div class="pt-1 space-y-2" x-data="appShareHandler()">
-                    <button @click="share()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 active:scale-[0.98] text-white font-bold py-3 rounded-xl text-sm transition-all touch-target shadow-lg shadow-blue-500/20">
-                        <span aria-hidden="true">📢</span> {{ __('profile.share_app') }}
-                    </button>
-                    <button @click="downloadCard()" class="w-full flex items-center justify-center gap-2 bg-theme-card hover:bg-white/5 text-theme-secondary border border-theme-medium active:scale-[0.98] font-semibold py-2.5 rounded-xl text-xs transition-all touch-target">
-                        <span aria-hidden="true">🖼️</span> {{ __('profile.share_card_download') }}
-                    </button>
+                <!-- Points earned info -->
+                <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl space-y-1">
+                    <span class="text-xs text-blue-400 font-bold block uppercase tracking-wider">{{ __('profile.points_per_referral') }}</span>
+                    <span class="text-lg font-black text-blue-400 block">+{{ config('gamification.referrals.bonus_points') }} {{ __('profile.pts') }}</span>
+                    <span class="text-xs text-theme-secondary leading-relaxed block">{{ __('profile.points_per_referral_detail') }}</span>
                 </div>
 
                 <!-- Referral progress tracker -->
@@ -132,15 +154,6 @@
                         <div class="bg-gradient-to-r from-blue-500 to-teal-400 h-full transition-all duration-500" style="width: {{ ($referralProgress / 5) * 100 }}%"></div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Danger Zone -->
-            <div class="glass-card p-6 rounded-3xl space-y-3 border-rose-500/20 animate-fade-in-up" data-animate>
-                <h3 class="text-sm font-bold text-rose-400 uppercase tracking-wider">{{ __('profile.danger_zone') }}</h3>
-                <p class="text-xs text-theme-muted leading-relaxed">{{ __('profile.danger_description') }}</p>
-                <button onclick="if(confirm('{{ __('profile.delete_confirm') }}')) { @this.call('deleteAccount') }" class="w-full bg-rose-500/10 hover:bg-rose-500 active:scale-[0.98] text-rose-400 hover:text-white border border-rose-500/20 hover:border-rose-500 font-bold py-3 sm:py-2.5 rounded-xl text-sm transition-all touch-target">
-                    {{ __('profile.delete_button') }}
-                </button>
             </div>
         </div>
 
@@ -249,30 +262,15 @@
                 </div>
             </div>
 
-            <!-- Score Transactions ledger -->
-            <div class="glass-card p-6 rounded-3xl space-y-4 animate-fade-in-up" data-animate>
-                <h3 class="text-lg font-bold text-theme flex items-center gap-2">
-                    💰 {{ __('profile.transactions') }}
-                </h3>
+        </div>
 
-                <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    @forelse($transactions as $tx)
-                        <div class="bg-theme-card border border-theme-subtle p-3 rounded-2xl flex items-center justify-between text-xs">
-                            <div class="space-y-1">
-                                <span class="font-bold text-theme block">{{ $tx->description }}</span>
-                                <span class="text-xs text-theme-muted block">{{ $tx->created_at->format('d/m/Y H:i') }}</span>
-                            </div>
-
-                            <span class="font-black text-sm {{ $tx->points > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
-                                {{ $tx->points > 0 ? '+' : '' }}{{ $tx->points }}
-                            </span>
-                        </div>
-                    @empty
-                        <p class="text-xs text-theme-muted text-center py-4">{{ __('profile.no_transactions') }}</p>
-                    @endforelse
-                </div>
-            </div>
-
+        <!-- Delete Account (mobile: last, desktop: left column) -->
+        <div class="order-last lg:order-none lg:col-span-5 glass-card p-6 rounded-3xl space-y-3 border-rose-500/20 animate-fade-in-up" data-animate>
+            <h3 class="text-sm font-bold text-rose-400 uppercase tracking-wider">{{ __('profile.danger_zone') }}</h3>
+            <p class="text-xs text-theme-muted leading-relaxed">{{ __('profile.danger_description') }}</p>
+            <button onclick="if(confirm('{{ __('profile.delete_confirm') }}')) { @this.call('deleteAccount') }" class="w-full bg-rose-500/10 hover:bg-rose-500 active:scale-[0.98] text-rose-400 hover:text-white border border-rose-500/20 hover:border-rose-500 font-bold py-3 sm:py-2.5 rounded-xl text-sm transition-all touch-target">
+                {{ __('profile.delete_button') }}
+            </button>
         </div>
 
     </div>

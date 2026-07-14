@@ -97,6 +97,8 @@ Route::prefix('push')->middleware('auth')->group(function () {
     Route::post('/test', [\App\Http\Controllers\PushSubscriptionController::class, 'test'])->name('push.test');
 });
 
+Route::post('/favorites/toggle', [\App\Http\Controllers\FavoriteController::class, 'toggle'])->name('favorites.toggle');
+
 Route::get('/', Home::class)->name('home');
 Route::get('/rankings', Rankings::class)->name('rankings');
 Route::get('/area-pessoal', Profile::class)->name('profile')->middleware('auth');

@@ -1,4 +1,4 @@
-<div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches))">
+<div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches), @js($defaultRegion ?? null))">
     @section('title', __('home.title'))
     @section('og_title', __('home.og_title'))
     @section('og_description', __('home.og_description'))
@@ -9,16 +9,6 @@
     @endsection
 
     <h1 class="sr-only">{{ __('home.page_title') }}</h1>
-
-    <!-- Wave Background Decoration -->
-    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-        <svg class="wave-decoration absolute -top-20 left-0 w-[200%] h-auto opacity-[0.05] sm:opacity-[0.08]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6;">
-            <path d="M0,192L48,176C96,160,192,128,288,138.7C384,149,480,203,576,218.7C672,235,768,213,864,192C960,171,1056,149,1152,138.7C1248,128,1344,128,1392,128L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
-        </svg>
-        <svg class="wave-decoration absolute -bottom-10 right-0 w-[180%] h-auto opacity-[0.03] sm:opacity-[0.06]" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor" style="color: #3b82f6; animation-delay: -3s;">
-            <path d="M0,64L48,74.7C96,85,192,107,288,112C384,117,480,107,576,112C672,117,768,139,864,144C960,149,1056,139,1152,128C1248,117,1344,107,1392,101.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
-        </svg>
-    </div>
 
     <div class="sr-only" aria-hidden="true">
         <p>{{ __('home.og_description') }}</p>
@@ -68,20 +58,25 @@
     </script>
     @endsection
 
-    @if(session()->has('favorite_success'))
-        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs rounded-xl font-medium animate-fade-in">
-            {{ session('favorite_success') }}
+    <div x-data="{ toastMessage: null, toastVisible: false }"
+         x-cloak
+         x-on:favorite-error.window="toastMessage = $event.detail.message; toastVisible = true; setTimeout(() => toastVisible = false, 3000)"
+         x-show="toastVisible"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-sm w-full mx-auto px-4 pointer-events-none">
+        <div class="bg-rose-600/90 backdrop-blur-md text-white text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-rose-400/30 flex items-center gap-2">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+            <span x-text="toastMessage"></span>
         </div>
-    @endif
-
-    @if(session()->has('favorite_error'))
-        <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs rounded-xl font-medium animate-fade-in">
-            {{ session('favorite_error') }}
-        </div>
-    @endif
+    </div>
 
     <!-- Search and Filters Panel -->
-    <div class="glass-card p-4 rounded-3xl border border-theme-subtle/50 space-y-4 shadow-lg shadow-black/[0.02] animate-fade-in-up" x-data="{ searchFocused: false }">
+    <div class="glass-card p-4 rounded-3xl border border-theme-subtle/50 space-y-4 shadow-lg shadow-black/[0.02] animate-fade-in-up" x-data="{ searchFocused: false, flagOpen: false }">
         <div class="flex items-stretch gap-2.5">
             <div class="w-full relative flex-1">
                 <label for="beach-search" class="sr-only">{{ __('common.search_placeholder') }}</label>
@@ -124,43 +119,115 @@
             </template>
         </div>
 
-        <!-- Flag Filters -->
-        <div class="flex flex-wrap gap-2">
-            <button wire:click="$set('selectedFlag', '')" 
-                     class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === '' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span>🏁</span>
-                <span>{{ __('common.flag_all') }}</span>
+        <!-- Flag Filter Dropdown -->
+        <div class="relative" x-data="{ dropdownPos: { top: 0, left: 0, width: 0 } }">
+            <button x-ref="flagTrigger" @click="flagOpen = !flagOpen; if(flagOpen) { const r = $refs.flagTrigger.getBoundingClientRect(); dropdownPos = { top: r.bottom + 8, left: r.left, width: r.width } }"
+                    class="relative z-[10000] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border min-h-[42px] w-full sm:w-auto sm:self-start
+                    @if($selectedFlag === 'green') bg-emerald-600/10 border-emerald-500/30 text-emerald-400
+                    @elseif($selectedFlag === 'yellow') bg-amber-600/10 border-amber-500/30 text-amber-400
+                    @elseif($selectedFlag === 'red') bg-rose-600/10 border-rose-500/30 text-rose-400
+                    @elseif($selectedFlag === 'blue_or_neutral') bg-blue-600/10 border-blue-500/30 text-blue-400
+                    @elseif($selectedFlag === 'gray') bg-slate-600/10 border-slate-500/30 text-slate-400
+                    @else bg-blue-600/10 border-blue-500/30 text-blue-400
+                    @endif shadow-sm"
+                    aria-haspopup="listbox" :aria-expanded="flagOpen">
+                @if($selectedFlag === 'green')
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span>{{ __('common.flag_green') }}</span>
+                @elseif($selectedFlag === 'yellow')
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{{ __('common.flag_yellow') }}</span>
+                @elseif($selectedFlag === 'red')
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                    <span>{{ __('common.flag_red') }}</span>
+                @elseif($selectedFlag === 'blue_or_neutral')
+                    <span>❄️</span>
+                    <span>{{ __('common.flag_blue_or_neutral') }}</span>
+                @elseif($selectedFlag === 'gray')
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0"></span>
+                    <span>{{ __('common.flag_none') }}</span>
+                @else
+                    <span>🏁</span>
+                    <span>{{ __('common.flag_all') }}</span>
+                @endif
+                <svg class="w-3.5 h-3.5 shrink-0 transition-transform duration-200" :class="flagOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <button wire:click="$set('selectedFlag', 'green')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'green' ? 'bg-emerald-600/10 border-emerald-500/30 text-emerald-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span>{{ __('common.flag_green') }}</span>
-            </button>
-            <button wire:click="$set('selectedFlag', 'yellow')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'yellow' ? 'bg-amber-600/10 border-amber-500/30 text-amber-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                <span>{{ __('common.flag_yellow') }}</span>
-            </button>
-            <button wire:click="$set('selectedFlag', 'red')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'red' ? 'bg-rose-600/10 border-rose-500/30 text-rose-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                <span>{{ __('common.flag_red') }}</span>
-            </button>
-            <button wire:click="$set('selectedFlag', 'blue_or_neutral')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'blue_or_neutral' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span>❄️</span>
-                <span>{{ __('common.flag_blue_or_neutral') }}</span>
-            </button>
-            <button wire:click="$set('selectedFlag', 'gray')" 
-                    class="basis-[30%] sm:basis-auto grow sm:grow-0 whitespace-nowrap px-3.5 py-2.5 rounded-full text-xs font-bold transition-all border touch-target touch-ripple min-h-[42px] flex items-center justify-center gap-1.5 {{ $selectedFlag === 'gray' ? 'bg-slate-600/10 border-slate-500/30 text-slate-400 shadow-sm' : 'bg-theme-card border-theme-subtle text-theme-secondary hover:text-theme hover:border-theme-medium' }}">
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                <span>{{ __('common.flag_none') }}</span>
-            </button>
+
+            <template x-teleport="body">
+                <div x-show="flagOpen" x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
+                     :style="'position:fixed; top:' + dropdownPos.top + 'px; left:' + dropdownPos.left + 'px; min-width:' + dropdownPos.width + 'px; z-index:9999'"
+                     class="bg-theme-card/95 backdrop-blur-xl border border-theme-subtle/60 rounded-2xl shadow-xl shadow-black/10 py-1.5 overflow-hidden"
+                     @click.stop
+                     role="listbox" aria-label="{{ __('common.flag_all') }}">
+
+                    <button @click="$wire.set('selectedFlag', ''); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === '') bg-blue-600/10 text-blue-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === '') aria-selected="true" @endif>
+                        <span>🏁</span>
+                        <span>{{ __('common.flag_all') }}</span>
+                        @if($selectedFlag === '')<span class="ml-auto text-blue-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+
+                    <button @click="$wire.set('selectedFlag', 'green'); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === 'green') bg-emerald-600/10 text-emerald-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === 'green') aria-selected="true" @endif>
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span>{{ __('common.flag_green') }}</span>
+                        @if($selectedFlag === 'green')<span class="ml-auto text-emerald-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+
+                    <button @click="$wire.set('selectedFlag', 'yellow'); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === 'yellow') bg-amber-600/10 text-amber-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === 'yellow') aria-selected="true" @endif>
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                        <span>{{ __('common.flag_yellow') }}</span>
+                        @if($selectedFlag === 'yellow')<span class="ml-auto text-amber-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+
+                    <button @click="$wire.set('selectedFlag', 'red'); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === 'red') bg-rose-600/10 text-rose-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === 'red') aria-selected="true" @endif>
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                        <span>{{ __('common.flag_red') }}</span>
+                        @if($selectedFlag === 'red')<span class="ml-auto text-rose-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+
+                    <button @click="$wire.set('selectedFlag', 'blue_or_neutral'); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === 'blue_or_neutral') bg-blue-600/10 text-blue-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === 'blue_or_neutral') aria-selected="true" @endif>
+                        <span>❄️</span>
+                        <span>{{ __('common.flag_blue_or_neutral') }}</span>
+                        @if($selectedFlag === 'blue_or_neutral')<span class="ml-auto text-blue-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+
+                    <button @click="$wire.set('selectedFlag', 'gray'); flagOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors min-h-[42px]
+                            @if($selectedFlag === 'gray') bg-slate-600/10 text-slate-400 @else text-theme-secondary hover:bg-theme-subtle/50 hover:text-theme @endif"
+                            role="option" @if($selectedFlag === 'gray') aria-selected="true" @endif>
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0"></span>
+                        <span>{{ __('common.flag_none') }}</span>
+                        @if($selectedFlag === 'gray')<span class="ml-auto text-slate-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></span>@endif
+                    </button>
+                </div>
+            </template>
         </div>
+        <!-- Backdrop to close dropdown on outside click -->
+        <div x-show="flagOpen" @click="flagOpen = false" x-cloak class="fixed inset-0 z-[9998]" style="display:none;"></div>
     </div>
 
-    <!-- Nearby Green Beaches (top 5) -->
-    <div x-show="nearbyGreen !== null && nearbyGreen.length >= 3"
+    <!-- Nearby Beaches (closest 5) -->
+    <div x-show="nearby !== null && nearby.length > 0"
          x-cloak
          class="animate-fade-in-up"
          x-transition:enter="transition ease-out duration-300"
@@ -168,32 +235,32 @@
          x-transition:enter-end="opacity-100 translate-y-0">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-extrabold text-theme flex items-center gap-2">
-                <span aria-hidden="true">🚩</span>
-                <span>{{ __('home.green_nearby_title') }}</span>
+                <span aria-hidden="true">📍</span>
+                <span>{{ __('home.nearby_title') }}</span>
             </h2>
-            <span x-show="nearbyGreen.length > 0"
-                  class="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                <span x-text="nearbyGreen.length"></span> {{ __('home.green_nearby_count') }}
+            <span x-show="nearby.length > 0"
+                  class="text-[11px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                <span x-text="nearby.length"></span> {{ __('home.nearby_count') }}
             </span>
         </div>
 
         <!-- Results grid -->
-        <div x-show="nearbyGreen.length > 0"
+        <div x-show="nearby.length > 0"
              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
-            <template x-for="(beach, i) in nearbyGreen" :key="beach.id">
+            <template x-for="(beach, i) in nearby" :key="beach.id">
                 <a :href="beach.url"
-                   class="glass-card card-lift p-3 rounded-2xl border border-emerald-500/15 hover:border-emerald-500/40 transition-all duration-300 group flex items-start gap-3">
-                    <span class="shrink-0 w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-extrabold text-emerald-400"
+                   class="glass-card card-lift p-3 rounded-2xl border border-theme-medium hover:border-blue-500/40 transition-all duration-300 group flex items-start gap-3">
+                    <span class="shrink-0 w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-sm font-extrabold text-blue-400"
                           x-text="i + 1"></span>
                     <div class="min-w-0 flex-1">
-                        <p class="text-sm font-bold text-theme group-hover:text-emerald-400 transition-colors truncate">
+                        <p class="text-sm font-bold text-theme group-hover:text-blue-400 transition-colors truncate">
                             <span x-show="beach.beachcam_slug" class="inline-block mr-1 shrink-0 bg-amber-600/20 border border-amber-500/25 text-amber-400 text-[10px] px-1.5 py-0.5 rounded-md font-bold leading-none">📹</span>
                             <span x-text="beach.name"></span>
                         </p>
                         <p class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
                             <span x-text="beach.municipality"></span>
-                            <span class="text-emerald-400 font-bold">·</span>
-                            <span class="text-emerald-400 font-bold" x-text="beach.distance_km + ' km'"></span>
+                            <span class="text-blue-400 font-bold">·</span>
+                            <span class="text-blue-400 font-bold" x-text="beach.distance_km + ' km'"></span>
                         </p>
                         <div class="flex items-center gap-2 mt-1">
                             <span x-show="beach.air_temp !== null" class="text-[11px] text-slate-400" x-text="'🌡️ ' + beach.air_temp + '°'"></span>
@@ -212,7 +279,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 min-h-[450px] sm:min-h-[550px]">
         
         <!-- Left Side: Beach Cards List -->
-        <div class="lg:col-span-5 flex flex-col gap-4 max-h-[calc(100dvh-220px)] lg:max-h-[720px] overflow-y-auto pr-0.5 sm:pr-2 pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
+        <div class="lg:col-span-5 flex flex-col gap-4 lg:max-h-[720px] lg:overflow-y-auto pr-0.5 sm:pr-2 lg:pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
             <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
 
             <!-- Skeleton placeholders shown while Livewire is loading -->
@@ -236,7 +303,7 @@
                 @endfor
             </div>
 
-            <div wire:loading.remove class="flex flex-col gap-4">
+            <div wire:loading.remove class="flex flex-col gap-4" x-data="cardFavorites(@js($beachesList))">
 
             @forelse($beachesList as $i => $beach)
                 @if($i > 0 && $i % 3 === 0)
@@ -245,11 +312,10 @@
                 <a href="{{ $beach['url'] }}" 
                    @mouseenter="hoverBeach(@js($beach))"
                    wire:key="{{ $beach['id'] }}"
-                   class="glass-card card-lift shrink-0 p-4 rounded-3xl border transition-all duration-300 flex flex-col gap-3.5 group active:scale-[0.99] relative overflow-hidden {{ $beach['is_favorited'] ? 'border-amber-500/30 bg-amber-500/[0.03] shadow-[inset_0_0_16px_rgba(245,158,11,0.03)]' : 'border-theme-medium hover:border-blue-500/40' }}">
+                   class="glass-card card-lift shrink-0 p-4 rounded-3xl border transition-all duration-300 flex flex-col gap-3.5 group active:scale-[0.99] relative overflow-hidden"
+                   :class="isFav({{ $beach['id'] }}) ? 'border-amber-500/30 bg-amber-500/[0.03] shadow-[inset_0_0_16px_rgba(245,158,11,0.03)]' : 'border-theme-medium hover:border-blue-500/40'">
                     
-                    @if($beach['is_favorited'])
-                        <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-yellow-500 shadow-md shadow-amber-500/30"></div>
-                    @endif
+                    <div x-cloak x-show="isFav({{ $beach['id'] }})" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-yellow-500 shadow-md shadow-amber-500/30"></div>
 
                     <div class="flex items-start justify-between gap-2.5 relative z-10">
                         <div class="min-w-0 flex-1">
@@ -270,9 +336,11 @@
                                     @click.prevent.stop="
                                         $el.querySelector('.fav-star').classList.add('animate-fav-bounce');
                                         setTimeout(() => $el.querySelector('.fav-star').classList.remove('animate-fav-bounce'), 500);
-                                        $wire.toggleFavorite({{ $beach['id'] }})"
-                                    class="p-1 rounded-xl transition-all hover:scale-125 active:scale-90 hover:bg-white/5 {{ $beach['is_favorited'] ? 'opacity-100 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] text-amber-400' : 'opacity-30 hover:opacity-80 text-slate-400' }}"
-                                    title="{{ $beach['is_favorited'] ? __('common.favorite_remove') : __('common.favorite_add') }}">
+                                        toggleFav({{ $beach['id'] }}, $el.closest('a'));
+                                    "
+                                    class="p-1 rounded-xl transition-all hover:scale-125 active:scale-90 hover:bg-white/5"
+                                    :class="isFav({{ $beach['id'] }}) ? 'opacity-100 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] text-amber-400' : 'opacity-30 hover:opacity-80 text-slate-400'"
+                                    :title="isFav({{ $beach['id'] }}) ? '{{ __('common.favorite_remove') }}' : '{{ __('common.favorite_add') }}'">
                                     <span class="fav-star block text-lg">★</span>
                             </button>
 
@@ -403,26 +471,34 @@
         <!-- Right Side: Maps -->
         <div wire:ignore class="lg:col-span-7 flex flex-col gap-2 sm:gap-3 min-h-[300px] sm:min-h-[400px] lg:min-h-full" :class="viewState === 'map' ? 'flex' : 'hidden lg:flex'">
 
-            <!-- Main Map - Continental Portugal -->
-            <div class="flex-1 rounded-xl sm:rounded-2xl overflow-hidden border border-theme-medium relative min-h-[240px] sm:min-h-[280px]">
+            <!-- Main Map (holds whichever region is primary) -->
+            <div id="map-primary-slot" class="flex-1 rounded-xl sm:rounded-2xl overflow-hidden border border-theme-medium relative min-h-[240px] sm:min-h-[280px] transition-all duration-300">
                 <div id="map-continente" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_continent_label') }}"></div>
             </div>
 
             <x-ads.slot slot="home_sidebar_bottom" />
 
-            <!-- Island Maps Row -->
+            <!-- Island Maps Row (clickable to swap to main) -->
             <div class="grid grid-cols-2 gap-2 sm:gap-3 h-28 sm:h-36 shrink-0">
-                <div class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative">
+                <div id="slot-acores" class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative group">
                     <div id="map-acores" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_azores_label') }}"></div>
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10" aria-hidden="true">
-                        <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase">{{ __('home.azores') }}</span>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10 pointer-events-none" aria-hidden="true">
+                        <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase" x-text="slotLabel('acores')"></span>
                     </div>
+                    <div class="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" aria-hidden="true">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                    </div>
+                    <div @click="swapMaps(slotRegion('acores'))" class="absolute inset-0 z-20 cursor-pointer hover:bg-blue-500/10 active:bg-blue-500/20 transition-colors duration-150 rounded-lg sm:rounded-xl"></div>
                 </div>
-                <div class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative">
+                <div id="slot-madeira" class="rounded-lg sm:rounded-xl overflow-hidden border border-theme-medium relative group">
                     <div id="map-madeira" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_madeira_label') }}"></div>
-                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10" aria-hidden="true">
-                        <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase">{{ __('home.madeira') }}</span>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-5 pb-1.5 px-2.5 z-10 pointer-events-none" aria-hidden="true">
+                        <span class="text-white/90 text-xs sm:text-sm font-bold tracking-widest uppercase" x-text="slotLabel('madeira')"></span>
                     </div>
+                    <div class="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" aria-hidden="true">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                    </div>
+                    <div @click="swapMaps(slotRegion('madeira'))" class="absolute inset-0 z-20 cursor-pointer hover:bg-blue-500/10 active:bg-blue-500/20 transition-colors duration-150 rounded-lg sm:rounded-xl"></div>
                 </div>
             </div>
         </div>
@@ -451,7 +527,58 @@
 
     @script
     <script>
-        Alpine.data('beachMapHandler', (initialBeaches) => ({
+        Alpine.data('cardFavorites', (beaches) => ({
+            favs: {},
+            init() {
+                for (const b of beaches) {
+                    if (b.is_favorited) this.favs[b.id] = true;
+                }
+            },
+            isFav(id) { return !!this.favs[id]; },
+            toggleFav(id, cardEl) {
+                this.favs[id] = !this.favs[id];
+                const container = cardEl.parentElement;
+                const isFavNow = this.favs[id];
+
+                if (isFavNow) {
+                    const name = (cardEl.querySelector('h2')?.textContent || '').trim().toLowerCase();
+                    const kids = [...container.children].filter(c => c.tagName === 'A' && c !== cardEl);
+                    const before = kids.find(c => c.querySelector('.fav-star')?.classList.contains('text-amber-400') && (c.querySelector('h2')?.textContent || '').trim().toLowerCase() > name);
+                    if (before) { container.insertBefore(cardEl, before); }
+                    else {
+                        let last = null;
+                        for (let i = kids.length - 1; i >= 0; i--) {
+                            if (kids[i].querySelector('.fav-star')?.classList.contains('text-amber-400')) { last = kids[i]; break; }
+                        }
+                        if (last) last.after(cardEl); else container.prepend(cardEl);
+                    }
+                } else {
+                    const kids = [...container.children].filter(c => c.tagName === 'A' && c !== cardEl);
+                    let last = null;
+                    for (let i = kids.length - 1; i >= 0; i--) {
+                        if (kids[i].querySelector('.fav-star')?.classList.contains('text-amber-400')) { last = kids[i]; break; }
+                    }
+                    if (last) last.after(cardEl); else container.prepend(cardEl);
+                }
+
+                fetch('{{ route('favorites.toggle') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ beach_id: id })
+                }).then(r => {
+                    if (!r.ok) return r.json().then(d => { throw new Error(d.error || 'Error'); });
+                }).catch(err => {
+                    this.favs[id] = !this.favs[id];
+                    window.dispatchEvent(new CustomEvent('favorite-error', { detail: { message: err.message || '{{ __('common.favorite_login_required') }}' } }));
+                });
+            }
+        }));
+
+        Alpine.data('beachMapHandler', (initialBeaches, serverDefaultRegion) => ({
             mapContinente: null,
             mapAcores: null,
             mapMadeira: null,
@@ -460,10 +587,13 @@
             viewState: window.innerWidth < 1024 ? 'list' : 'map',
             userCircle: null,
             tileLayers: { continente: null, acores: null, madeira: null },
-            nearbyGreen: [],
+            nearby: [],
             locationError: null,
             locationErrorTimer: null,
             _initialRender: true,
+            activeRegion: 'Continental',
+            _defaultRegion: serverDefaultRegion,
+            _swapPending: null,
 
             init() {
                 if (typeof L === 'undefined') {
@@ -490,6 +620,7 @@
                     this.renderMarkers();
                     this.invalidateAllMaps();
                     this._initialRender = false;
+                    this._applyInitialRegion();
                     return;
                 }
 
@@ -541,8 +672,10 @@
                 this.renderMarkers();
                 this._initialRender = false;
 
-                window.addEventListener('nearby-green-updated', (event) => {
-                    this.nearbyGreen = event.detail.nearbyGreen;
+                this._applyInitialRegion();
+
+                window.addEventListener('nearby-updated', (event) => {
+                    this.nearby = event.detail.nearby;
                 });
 
                 window.addEventListener('beaches-updated', (event) => {
@@ -586,7 +719,14 @@
                         if (region === 'madeira') return r === 'Madeira';
                         return false;
                     }));
-                    setTimeout(() => map.invalidateSize(), 100);
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (this._swapPending) {
+                            const pendingRegion = this._swapPending;
+                            this._swapPending = null;
+                            this._performSwap(pendingRegion);
+                        }
+                    }, 100);
                     return;
                 }
 
@@ -611,7 +751,14 @@
                     if (region === 'madeira') return r === 'Madeira';
                     return false;
                 }));
-                setTimeout(() => map.invalidateSize(), 100);
+                setTimeout(() => {
+                    map.invalidateSize();
+                    if (this._swapPending) {
+                        const pendingRegion = this._swapPending;
+                        this._swapPending = null;
+                        this._performSwap(pendingRegion);
+                    }
+                }, 100);
             },
 
             createTileLayer() {
@@ -746,7 +893,7 @@
 
                     $wire.set('latitude', lat);
                     $wire.set('longitude', lon);
-                    $wire.call('findNearbyGreen');
+                    $wire.call('findNearby');
 
                     let map = this.mapContinente;
                     if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
@@ -801,6 +948,106 @@
                 if (byRegion.Madeira.length && this.mapMadeira) {
                     this.mapMadeira.fitBounds(byRegion.Madeira.map(b => [b.latitude, b.longitude]), { padding: [10, 10], maxZoom: 12 });
                 }
+            },
+
+            _applyInitialRegion() {
+                let region = this._defaultRegion;
+                if (!region) {
+                    try { region = localStorage.getItem('checkpraia-active-region'); } catch (e) {}
+                }
+                if (!region || region === 'Continental') {
+                    try { localStorage.removeItem('checkpraia-active-region'); } catch (e) {}
+                    return;
+                }
+
+                const regionMap = { 'Açores': 'map-acores', 'Madeira': 'map-madeira' };
+                const elId = regionMap[region];
+                if (!elId) return;
+
+                const el = document.getElementById(elId);
+                if (!el || !el.__leafletMap) {
+                    this._swapPending = region;
+                    return;
+                }
+
+                this._swapPending = null;
+                this._performSwap(region);
+            },
+
+            swapMaps(region) {
+                if (this.activeRegion === region) return;
+
+                const regionMap = { 'Açores': 'map-acores', 'Madeira': 'map-madeira', 'Continental': 'map-continente' };
+                const elId = regionMap[region];
+                if (!elId) return;
+
+                const el = document.getElementById(elId);
+                if (!el || !el.__leafletMap) {
+                    if (region === 'Continental') {
+                        this._performSwap(region);
+                        try { localStorage.setItem('checkpraia-active-region', region); } catch (e) {}
+                        if (typeof $wire !== 'undefined') $wire.call('saveDefaultRegion', region);
+                        return;
+                    }
+                    const removePopupHref = (e) => {
+                        const closeBtn = e.popup._container.querySelector('.leaflet-popup-close-button');
+                        if (closeBtn) { closeBtn.removeAttribute('href'); closeBtn.setAttribute('role', 'button'); }
+                    };
+                    const bounds = region === 'Açores' ? [[36.7, -28.9], [38.8, -24.7]] : [[32.4, -17.4], [33.3, -16.1]];
+                    this.initIslandMap(elId, region.charAt(0).toLowerCase() + region.slice(1), bounds, removePopupHref);
+                }
+
+                this._performSwap(region);
+
+                try { localStorage.setItem('checkpraia-active-region', region); } catch (e) {}
+                if (typeof $wire !== 'undefined') {
+                    $wire.call('saveDefaultRegion', region);
+                }
+            },
+
+            _performSwap(region) {
+                this.activeRegion = region;
+
+                const elContinente = document.getElementById('map-continente');
+                const elAcores = document.getElementById('map-acores');
+                const elMadeira = document.getElementById('map-madeira');
+                const primarySlot = document.getElementById('map-primary-slot');
+                const slotAcores = document.getElementById('slot-acores');
+                const slotMadeira = document.getElementById('slot-madeira');
+
+                [elContinente, elAcores, elMadeira].forEach(el => {
+                    if (el && el.parentElement) el.parentElement.removeChild(el);
+                });
+
+                const allEls = { 'Continental': elContinente, 'Açores': elAcores, 'Madeira': elMadeira };
+                if (allEls[region]) primarySlot.appendChild(allEls[region]);
+
+                const smallSlots = [slotAcores, slotMadeira];
+                let slotIdx = 0;
+                ['Continental', 'Açores', 'Madeira'].forEach(r => {
+                    if (r !== region && slotIdx < smallSlots.length) {
+                        smallSlots[slotIdx].appendChild(allEls[r]);
+                        slotIdx++;
+                    }
+                });
+
+                setTimeout(() => {
+                    if (this.mapContinente) this.mapContinente.invalidateSize();
+                    if (this.mapAcores) this.mapAcores.invalidateSize();
+                    if (this.mapMadeira) this.mapMadeira.invalidateSize();
+                }, 50);
+            },
+
+            slotLabel(slotId) {
+                const labels = { Continental: 'Continental', 'Açores': 'Açores', Madeira: 'Madeira' };
+                const remaining = ['Continental', 'Açores', 'Madeira'].filter(r => r !== this.activeRegion);
+                const slotIndex = slotId === 'acores' ? 0 : 1;
+                return labels[remaining[slotIndex]] || '';
+            },
+
+            slotRegion(slotId) {
+                const remaining = ['Continental', 'Açores', 'Madeira'].filter(r => r !== this.activeRegion);
+                return remaining[slotId === 'acores' ? 0 : 1];
             }
         }));
     </script>

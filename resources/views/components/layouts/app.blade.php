@@ -401,19 +401,6 @@
                         </div>
                     </div>
 
-                    <!-- Push Notifications Toggle (desktop only) -->
-                    @auth
-                        <button x-data="pushHandler()"
-                                x-on:click="toggle()"
-                                x-show="ready"
-                                x-cloak
-                                class="theme-toggle-btn touch-target relative hidden sm:inline-flex"
-                                :title="subscribed ? '{{ __('common.push_enabled') }}' : '{{ __('common.push_enable') }}'"
-                                :class="subscribed ? 'text-blue-400' : 'text-theme-secondary'">
-                            <span class="text-lg" x-text="subscribed ? '🔔' : '🔕'"></span>
-                        </button>
-                    @endauth
-
                     <!-- Theme Toggle -->
                     <button onclick="toggleAppTheme()" class="theme-toggle-btn touch-target" aria-label="{{ __('common.theme_toggle') }}" title="{{ __('common.theme_toggle') }}">
                         <span class="theme-toggle-dark-icon" style="font-size: 18px; line-height: 1; transition: transform 0.3s ease;" x-on:click="$el.style.transform = 'rotate(360deg)'">🌙</span>
@@ -850,56 +837,100 @@
                 }
             }));
 
-            Alpine.data('rankingShareHandler', () => ({
-                position: null,
-                score: null,
-                username: null,
-                showCard: false,
-                init() {
-                    const el = this.$el;
-                    this.position = el.dataset.position;
-                    this.score = el.dataset.score;
-                    this.username = el.dataset.username;
-                },
-                async share() {
-                    const url = '{{ url('/rankings') }}';
-                    const title = '{{ __('rankings.share_ranking_title', ['position' => '']) }}'.replace(':position', this.position);
-                    const text = '{{ __('rankings.share_ranking_text', ['position' => '', 'score' => '']) }}'
+            Alpine.data('rankingShareHandler', (params = {}) => ({
+                position:    params.position    || null,
+                score:       params.score       || null,
+                username:    params.username    || null,
+                beaches:     Array.isArray(params.beaches)
+                                 ? params.beaches
+                                 : (params.beaches ? Object.entries(params.beaches) : []),
+                showCard:    false,
+                cardLoading: false,
+
+                init() { /* data loaded from params */ },
+
+                get shareUrl()  { return '{{ url('/rankings') }}'; },
+                get shareText() {
+                    return '{{ __('rankings.share_ranking_text', ['position' => ':position', 'score' => ':score']) }}'
                         .replace(':position', this.position)
                         .replace(':score', this.score);
-                    const result = await shareViaAPI({ title, text, url });
-                    if (result === 'copied') {
+                },
+
+                toggleCard() {
+                    this.showCard = !this.showCard;
+                    if (this.showCard) {
+                        this.cardLoading = true;
+                        this.$nextTick(() => setTimeout(() => {
+                            this.renderPreview();
+                            this.cardLoading = false;
+                        }, 80));
+                    }
+                },
+
+                renderPreview() {
+                    const canvas = document.getElementById('share-card-preview');
+                    if (!canvas) return;
+                    canvas.width = 1080; canvas.height = 1080;
+                    // Normalise beaches to [[name, count], …]
+                    let beachEntries = [];
+                    if (Array.isArray(this.beaches)) {
+                        beachEntries = this.beaches.map(b =>
+                            Array.isArray(b) ? b : [b.name ?? String(b), b.confirmations ?? 1]);
+                    } else if (this.beaches && typeof this.beaches === 'object') {
+                        beachEntries = Object.entries(this.beaches);
+                    }
+                    drawRankingShareCard(canvas, {
+                        username: this.username,
+                        position: this.position,
+                        score:    this.score,
+                        beaches:  beachEntries,
+                    });
+                },
+
+                async getBlob() {
+                    const canvas = document.getElementById('share-card-preview');
+                    return canvas ? new Promise(r => canvas.toBlob(r, 'image/png')) : null;
+                },
+
+                async nativeShare() {
+                    const blob = await this.getBlob();
+                    if (blob && navigator.share) {
+                        try {
+                            await navigator.share({
+                                files: [new File([blob], 'checkpraia-ranking.png', { type: 'image/png' })],
+                                title: 'CheckPraia — Ranking #' + this.position,
+                                text:  this.shareText,
+                            });
+                            return;
+                        } catch(e) {}
+                    }
+                    if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(this.shareText + ' ' + this.shareUrl);
                         window.dispatchEvent(new CustomEvent('toast', { detail: { message: '{{ __('profile.share_copied') }}' } }));
                     }
                 },
-                toggleCard() {
-                    this.showCard = !this.showCard;
-                    if (this.showCard) this.$nextTick(() => this.renderPreview());
+
+                async shareTo(platform) {
+                    const t = encodeURIComponent(this.shareText + ' ' + this.shareUrl);
+                    const u = encodeURIComponent(this.shareUrl);
+                    if (platform === 'instagram') return this.nativeShare();
+                    const urls = {
+                        whatsapp: `https://wa.me/?text=${t}`,
+                        facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}&quote=${encodeURIComponent(this.shareText)}`,
+                        x:        `https://x.com/intent/tweet?text=${t}`,
+                    };
+                    if (urls[platform]) window.open(urls[platform], '_blank', 'noopener,noreferrer,width=600,height=500');
                 },
-                renderPreview() {
-                    const c = document.getElementById('share-card-preview');
-                    if (!c) return;
-                    const orig = c.getAttribute('width') === '600' ? null : c;
-                    const canvas = orig || document.createElement('canvas');
-                    if (!orig) { canvas.width = 600; canvas.height = 314; }
-                    drawShareCard(canvas, {
-                        tagline: '{{ __('common.site_description') }}',
-                        body: this.username + '\n# ' + this.position + '  |  ' + this.score + ' pts',
-                        details: { label: '{{ __('rankings.share_my_rank') }}', value: '#' + this.position + '  ·  ' + this.score + ' pts' },
-                    });
-                    if (orig) return;
-                    c.width = 600; c.height = 314;
-                    c.getContext('2d').drawImage(canvas, 0, 0);
-                },
+
                 async downloadCard() {
-                    const c = document.getElementById('share-card-preview');
-                    if (!c) return;
+                    const canvas = document.getElementById('share-card-preview');
+                    if (!canvas) return;
                     const a = document.createElement('a');
                     a.download = 'checkpraia-ranking-' + this.position + '.png';
-                    a.href = c.toDataURL('image/png');
+                    a.href = canvas.toDataURL('image/png');
                     a.click();
-                    this.showCard = false;
-                }
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: '{{ __('profile.share_card_download') }}' } }));
+                },
             }));
         });
 
@@ -924,35 +955,236 @@
             const grad = ctx.createLinearGradient(0, 0, w, h);
             grad.addColorStop(0, '#1e3a5f'); grad.addColorStop(0.5, '#0f2b4a'); grad.addColorStop(1, '#0a1a2e');
             ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
-            // Accent line
             ctx.fillStyle = '#3b82f6'; ctx.fillRect(0, 0, 6, h);
-            // Logo placeholder
             ctx.font = 'bold 42px sans-serif'; ctx.fillStyle = '#60a5fa'; ctx.fillText('🌊', 30, 80);
             ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#f1f5f9'; ctx.fillText('CheckPraia', 90, 85);
             ctx.font = '14px sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.fillText(opts.tagline || 'Bandeiras das Praias em Tempo Real', 90, 110);
-            // Body
-            if (opts.body) {
-                ctx.font = '16px sans-serif'; ctx.fillStyle = '#e2e8f0';
-                const lines = opts.body.split('\n');
-                lines.forEach((l, i) => ctx.fillText(l, 30, 165 + i * 28));
-            }
-            // Detail box
+            if (opts.body) { ctx.font = '16px sans-serif'; ctx.fillStyle = '#e2e8f0'; opts.body.split('\n').forEach((l, i) => ctx.fillText(l, 30, 165 + i * 28)); }
             if (opts.details) {
                 const bx = 30, by = h - 95, bw = w - 60, bh = 60;
-                ctx.fillStyle = 'rgba(59,130,246,0.15)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.fill();
-                ctx.strokeStyle = 'rgba(59,130,246,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.stroke();
-                ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#93c5fd';
-                ctx.fillText(opts.details.label, bx + 16, by + 24);
-                ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = '#f1f5f9';
-                ctx.fillText(opts.details.value, bx + 16, by + 52);
-                // URL at bottom-right
-                ctx.font = '12px sans-serif'; ctx.fillStyle = '#64748b';
-                ctx.fillText('checkpraia.pt', w - 140, by + 48);
+                ctx.fillStyle = 'rgba(59,130,246,0.15)'; ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,12); ctx.fill();
+                ctx.strokeStyle = 'rgba(59,130,246,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,12); ctx.stroke();
+                ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#93c5fd'; ctx.fillText(opts.details.label, bx+16, by+24);
+                ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = '#f1f5f9'; ctx.fillText(opts.details.value, bx+16, by+52);
+                ctx.font = '12px sans-serif'; ctx.fillStyle = '#64748b'; ctx.fillText('checkpraia.pt', w-140, by+48);
             }
-            // Bottom bar
-            ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, h - 30, w, 30);
-            ctx.font = '11px sans-serif'; ctx.fillStyle = '#64748b';
-            ctx.fillText('checkpraia.pt', 30, h - 10);
+            ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, h-30, w, 30);
+            ctx.font = '11px sans-serif'; ctx.fillStyle = '#64748b'; ctx.fillText('checkpraia.pt', 30, h-10);
+        };
+
+        // ============================================================
+        // Premium Ranking Share Card — 1080×1080
+        // Vertical map (canvas baseline notation):
+        //   TOP BAR   Y  0–7
+        //   LOGO+BADGE Y 20–150
+        //   DIVIDER   Y  158
+        //   TEXT      @username:193  headline:252  subtitle:296
+        //   NUMBER    baseline 545  (font 195px → top≈405  bottom≈584)
+        //   STATS     Y 620–755
+        //   BEACHES   Y 776–930
+        //   FOOTER    Y 965–1080
+        // ============================================================
+        window.drawRankingShareCard = (canvas, opts) => {
+            const S = 1080, PAD = 66;
+            canvas.width = S; canvas.height = S;
+
+            const pos      = parseInt(opts.position) || 1;
+            const score    = String(opts.score || '0');
+            const username = (opts.username && String(opts.username).trim()) ? String(opts.username).trim() : '—';
+            const beaches  = Array.isArray(opts.beaches) ? opts.beaches : [];
+
+            const medal = pos === 1 ? { color:'#fbbf24', glow:'rgba(251,191,36,0.60)', label:'CAMPEÃO 🥇' }
+                        : pos === 2 ? { color:'#e2e8f0', glow:'rgba(226,232,240,0.45)', label:'VICE-CAMPEÃO 🥈' }
+                        : pos === 3 ? { color:'#fb923c', glow:'rgba(251,146,60,0.50)',  label:'3.º LUGAR 🥉' }
+                        : pos <= 10 ? { color:'#38bdf8', glow:'rgba(56,189,248,0.45)',  label:'TOP 10 🔥' }
+                        : pos <= 50 ? { color:'#a78bfa', glow:'rgba(167,139,250,0.40)', label:'TOP 50 ⚡' }
+                        :             { color:'#60a5fa', glow:'rgba(96,165,250,0.35)',  label:'RANKING 🌊' };
+
+            const rgba = (hex, a) => {
+                const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+                return `rgba(${r},${g},${b},${a})`;
+            };
+
+            const _draw = (logo) => {
+                const ctx = canvas.getContext('2d');
+
+                // 1. Background
+                const bg = ctx.createLinearGradient(0,0,S*0.6,S);
+                bg.addColorStop(0,'#020c1b'); bg.addColorStop(0.4,'#071525');
+                bg.addColorStop(0.8,'#0b1e36'); bg.addColorStop(1,'#040e1c');
+                ctx.fillStyle = bg; ctx.fillRect(0,0,S,S);
+
+                // 2. Atmospheric orbs
+                [[S*0.85,S*0.10,S*0.55,'rgba(37,99,235,0.20)'],
+                 [S*0.12,S*0.90,S*0.42,'rgba(16,185,129,0.16)'],
+                 [S*0.22,S*0.50,S*0.35, rgba(medal.color,0.09)]
+                ].forEach(([cx,cy,r,c]) => {
+                    const rg = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+                    rg.addColorStop(0,c); rg.addColorStop(1,'rgba(0,0,0,0)');
+                    ctx.fillStyle = rg; ctx.fillRect(0,0,S,S);
+                });
+
+                // 3. Grid texture
+                ctx.save(); ctx.globalAlpha=0.016; ctx.strokeStyle='#60a5fa'; ctx.lineWidth=1;
+                for(let x=0;x<S;x+=54){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,S);ctx.stroke();}
+                for(let y=0;y<S;y+=54){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(S,y);ctx.stroke();}
+                ctx.restore();
+
+                // 4. Speed lines
+                ctx.save(); ctx.globalAlpha=0.042; ctx.strokeStyle='#38bdf8'; ctx.lineWidth=1;
+                for(let i=0;i<7;i++){const lx=S*0.60+i*76; ctx.beginPath();ctx.moveTo(lx,0);ctx.lineTo(lx-S*0.22,S);ctx.stroke();}
+                ctx.restore();
+
+                // 5. Top accent bar
+                const bar = ctx.createLinearGradient(0,0,S,0);
+                bar.addColorStop(0,medal.color); bar.addColorStop(0.5,'#0ea5e9'); bar.addColorStop(1,'#10b981');
+                ctx.fillStyle=bar; ctx.fillRect(0,0,S,7);
+
+                // 6. Logo (zone Y=20–150)
+                if(logo && logo.complete && logo.naturalWidth>0){
+                    const sc=Math.min(240/logo.naturalWidth,110/logo.naturalHeight);
+                    const lw=logo.naturalWidth*sc, lh=logo.naturalHeight*sc;
+                    ctx.drawImage(logo, PAD, 20+(110-lh)/2, lw, lh);
+                } else {
+                    ctx.save();
+                    ctx.font='bold 46px sans-serif'; ctx.fillStyle='#38bdf8';
+                    ctx.fillText('🌊', PAD, 103);
+                    ctx.font='bold 40px sans-serif';
+                    const g2=ctx.createLinearGradient(PAD+56,0,PAD+310,0);
+                    g2.addColorStop(0,'#f0f9ff'); g2.addColorStop(1,'#7dd3fc');
+                    ctx.fillStyle=g2;
+                    ctx.fillText('CheckPraia', PAD+56, 101);
+                    ctx.restore();
+                }
+
+                // 7. Badge (top-right, Y=32–90)
+                ctx.font='bold 27px sans-serif';
+                const bW=ctx.measureText(medal.label).width+44, bH=52, bX=S-PAD-bW, bY=32;
+                ctx.save();
+                ctx.shadowColor=medal.glow; ctx.shadowBlur=20;
+                const bBg=ctx.createLinearGradient(bX,bY,bX+bW,bY);
+                bBg.addColorStop(0,rgba(medal.color,0.28)); bBg.addColorStop(1,rgba(medal.color,0.10));
+                ctx.fillStyle=bBg; ctx.beginPath(); ctx.roundRect(bX,bY,bW,bH,26); ctx.fill();
+                ctx.restore();
+                ctx.strokeStyle=rgba(medal.color,0.55); ctx.lineWidth=1.5;
+                ctx.beginPath(); ctx.roundRect(bX,bY,bW,bH,26); ctx.stroke();
+                ctx.font='bold 25px sans-serif'; ctx.fillStyle=medal.color;
+                ctx.textAlign='center'; ctx.fillText(medal.label, bX+bW/2, bY+35); ctx.textAlign='left';
+
+                // 8. Divider Y=158
+                const dv=ctx.createLinearGradient(PAD,0,S-PAD,0);
+                dv.addColorStop(0,rgba(medal.color,0.5)); dv.addColorStop(0.5,'rgba(6,182,212,0.22)'); dv.addColorStop(1,rgba('#10b981',0.4));
+                ctx.strokeStyle=dv; ctx.lineWidth=1.5;
+                ctx.beginPath(); ctx.moveTo(PAD,158); ctx.lineTo(S-PAD,158); ctx.stroke();
+
+                // 9. Text block
+                // @username  baseline=193  font=34px  top≈168  bottom≈201
+                // headline   baseline=252  font=54px  top≈213  bottom≈264
+                // subtitle   baseline=296  font=28px  top≈275  bottom≈304
+                // [gap to number top=405: 101px ✓]
+                ctx.font='500 34px sans-serif'; ctx.fillStyle='#5a6d82';
+                ctx.fillText('@'+username, PAD, 193);
+
+                ctx.font='bold 54px sans-serif'; ctx.fillStyle='#f1f5f9';
+                ctx.fillText('Estou no Ranking Nacional', PAD, 252);
+
+                ctx.font='500 28px sans-serif'; ctx.fillStyle='#2e3f54';
+                ctx.fillText('CheckPraia  ·  Portugal 🇵🇹', PAD, 296);
+
+                // 10. Hero number
+                // baseline=545  font=195px  top≈405  bottom≈584
+                // [gap to stat cards top=620: 36px ✓]
+                const NB=545, NFS=195;
+                ctx.save();
+                ctx.shadowColor=medal.glow; ctx.shadowBlur=85;
+                ctx.font=`bold ${NFS}px sans-serif`;
+                const numG=ctx.createLinearGradient(PAD,NB-NFS,PAD,NB);
+                numG.addColorStop(0,medal.color); numG.addColorStop(0.6,rgba(medal.color,0.70)); numG.addColorStop(1,rgba(medal.color,0.28));
+                ctx.fillStyle=numG; ctx.fillText('#'+pos, PAD, NB);
+                ctx.restore();
+                ctx.font=`bold ${NFS}px sans-serif`; ctx.fillStyle=numG;
+                ctx.fillText('#'+pos, PAD, NB);
+
+                // 11. Stat cards Y=620–755
+                const SY=620, CH=135, CGP=22, CW=Math.floor((S-PAD*2-CGP)/2);
+                const drawCard=(x,y,w,icon,value,label,col)=>{
+                    const cg=ctx.createLinearGradient(x,y,x+w,y+CH);
+                    cg.addColorStop(0,rgba(col,0.14)); cg.addColorStop(1,rgba(col,0.05));
+                    ctx.fillStyle=cg; ctx.beginPath(); ctx.roundRect(x,y,w,CH,20); ctx.fill();
+                    ctx.strokeStyle=rgba(col,0.28); ctx.lineWidth=1.5;
+                    ctx.beginPath(); ctx.roundRect(x,y,w,CH,20); ctx.stroke();
+                    ctx.font='36px sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(icon, x+24, y+52);
+                    ctx.font='bold 42px sans-serif'; ctx.fillStyle=col; ctx.fillText(value, x+24, y+100);
+                    ctx.font='25px sans-serif'; ctx.fillStyle='#475569'; ctx.fillText(label, x+24, y+128);
+                };
+                drawCard(PAD,        SY,CW,'⭐',score+' pts',            'Pontuação',          medal.color);
+                drawCard(PAD+CW+CGP, SY,CW,'🏖️',beaches.length+' praias','Praias confirmadas', '#10b981');
+
+                // 12. Beach list Y=776–930
+                const BLT=776, maxB=Math.min(beaches.length,3);
+                if(maxB>0){
+                    ctx.font='bold 22px sans-serif'; ctx.fillStyle='#2a3f58';
+                    ctx.fillText('PRAIAS CONFIRMADAS', PAD, BLT);
+                    for(let i=0;i<maxB;i++){
+                        const entry=beaches[i];
+                        const bName =Array.isArray(entry)?entry[0]:(entry.name??String(entry));
+                        const bCount=Array.isArray(entry)?entry[1]:(entry.count??'');
+                        const rowY  =BLT+40+i*54; // 816, 870, 924 ✓
+                        ctx.fillStyle=medal.color; ctx.beginPath(); ctx.arc(PAD+6,rowY-6,5,0,Math.PI*2); ctx.fill();
+                        ctx.font='28px sans-serif'; ctx.fillStyle='#b8cce0';
+                        ctx.fillText(bName.length>36?bName.substring(0,34)+'…':bName, PAD+22, rowY);
+                        if(bCount){
+                            const cStr=bCount+'×', cW2=ctx.measureText(cStr).width+22, cX2=S-PAD-cW2-4;
+                            ctx.font='bold 22px sans-serif';
+                            ctx.fillStyle=rgba(medal.color,0.13); ctx.beginPath(); ctx.roundRect(cX2,rowY-24,cW2,32,16); ctx.fill();
+                            ctx.fillStyle=medal.color; ctx.textAlign='center'; ctx.fillText(cStr,cX2+cW2/2,rowY-5); ctx.textAlign='left';
+                        }
+                    }
+                    if(beaches.length>3){ ctx.font='24px sans-serif'; ctx.fillStyle='#2a3f58'; ctx.fillText(`+ ${beaches.length-3} mais…`,PAD+22,BLT+40+3*54); }
+                }
+
+                // 13. Footer Y=965–1080
+                const footY=965, fH=S-footY;
+                const fBg=ctx.createLinearGradient(0,footY-50,0,S);
+                fBg.addColorStop(0,'rgba(2,12,27,0)'); fBg.addColorStop(0.4,'rgba(2,12,27,0.92)'); fBg.addColorStop(1,'rgba(2,12,27,0.99)');
+                ctx.fillStyle=fBg; ctx.fillRect(0,footY-50,S,fH+50);
+
+                const fln=ctx.createLinearGradient(PAD,footY,S-PAD,footY);
+                fln.addColorStop(0,rgba(medal.color,0.55)); fln.addColorStop(0.5,'rgba(6,182,212,0.28)'); fln.addColorStop(1,rgba('#10b981',0.45));
+                ctx.strokeStyle=fln; ctx.lineWidth=2;
+                ctx.beginPath(); ctx.moveTo(PAD,footY+2); ctx.lineTo(S-PAD,footY+2); ctx.stroke();
+
+                ctx.font='bold 30px sans-serif'; ctx.fillStyle='#4a637d';
+                ctx.fillText('Junta-te ao ranking em', PAD, footY+46);
+
+                ctx.save();
+                ctx.shadowColor='rgba(56,189,248,0.60)'; ctx.shadowBlur=18;
+                ctx.font='bold 50px sans-serif';
+                const urlG=ctx.createLinearGradient(PAD,0,PAD+460,0);
+                urlG.addColorStop(0,'#38bdf8'); urlG.addColorStop(0.5,'#818cf8'); urlG.addColorStop(1,'#34d399');
+                ctx.fillStyle=urlG; ctx.fillText('checkpraia.pt', PAD, footY+100);
+                ctx.restore();
+
+                ctx.font='24px sans-serif'; ctx.fillStyle='#1a2f46';
+                ctx.textAlign='right'; ctx.fillText('🌊 Bandeiras em Tempo Real', S-PAD, footY+76); ctx.textAlign='left';
+            }; // end _draw
+
+            // Load logo → draw immediately with fallback, redraw when image is ready
+            const logo = window._checkpraiaLogo;
+            if(logo && logo.complete && logo.naturalWidth>0){
+                _draw(logo);
+            } else {
+                _draw(null);
+                if(logo){
+                    logo.onload = () => _draw(logo);
+                } else {
+                    const img=new Image();
+                    img.onload  = () => { window._checkpraiaLogo=img; _draw(img); };
+                    img.onerror = () => _draw(null);
+                    img.src='/logo.png';
+                    window._checkpraiaLogo=img;
+                }
+            }
         };
 
         // Share Handlers
@@ -966,6 +1198,7 @@
             }
             return false;
         };
+
 
         window.toggleAppTheme = function() {
             const current = document.documentElement.getAttribute('data-theme') || 'dark';

@@ -67,6 +67,7 @@ class FetchIpmaForecasts implements ShouldQueue
             'visibility' => $weatherData['visibility'],
             'temp' => $weatherData['temp'],
             'uv_index' => $weatherData['uv_index'] ?? null,
+            'weather_code' => $weatherData['weather_code'] ?? null,
             'forecasted_at' => $weatherData['forecasted_at'],
         ]);
 

@@ -64,6 +64,23 @@
             </div>
         </div>
 
+        {{-- Install PWA --}}
+        <div x-data="pwaInstallHandler()" class="glass-card p-6 sm:p-8 rounded-2xl space-y-4 text-center" x-cloak>
+            <div class="flex justify-center">
+                <img src="/icon-192.png" alt="CheckPraia" class="w-16 h-16 rounded-2xl shadow-lg shadow-blue-600/20">
+            </div>
+            <div class="space-y-2">
+                <h2 class="text-lg font-bold">{{ __('common.about_page_install_title') }}</h2>
+                <p class="text-sm text-theme-secondary leading-relaxed">{{ __('common.about_page_install_description') }}</p>
+            </div>
+            <button
+                @click="triggerInstall()"
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                {{ __('common.about_page_install_button') }}
+            </button>
+        </div>
+
         <x-ads.slot slot="about_bottom" />
     </div>
 </x-layouts.app>

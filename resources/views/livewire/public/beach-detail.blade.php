@@ -1,4 +1,4 @@
-<div class="space-y-8" x-data="beachDetailHandler()">
+<div class="space-y-8" x-data="beachDetailHandler()" @if(auth()->check() && auth()->user()->is_admin) data-is-admin="1" @endif>
     @section('title', $beach->name . ' - ' . __('common.site_name'))
     @section('meta_description', __('beach.meta_description', ['name' => $beach->name, 'municipality' => $beach->municipality]))
     @section('og_title', $beach->name . ' - Bandeira e Condições do Mar')
@@ -97,33 +97,34 @@
             </p>
         </div>
 
-        <div class="flex gap-3 relative z-10 w-full md:w-auto">
+        <div class="flex gap-2 sm:gap-3 relative z-10 w-full md:w-auto">
             <button type="button"
                     wire:click="toggleFavorite"
-                    class="flex-1 md:flex-none justify-center px-5 py-3 rounded-2xl border text-sm font-bold transition-all active:scale-90 flex items-center gap-2 {{ $isFavorited ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/5' : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700/60 text-slate-300 hover:text-white' }}"
+                    class="flex-1 md:flex-none justify-center px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-bold transition-all active:scale-90 flex items-center gap-1.5 sm:gap-2 {{ $isFavorited ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/5' : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700/60 text-slate-300 hover:text-white' }}"
                     aria-label="{{ $isFavorited ? __('common.favorite_remove') : __('common.favorite_add') }}">
-                <span>{{ $isFavorited ? '★' : '☆' }} {{ $isFavorited ? __('common.favorite_remove') : __('common.favorite_add') }}</span>
+                <span class="text-base sm:text-sm">{{ $isFavorited ? '★' : '☆' }}</span>
+                <span class="hidden sm:inline">{{ $isFavorited ? __('common.favorite_remove') : __('common.favorite_add') }}</span>
             </button>
             @if($beach->beachcam_slug)
                 <a href="https://beachcam.meo.pt/livecams/{{ $beach->beachcam_slug }}/"
                    target="_blank"
                    rel="noopener"
-                   class="flex-1 md:flex-none justify-center bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-3 rounded-2xl border border-emerald-500/30 text-sm font-bold transition-all active:scale-90 flex items-center gap-2 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20"
+                   class="flex-1 md:flex-none justify-center bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-emerald-500/30 text-xs sm:text-sm font-bold transition-all active:scale-90 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20"
                    aria-label="Ver {{ $beach->name }} ao vivo">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m0-4v4m0 0H5a2 2 0 01-2-2V8a2 2 0 012-2h10a2 2 0 012 2v4z"/>
                     </svg>
-                    <span>{{ __('common.live') }}</span>
+                    <span class="hidden sm:inline">{{ __('common.live') }}</span>
                 </a>
             @endif
             <a href="https://www.google.com/maps/dir/?api=1&destination={{ $beach->latitude }},{{ $beach->longitude }}" 
                target="_blank" 
-               class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-2xl border border-blue-500/30 text-sm font-bold transition-all active:scale-90 flex items-center gap-2 shadow-lg shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/20"
+               class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-blue-500/30 text-xs sm:text-sm font-bold transition-all active:scale-90 flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/20"
                aria-label="{{ __('beach.gps_button') }} {{ $beach->name }}">
                 <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
-                <span>{{ __('beach.gps_button') }}</span>
+                <span class="hidden sm:inline">{{ __('beach.gps_button') }}</span>
             </a>
         </div>
     </div>
@@ -273,21 +274,31 @@
             </div>
 
             <!-- GPS Confirmation Reporter -->
+            @php $isAdmin = auth()->check() && auth()->user()->is_admin; @endphp
             <div class="glass-card p-6 rounded-3xl space-y-4 border border-theme-subtle/50 shadow-md animate-fade-in-up" data-animate>
                 <h3 class="text-lg font-bold text-theme flex items-center gap-2">
                     <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                     </svg>
                     <span>{{ __('beach.report_title') }}</span>
+                    @if($isAdmin)
+                        <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-purple-500/15 text-purple-300 border border-purple-500/20 rounded-full font-bold">Admin</span>
+                    @endif
                 </h3>
-                @if(!$beach->isInLifeguardHours())
+                @if(!$beach->isInLifeguardHours() && !$isAdmin)
                     <p class="text-sm text-amber-400 leading-relaxed font-bold bg-amber-500/5 border border-amber-500/10 p-3.5 rounded-2xl text-center">
                         🔒 {{ __('beach.report_outside_lifeguard_hours', ['start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'), 'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i')]) }}
                     </p>
                 @else
-                    <p class="text-sm text-slate-400 leading-relaxed font-medium">
-                        {{ __('beach.report_description') }}
-                    </p>
+                    @if($isAdmin && !$beach->isInLifeguardHours())
+                        <p class="text-sm text-purple-300 leading-relaxed font-medium bg-purple-500/5 border border-purple-500/10 p-3 rounded-2xl text-center">
+                            ⚡ {{ __('beach.admin_override_active') }}
+                        </p>
+                    @else
+                        <p class="text-sm text-slate-400 leading-relaxed font-medium">
+                            {{ __('beach.report_description') }}
+                        </p>
+                    @endif
 
                     @auth
                         <div aria-live="polite" aria-atomic="true">
@@ -425,12 +436,14 @@
             @endif
 
             @if($todaySnapshots && $todaySnapshots->isNotEmpty())
-                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate>
+                @php $totalSnapshots = $todaySnapshots->count(); @endphp
+                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate x-data="{ expanded: false }">
                     <h3 class="text-sm font-bold text-theme flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <span>{{ __('beach.history_title') }}</span>
+                        <span class="text-[10px] text-theme-muted font-normal ml-auto">{{ $totalSnapshots }} {{ __('beach.history_entries') }}</span>
                     </h3>
 
                     <div class="relative pl-6 space-y-0">
@@ -456,8 +469,9 @@
                                 $displayTime = $snapshot->vote_time 
                                     ? $snapshot->vote_time->timezone($beach->timezone) 
                                     : $snapshot->captured_at->timezone($beach->timezone);
+                                $isHidden = $loop->index >= 6;
                             @endphp
-                            <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]">
+                            <div {{ $isHidden ? 'x-cloak' : '' }} class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px] {{ $isHidden ? 'hidden md:block' : '' }}" {{ $isHidden ? 'x-show="expanded"' : '' }}>
                                 @if($changed)
                                     <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full {{ $dotColor }} ring-2 ring-theme-card ring-offset-2 ring-offset-theme-card shadow-lg animate-fade-in"></div>
                                 @else
@@ -487,6 +501,13 @@
                             </div>
                         @endforeach
                     </div>
+
+                    @if($totalSnapshots > 6)
+                        <button @click="expanded = !expanded" class="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 py-2 rounded-xl hover:bg-blue-500/5 transition-all active:scale-95 md:hidden">
+                            <span x-text="expanded ? '{{ __('beach.history_show_less') }}' : '{{ __('beach.history_show_more', ['count' => $totalSnapshots - 6]) }}'"></span>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="expanded && 'rotate-180'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                    @endif
                 </div>
             @endif
         </div>
@@ -557,10 +578,26 @@
                 <div class="glass-card p-4 rounded-2xl text-center flex flex-col justify-between h-32 border border-theme-subtle/50 relative overflow-hidden group hover:border-amber-500/30 transition-all hover:shadow-lg hover:shadow-amber-500/5 card-lift">
                     <div class="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative space-y-1">
-                        <svg class="w-5 h-5 text-amber-400 mx-auto mb-1 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l-.707.707"/>
-                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                        </svg>
+                        @if($weather && $weather->weather_code !== null)
+                            @php $wCode = $weather->weather_code; @endphp
+                            @if($wCode === 0)
+                                <svg class="w-6 h-6 text-amber-400 mx-auto mb-1" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></g></svg>
+                            @elseif($wCode <= 3)
+                                <svg class="w-6 h-6 mx-auto mb-1" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5" fill="currentColor" class="text-amber-400"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" class="text-amber-300"><line x1="10" y1="1" x2="10" y2="3"/><line x1="4.5" y1="3.5" x2="5.9" y2="4.9"/><line x1="2.5" y1="9" x2="4.5" y2="9"/><line x1="15.5" y1="3.5" x2="14.1" y2="4.9"/></g><path d="M7 17a4.5 4.5 0 014.5-4.5h3a3.5 3.5 0 010 7H9a3 3 0 010-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/></svg>
+                            @elseif($wCode <= 49)
+                                <svg class="w-6 h-6 text-slate-400 mx-auto mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="10" x2="21" y2="10"/><line x1="5" y1="14" x2="19" y2="14"/><line x1="7" y1="18" x2="17" y2="18"/><line x1="4" y1="6" x2="20" y2="6" opacity=".4"/></svg>
+                            @elseif($wCode <= 59)
+                                <svg class="w-6 h-6 mx-auto mb-1" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="9" y1="19" x2="8" y2="21"/><line x1="14" y1="19" x2="13" y2="21"/></g></svg>
+                            @elseif($wCode <= 69)
+                                <svg class="w-6 h-6 mx-auto mb-1" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="8" y1="19" x2="7" y2="22"/><line x1="12" y1="19" x2="11" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>
+                            @elseif($wCode <= 79)
+                                <svg class="w-6 h-6 mx-auto mb-1" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-cyan-300"><line x1="9" y1="19" x2="9" y2="21"/><line x1="13" y1="18" x2="13" y2="20"/><line x1="17" y1="19" x2="17" y2="21"/></g></svg>
+                            @else
+                                <svg class="w-6 h-6 mx-auto mb-1" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><path d="M13 15l-2 5m2-5l2 5m-2-5l2.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"/></svg>
+                            @endif
+                        @else
+                            <svg class="w-6 h-6 text-amber-400 mx-auto mb-1" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></g></svg>
+                        @endif
                         <span class="text-xs text-slate-400 uppercase font-bold block">{{ __('common.weather_air') }}</span>
                         <span class="text-lg font-extrabold text-theme block">{{ $weather && $weather->temp !== null ? $weather->temp . '°C' : __('common.weather_not_available') }}</span>
                     </div>
@@ -609,6 +646,64 @@
 
             <x-ads.slot slot="beach_detail_inline" />
 
+            <!-- 7-Day Weather Forecast -->
+            @if(!empty($dailyForecast))
+            <div class="glass-card rounded-3xl border border-theme-subtle/40 shadow-xl animate-fade-in-up overflow-hidden" data-animate>
+                <div class="p-4 sm:p-5 border-b border-theme-subtle">
+                    <h3 class="text-sm font-bold text-theme flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+                        {{ __('beach.weather_forecast_title') }}
+                    </h3>
+                </div>
+                <div class="overflow-x-auto scrollbar-none">
+                    <div class="flex min-w-max divide-x divide-theme-subtle/30">
+                        @foreach($dailyForecast as $i => $day)
+                            @php
+                                $date = \Carbon\Carbon::parse($day['date']);
+                                $isToday = $date->isToday();
+                                $isTomorrow = $date->isTomorrow();
+                                $dayName = $isToday ? __('common.today') : ($isTomorrow ? __('common.tomorrow') : $date->translatedFormat('D'));
+                                $dateStr = $date->format('d/m');
+                                $code = $day['weather_code'];
+                            @endphp
+                            <div class="flex flex-col items-center py-4 px-5 {{ $isToday ? 'bg-blue-500/5' : '' }}">
+                                <span class="text-[11px] font-bold {{ $isToday ? 'text-blue-400' : 'text-theme-secondary' }} uppercase tracking-wide">{{ $dayName }}</span>
+                                <span class="text-[10px] text-theme-muted mt-0.5">{{ $dateStr }}</span>
+                                <div class="my-2.5">
+                                    @if($code === 0)
+                                        <svg class="w-7 h-7 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></g></svg>
+                                    @elseif($code <= 3)
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5" fill="currentColor" class="text-amber-400"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" class="text-amber-300"><line x1="10" y1="1" x2="10" y2="3"/><line x1="4.5" y1="3.5" x2="5.9" y2="4.9"/><line x1="2.5" y1="9" x2="4.5" y2="9"/><line x1="15.5" y1="3.5" x2="14.1" y2="4.9"/></g><path d="M7 17a4.5 4.5 0 014.5-4.5h3a3.5 3.5 0 010 7H9a3 3 0 010-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/></svg>
+                                    @elseif($code <= 49)
+                                        <svg class="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="10" x2="21" y2="10"/><line x1="5" y1="14" x2="19" y2="14"/><line x1="7" y1="18" x2="17" y2="18"/><line x1="4" y1="6" x2="20" y2="6" opacity=".4"/></svg>
+                                    @elseif($code <= 59)
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="9" y1="19" x2="8" y2="21"/><line x1="14" y1="19" x2="13" y2="21"/></g></svg>
+                                    @elseif($code <= 69)
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="8" y1="19" x2="7" y2="22"/><line x1="12" y1="19" x2="11" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>
+                                    @elseif($code <= 79)
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-cyan-300"><line x1="9" y1="19" x2="9" y2="21"/><line x1="13" y1="18" x2="13" y2="20"/><line x1="17" y1="19" x2="17" y2="21"/></g></svg>
+                                    @else
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><path d="M13 15l-2 5m2-5l2 5m-2-5l2.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"/></svg>
+                                    @endif
+                                </div>
+                                <div class="flex items-baseline gap-1">
+                                    <span class="text-sm font-extrabold text-theme">{{ round($day['temp_max']) }}°</span>
+                                    <span class="text-xs text-theme-muted">{{ round($day['temp_min']) }}°</span>
+                                </div>
+                                @if($day['precipitation_probability'] > 0)
+                                    <div class="flex items-center gap-1 mt-1.5">
+                                        <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 6-7 9-7 13a7 7 0 0014 0c0-4-3-7-7-13z"/></svg>
+                                        <span class="text-[10px] text-blue-400 font-bold">{{ $day['precipitation_probability'] }}%</span>
+                                    </div>
+                                @endif
+                                <span class="text-[10px] text-theme-muted mt-1">{{ round($day['wind_speed']) }} km/h</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- Custom Tabbed Tides & Moon Panel -->
             <div x-data="{ activeTideTab: 'tides' }" class="glass-card rounded-3xl overflow-hidden border border-theme-subtle/40 shadow-xl animate-fade-in-up" data-animate>
                 <!-- Tab Headers -->
@@ -616,12 +711,14 @@
                     <button @click="activeTideTab = 'tides'" 
                             :class="activeTideTab === 'tides' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
                             class="flex-1 py-2.5 rounded-xl border border-transparent text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
-                        <span>🌊</span> {{ __('beach.tide_title') }}
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 15c2-3 4-5 6-5s4 3 6 3 4-3 6-3"/><path d="M3 19c2-3 4-5 6-5s4 3 6 3 4-3 6-3" opacity=".4"/></svg>
+                        {{ __('beach.tide_title') }}
                     </button>
                     <button @click="activeTideTab = 'moon'" 
                             :class="activeTideTab === 'moon' ? 'bg-indigo-600/10 border-indigo-500/20 text-indigo-400 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
                             class="flex-1 py-2.5 rounded-xl border border-transparent text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
-                        <span>🌘</span> {{ __('beach.moon_title') }}
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 12a8 8 0 01-8-8c0 1 1 3 1 3s-3 1-3 5a8 8 0 0010 0z"/></svg>
+                        {{ __('beach.moon_title') }}
                     </button>
                 </div>
                 
@@ -949,8 +1046,10 @@
                 locating: false,
                 mapInstance: null,
                 mapReady: false,
+                isAdmin: false,
 
                 init() {
+                    this.isAdmin = this.$el.dataset.isAdmin === '1';
                     this.$nextTick(() => this.loadMap());
                 },
 
@@ -1040,6 +1139,11 @@
                         $wire.call('submitReport', flagColor, position.coords.latitude, position.coords.longitude, position.coords.accuracy);
                         this.locating = false;
                     }).catch((err) => {
+                        if (this.isAdmin) {
+                            $wire.call('submitReport', flagColor, 0, 0, null);
+                            this.locating = false;
+                            return;
+                        }
                         const msgs = {
                             'GPS_NOT_SUPPORTED': '{{ __('common.gps_not_supported') }}',
                             'GPS_DENIED': '{{ __('common.gps_denied') }}',

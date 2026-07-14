@@ -13,16 +13,62 @@ class Rankings extends Component
 {
     public $type = 'general';
     public $district = '';
+    public $search = '';
     public $perPage = 50;
+    public $showUserModal = false;
+    public $selectedUser = null;
+    public $userBeaches = [];
+    public $userPosition = null;
+    public $userRankScore = null;
 
     protected $queryString = [
         'type' => ['except' => 'general'],
         'district' => ['except' => ''],
+        'search' => ['except' => ''],
     ];
 
     public function loadMore(): void
     {
         $this->perPage += 50;
+    }
+
+    public function openUser(int $userId, int $position, int $rankScore): void
+    {
+        $user = User::where('is_suspended', false)
+            ->whereNotNull('username')
+            ->find($userId);
+
+        if (!$user) return;
+
+        $this->selectedUser = $user;
+        $this->userPosition = $position;
+        $this->userRankScore = $rankScore;
+
+        // Get beaches confirmed by this user (accepted reports grouped by beach)
+        $this->userBeaches = FlagReport::where('user_id', $userId)
+            ->where('status', 'confirmed')
+            ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
+            ->select(
+                'beaches.id',
+                'beaches.name',
+                'beaches.district',
+                'beaches.municipality',
+                DB::raw('COUNT(*) as confirmations'),
+                DB::raw('MAX(flag_reports.reported_at) as last_report')
+            )
+            ->groupBy('beaches.id', 'beaches.name', 'beaches.district', 'beaches.municipality')
+            ->orderBy('confirmations', 'desc')
+            ->get()
+            ->toArray();
+
+        $this->showUserModal = true;
+    }
+
+    public function closeUserModal(): void
+    {
+        $this->showUserModal = false;
+        $this->selectedUser = null;
+        $this->userBeaches = [];
     }
 
     public function render()
@@ -68,6 +114,11 @@ class Rankings extends Component
             });
         }
 
+        // 4. Apply search filter
+        if ($this->search !== '') {
+            $usersQuery->where('username', 'like', '%' . $this->search . '%');
+        }
+
         $users = $usersQuery->take($this->perPage + 1)->get();
 
         $hasMore = $users->count() > $this->perPage;
@@ -81,10 +132,12 @@ class Rankings extends Component
             ->orderBy('district')
             ->pluck('district');
 
-        // 6. Current user's position
+        // 6. Current user's position + confirmed beaches
         $currentUserPosition = null;
         $currentUserScore = null;
+        $currentUserBeaches = [];
         if (auth()->check()) {
+            $userId = auth()->id();
             if ($this->type === 'general') {
                 $currentUserScore = (int) auth()->user()->score;
                 $pos = User::where('is_suspended', false)
@@ -94,7 +147,7 @@ class Rankings extends Component
                 $currentUserPosition = $pos + 1;
             } else {
                 // Calculate current user's period score
-                $currentUserScore = (int) (clone $periodQuery)->where('user_id', auth()->id())->sum('points');
+                $currentUserScore = (int) (clone $periodQuery)->where('user_id', $userId)->sum('points');
 
                 // Count users with a higher score in the period
                 $pos = User::where('is_suspended', false)
@@ -111,6 +164,17 @@ class Rankings extends Component
 
                 $currentUserPosition = $pos + 1;
             }
+
+            // Fetch confirmed beaches for the share card
+            $currentUserBeaches = FlagReport::where('user_id', $userId)
+                ->where('status', 'confirmed')
+                ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
+                ->select('beaches.name', DB::raw('COUNT(*) as count'))
+                ->groupBy('beaches.name')
+                ->orderBy('count', 'desc')
+                ->limit(8)
+                ->pluck('count', 'name')
+                ->toArray();
         }
 
         return view('livewire.public.rankings', [
@@ -118,6 +182,7 @@ class Rankings extends Component
             'districts' => $districts,
             'currentUserPosition' => $currentUserPosition,
             'currentUserScore' => $currentUserScore,
+            'currentUserBeaches' => $currentUserBeaches,
             'hasMore' => $hasMore,
         ])->layout('components.layouts.app');
     }
