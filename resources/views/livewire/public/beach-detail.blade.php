@@ -666,8 +666,6 @@
                 </div>
             </div>
 
-            <x-ads.slot slot="beach_detail_inline" />
-
             <!-- Weather Forecast — Hourly + Daily -->
             @if(!empty($hourlyForecast) || !empty($dailyForecast))
             @php
@@ -1141,7 +1139,7 @@
                 </div>
             </div>
 
-            <x-ads.slot slot="beach_detail_bottom" />
+            <x-ads.slot slot="beach_detail_bottom" className="my-2" />
 
             {{-- Restaurants (hidden until nearby dining is fixed) --}}
         </div>

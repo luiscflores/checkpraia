@@ -8,22 +8,17 @@ return [
     'auto_ads_enabled' => env('ADSENSE_AUTO_ADS_ENABLED', true),
 
     'slots' => [
-        // Home page
+        // Home page — ad every 4 beaches in the list
         'home_between_cards' => env('ADSENSE_SLOT_HOME_BETWEEN', ''),
-        'home_sidebar_top' => env('ADSENSE_SLOT_HOME_SIDEBAR_TOP', ''),
-        'home_sidebar_bottom' => env('ADSENSE_SLOT_HOME_SIDEBAR_BOTTOM', ''),
         'home_bottom' => env('ADSENSE_SLOT_HOME_BOTTOM', ''),
 
-        // Beach detail
-        'beach_detail_header' => env('ADSENSE_SLOT_BEACH_HEADER', ''),
-        'beach_detail_inline' => env('ADSENSE_SLOT_BEACH_INLINE', ''),
+        // Beach detail — one prominent ad before the map
         'beach_detail_bottom' => env('ADSENSE_SLOT_BEACH_BOTTOM', ''),
 
         // Rankings
-        'rankings_header' => env('ADSENSE_SLOT_RANKINGS_HEADER', ''),
         'rankings_bottom' => env('ADSENSE_SLOT_RANKINGS_BOTTOM', ''),
 
-        // Footer / sticky
+        // Sticky mobile footer ad
         'sticky_bottom' => env('ADSENSE_SLOT_STICKY', ''),
 
         // About & Contact

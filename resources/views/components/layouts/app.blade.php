@@ -24,6 +24,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta http-equiv="Accept-CH" content="DPR, Width, Viewport-Width">
 
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2599903177483788"
+            crossorigin="anonymous"></script>
+
     <title>@yield('title', __('common.site_name') . ' - ' . __('common.site_description'))</title>
     <meta name="description" content="@yield('meta_description', __('common.meta_description'))">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">

@@ -291,12 +291,10 @@
         
         <!-- Left Side: Beach Cards List -->
         <div id="beach-scroll-container" class="lg:col-span-5 flex flex-col gap-4 lg:max-h-[720px] lg:overflow-y-auto pr-0.5 sm:pr-2 lg:pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
-            <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
-
             <div class="flex flex-col gap-4" x-data="cardFavorites(@js($beachesList))" x-ref="beachList">
 
             @forelse($beachesList as $i => $beach)
-                @if($i > 0 && $i % 3 === 0)
+                @if($i > 0 && $i % 4 === 0)
                     <x-ads.slot slot="home_between_cards" className="col-span-full" />
                 @endif
                 <a href="{{ $beach['url'] }}"
@@ -516,8 +514,6 @@
                 </div>
                 <div id="map-continente" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_continent_label') }}"></div>
             </div>
-
-            <x-ads.slot slot="home_sidebar_bottom" />
 
             <!-- Island Maps Row (clickable to swap to main) -->
             <div class="grid grid-cols-2 gap-2 sm:gap-3 h-28 sm:h-36 shrink-0">
