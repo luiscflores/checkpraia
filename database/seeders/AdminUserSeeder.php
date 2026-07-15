@@ -21,6 +21,6 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        $this->command->info('Admin user created: ' . config('app.admin_email', 'admin@checkpraia.pt'));
+        $this->command->info('Admin user created: '.config('app.admin_email', 'admin@checkpraia.pt'));
     }
 }

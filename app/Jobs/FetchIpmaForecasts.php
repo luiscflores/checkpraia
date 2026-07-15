@@ -2,24 +2,31 @@
 
 namespace App\Jobs;
 
+use App\Domain\Community\ConsensusResolver;
+use App\Domain\Forecasting\PredictionEngine;
 use App\Models\Beach;
 use App\Models\OceanForecast;
 use App\Models\Setting;
+use App\Models\TideForecast;
 use App\Models\WeatherForecast;
 use App\Services\Ipma\IpmaClient;
-use App\Domain\Forecasting\PredictionEngine;
-use App\Domain\Community\ConsensusResolver;
+use App\Services\Tides\TideClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class FetchIpmaForecasts implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $tries = 1;
+    public $tries = 3;
+
+    public $timeout = 600;
+
+    public $backoff = 30;
 
     protected ?Beach $beach;
 
@@ -34,18 +41,31 @@ class FetchIpmaForecasts implements ShouldQueue
             try {
                 $this->processBeach($this->beach);
             } catch (\Throwable $e) {
-                logger()->warning('IPMA forecast failed for beach ' . $this->beach->id, [
+                logger()->warning('IPMA forecast failed for beach '.$this->beach->id, [
                     'error' => $e->getMessage(),
                 ]);
             }
+
             return;
         }
 
         Setting::set('last_ipma_sync', now()->toIso8601String());
 
-        Beach::where('is_active', true)->each(function (Beach $beach) {
-            self::dispatch($beach);
-        });
+        // Process all active beaches in batches within this single job.
+        // On RPI3, dispatching 570 individual jobs wastes ~28s in DB overhead alone.
+        Beach::where('is_active', true)
+            ->select('id')
+            ->chunk(20, function ($beaches) {
+                foreach ($beaches as $beach) {
+                    try {
+                        $this->processBeach($beach);
+                    } catch (\Throwable $e) {
+                        logger()->warning('IPMA forecast failed for beach '.$beach->id, [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            });
     }
 
     /**
@@ -53,9 +73,9 @@ class FetchIpmaForecasts implements ShouldQueue
      */
     private function processBeach(Beach $beach): void
     {
-        $ipma = new \App\Services\Ipma\IpmaClient();
-        $engine = new \App\Domain\Forecasting\PredictionEngine();
-        $resolver = new \App\Domain\Community\ConsensusResolver();
+        $ipma = app(IpmaClient::class);
+        $engine = app(PredictionEngine::class);
+        $resolver = app(ConsensusResolver::class);
 
         // 1. Fetch and store weather forecast
         $weatherData = $ipma->getWeatherForecast($beach->latitude, $beach->longitude);
@@ -84,16 +104,15 @@ class FetchIpmaForecasts implements ShouldQueue
             'forecasted_at' => $oceanData['forecasted_at'],
         ]);
 
-
         // 2.5. Fetch and store tide forecast (bulk insert)
-        $tideClient = new \App\Services\Tides\TideClient();
+        $tideClient = app(TideClient::class);
         $tides = $tideClient->getTideForecasts($beach);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($beach, $tides) {
-            \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)->delete();
+        DB::transaction(function () use ($beach, $tides) {
+            TideForecast::where('tide_station_id', $beach->tide_station_id)->delete();
 
-            if (!empty($tides)) {
-                \App\Models\TideForecast::insert(array_map(fn ($t) => [
+            if (! empty($tides)) {
+                TideForecast::insert(array_map(fn ($t) => [
                     'tide_station_id' => $t['tide_station_id'],
                     'tide_time' => $t['tide_time'],
                     'tide_type' => $t['tide_type'],
@@ -105,11 +124,11 @@ class FetchIpmaForecasts implements ShouldQueue
             }
         });
 
-        // 3. Recalculate automatic prediction
-        $prediction = $engine->calculate($beach);
-        $prediction->save();
+        // 3. Recalculate automatic prediction (returns payload for reuse)
+        $payload = $engine->calculateWithPayload($beach);
+        $payload['prediction']->save();
 
-        // 4. Update the cached current status (combining prediction, community, and alerts)
-        $resolver->resolveCurrentStatus($beach);
+        // 4. Update the cached current status (reuses payload — no redundant DB queries)
+        $resolver->resolveCurrentStatus($beach, $payload);
     }
 }

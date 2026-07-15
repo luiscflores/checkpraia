@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['user_id', 'flag_report_id', 'referral_id', 'type', 'points', 'status', 'description'])]
 class ScoreTransaction extends Model

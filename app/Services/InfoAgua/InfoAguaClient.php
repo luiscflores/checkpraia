@@ -2,6 +2,7 @@
 
 namespace App\Services\InfoAgua;
 
+use App\Services\GeoService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -14,10 +15,7 @@ class InfoAguaClient
 
     private ?array $allBeaches = null;
 
-    public function getWaterQuality(string $externalId): ?string
-    {
-        return null;
-    }
+    private ?array $normalizedNameIndex = null;
 
     public function getWaterQualityByCoords(float $latitude, float $longitude, ?string $beachName = null): ?array
     {
@@ -26,7 +24,7 @@ class InfoAguaClient
 
             $match = null;
 
-            if (!empty($features)) {
+            if (! empty($features)) {
                 if ($beachName !== null) {
                     $match = $this->findByName($features, $beachName);
                 }
@@ -60,7 +58,8 @@ class InfoAguaClient
 
             return null;
         } catch (\Exception $e) {
-            logger()->error('APA ArcGIS water quality fetch failed: ' . $e->getMessage());
+            logger()->error('APA ArcGIS water quality fetch failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -79,8 +78,9 @@ class InfoAguaClient
             'resultRecordCount' => 1000,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $this->allBeaches = [];
+
             return $this->allBeaches;
         }
 
@@ -90,32 +90,55 @@ class InfoAguaClient
         return $this->allBeaches;
     }
 
-    private function findByName(array $features, string $beachName): ?array
+    /**
+     * Build a normalized name → feature index for O(1) lookups.
+     * On RPI3, this avoids O(n²) similar_text() across 570 × 500 features.
+     */
+    private function buildNameIndex(array $features): array
     {
-        $normalized = $this->normalizeName($beachName);
+        if ($this->normalizedNameIndex !== null) {
+            return $this->normalizedNameIndex;
+        }
 
-        $best = null;
-        $bestScore = 0;
-
+        $index = [];
         foreach ($features as $feature) {
             $props = $feature['properties'] ?? [];
-            $arcgisName = $props['nome_agua_balnear'] ?? '';
-
-            if (empty($arcgisName)) {
-                continue;
-            }
-
-            $arcgisNormalized = $this->normalizeName($arcgisName);
-
-            similar_text($normalized, $arcgisNormalized, $score);
-
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $feature;
+            $name = $props['nome_agua_balnear'] ?? '';
+            if ($name !== '') {
+                $normalized = $this->normalizeName($name);
+                $index[$normalized] = $feature;
             }
         }
 
-        return ($bestScore >= 60) ? $best : null;
+        $this->normalizedNameIndex = $index;
+
+        return $index;
+    }
+
+    private function findByName(array $features, string $beachName): ?array
+    {
+        $normalized = $this->normalizeName($beachName);
+        $index = $this->buildNameIndex($features);
+
+        // O(1) exact match after normalization
+        if (isset($index[$normalized])) {
+            return $index[$normalized];
+        }
+
+        // Fallback: strip common prefixes and try again
+        $stripped = preg_replace('/^(praia\s+(de\s+|do\s+|da\s+|dos\s+|das\s+)?)/u', '', $normalized);
+        if ($stripped !== '' && isset($index[$stripped])) {
+            return $index[$stripped];
+        }
+
+        // Last resort: substring match (still O(n) but rare path)
+        foreach ($index as $arcgisNormalized => $feature) {
+            if (str_contains($arcgisNormalized, $normalized) || str_contains($normalized, $arcgisNormalized)) {
+                return $feature;
+            }
+        }
+
+        return null;
     }
 
     private function findNearest(array $features, float $latitude, float $longitude, float $maxKm = 50): ?array
@@ -132,7 +155,7 @@ class InfoAguaClient
                 continue;
             }
 
-            $dist = $this->haversine($latitude, $longitude, $beachLat, $beachLon);
+            $dist = app(GeoService::class)->haversine($latitude, $longitude, $beachLat, $beachLon);
 
             if ($dist < $nearestDist) {
                 $nearestDist = $dist;
@@ -149,6 +172,7 @@ class InfoAguaClient
         $name = str_replace(['praia de ', 'praia do ', 'praia da ', 'praia dos ', 'praia das '], '', $name);
         $name = preg_replace('/[^a-z0-9\s]/u', '', $name);
         $name = preg_replace('/\s+/', ' ', $name);
+
         return trim($name);
     }
 
@@ -163,17 +187,5 @@ class InfoAguaClient
             2 => 'Poor',
             default => null,
         };
-    }
-
-    private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $earthRadius = 6371;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-             sin($dLon / 2) * sin($dLon / 2);
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        return $earthRadius * $c;
     }
 }

@@ -7,6 +7,7 @@ use App\Models\FlagReport;
 use App\Models\Referral;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
@@ -84,12 +85,16 @@ class Profile extends Component
             return;
         }
         $user = Auth::user();
-        $user->reports()->delete();
-        $user->scoreTransactions()->delete();
-        $user->referrals()->delete();
-        $user->favorites()->detach();
+
+        DB::transaction(function () use ($user) {
+            $user->reports()->delete();
+            $user->scoreTransactions()->delete();
+            $user->referrals()->delete();
+            $user->favorites()->detach();
+            $user->delete();
+        });
+
         app(Logout::class)();
-        $user->delete();
 
         return redirect()->route('home');
     }
@@ -103,7 +108,7 @@ class Profile extends Component
         $reports = FlagReport::select(['id', 'beach_id', 'flag', 'status', 'distance_to_beach', 'gps_accuracy', 'reported_at', 'resolved_at'])
             ->with(['beach' => function ($q) use ($locale) {
                 $q->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality'])
-                  ->with(["translations" => fn ($t) => $t->where('locale', $locale)->select('beach_id', 'name')]);
+                    ->with(['translations' => fn ($t) => $t->where('locale', $locale)->select('beach_id', 'name')]);
             }])
             ->where('user_id', $user->id)
             ->orderBy('reported_at', 'desc')
@@ -113,7 +118,7 @@ class Profile extends Component
         // Fetch user favorites
         $favorites = $user->favorites()
             ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'region', 'municipality', 'blue_flag', 'accessible', 'is_active', 'is_supervised', 'season_start', 'season_end', 'lifeguard_start', 'lifeguard_end'])
-            ->with(['currentStatus:beach_id,flag', "translations" => fn ($q) => $q->where('locale', $locale)->select('beach_id', 'name')])
+            ->with(['currentStatus:beach_id,flag', 'translations' => fn ($q) => $q->where('locale', $locale)->select('beach_id', 'name')])
             ->get();
 
         // Fetch referral stats (single query)

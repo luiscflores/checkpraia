@@ -26,6 +26,7 @@
 
     <title>@yield('title', __('common.site_name') . ' - ' . __('common.site_description'))</title>
     <meta name="description" content="@yield('meta_description', __('common.meta_description'))">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="@yield('canonical', url()->current())">
@@ -45,7 +46,7 @@
     <meta property="og:url" content="@yield('canonical', url()->current())">
     <meta property="og:image" content="@yield('og_image', asset('logo.png'))">
     <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="388">
+    <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="{{ __('common.site_name') }}">
     <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -63,16 +64,16 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
-    <!-- Preconnect for map tiles (non-blocking) -->
-    <link rel="preconnect" href="https://unpkg.com">
-    <link rel="dns-prefetch" href="https://unpkg.com">
-    <link rel="preconnect" href="https://server.arcgisonline.com">
-    <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+    <!-- Preconnect for map tile providers -->
+    <link rel="preconnect" href="https://basemaps.cartocdn.com">
     <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
-
-    <!-- Leaflet CSS (non-blocking: print media, then switch to all after load) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""></noscript>
+    <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
+    <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com">
+    <link rel="dns-prefetch" href="https://c.basemaps.cartocdn.com">
+    <!-- Leaflet CSS: only injected on pages that have a map (via stack) -->
+    @stack('leaflet-css')
+    @section('leaflet-inline')
+    @show
 
     <!-- Structured Data (JSON-LD) -->
     @section('ld_json')
@@ -118,20 +119,11 @@
     @show
 
     <style>
-        [x-cloak] { display: none !important; }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-base-gradient);
             color: var(--text-primary);
             transition: background 0.3s ease, color 0.3s ease;
-        }
-        .glass-card {
-            background: var(--bg-glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--bg-glass-border);
-            box-shadow: var(--bg-glass-shadow);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .glass-input {
             background: var(--bg-input);
@@ -266,6 +258,25 @@
         [data-theme="light"] .text-yellow-400 { color: #a16207; }
         [data-theme="light"] .bg-red-950\/10 { background: rgba(254, 202, 202, 0.2); }
         [data-theme="light"] .bg-blue-950\/10 { background: rgba(219, 234, 254, 0.4); }
+        [data-theme="light"] .text-slate-300 { color: #475569; }
+        [data-theme="light"] .text-slate-200 { color: #334155; }
+        [data-theme="light"] .bg-slate-900\/30 { background: rgba(226, 232, 240, 0.5); }
+        [data-theme="light"] .bg-slate-950\/30 { background: rgba(226, 232, 240, 0.4); }
+        [data-theme="light"] .bg-slate-950\/20 { background: rgba(226, 232, 240, 0.35); }
+        [data-theme="light"] .bg-slate-900\/50 { background: rgba(226, 232, 240, 0.6); }
+        [data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.1); }
+        [data-theme="light"] .border-white\/\[0\.08\] { border-color: rgba(0, 0, 0, 0.1); }
+        [data-theme="light"] .bg-slate-800\/80,
+        [data-theme="light"] .bg-slate-800 { background: rgba(203, 213, 225, 0.8); }
+        [data-theme="light"] .bg-slate-900,
+        [data-theme="light"] .bg-slate-900\/30 { background: rgba(226, 232, 240, 0.5); }
+        [data-theme="light"] .bg-slate-950,
+        [data-theme="light"] .bg-slate-950\/20,
+        [data-theme="light"] .bg-slate-950\/30,
+        [data-theme="light"] .bg-slate-950\/80 { background: rgba(226, 232, 240, 0.4); }
+        [data-theme="light"] .border-slate-700\/60 { border-color: rgba(0, 0, 0, 0.1); }
+        [data-theme="light"] .hover\:bg-slate-700\/80:hover { background: rgba(203, 213, 225, 0.9); }
+        [data-theme="light"] .hover\:bg-slate-700\/60:hover { background: rgba(203, 213, 225, 0.7); }
     </style>
 
     @if(app()->environment('production'))
@@ -286,21 +297,21 @@
 
     <!-- Skip to content -->
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-xl focus:font-bold focus:text-sm focus:outline-none">
-        Saltar para o conteúdo
+        {{ __('common.skip_to_content') }}
     </a>
 
     <!-- Ocean wave decorations (global, all pages) -->
-    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-64 sm:h-80 md:h-96 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.25">
+    <div class="wave-decoration fixed inset-x-0 bottom-0 h-64 sm:h-80 md:h-96 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.25">
         <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#3b82f6">
             <path d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,208C960,192,1056,160,1152,154.7C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
         </svg>
     </div>
-    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-72 sm:h-[26rem] md:h-[28rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.18">
+    <div class="wave-decoration fixed inset-x-0 bottom-0 h-72 sm:h-[26rem] md:h-[28rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.18">
         <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#06b6d4">
             <path d="M0,64L60,85.3C120,107,240,149,360,154.7C480,160,600,128,720,138.7C840,149,960,203,1080,208C1200,213,1320,171,1380,149.3L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"/>
         </svg>
     </div>
-    <div class="wave-decoration fixed -left-[10%] -right-[10%] bottom-0 h-[20rem] sm:h-[30rem] md:h-[32rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.12">
+    <div class="wave-decoration fixed inset-x-0 bottom-0 h-[20rem] sm:h-[30rem] md:h-[32rem] z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true" style="opacity:0.12">
         <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="w-full h-full" fill="#0ea5e9">
             <path d="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,192C672,213,768,203,864,176C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"/>
         </svg>
@@ -310,8 +321,8 @@
 
         <!-- Header -->
         <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300 pt-safe" role="banner">
-            <div class="w-full max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-3 flex items-center justify-between pl-safe pr-safe">
-                <a href="{{ route('home') }}" class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
+            <div class="w-full max-w-7xl mx-auto px-5 sm:px-6 md:px-8 py-3 flex items-center justify-between">
+                <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
                     <img src="{{ asset('logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
                 </a>
                 <!-- Desktop Navigation Menu -->
@@ -322,29 +333,29 @@
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         </span>
                     @else
-                        <a href="{{ route('home') }}#map" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 text-theme-secondary hover:text-theme hover:scale-105 focus:outline-none">
+                        <a href="{{ route('home') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 text-theme-secondary hover:text-theme hover:scale-105 focus:outline-none">
                             {{ __('common.nav_map') }}
                         </a>
                     @endif
-                    <a href="{{ route('rankings') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('rankings') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('rankings*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('rankings*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_rankings') }}
                         @if(request()->routeIs('rankings*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('profile') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('profile') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('profile*') || request()->routeIs('account.*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_profile') }}
                         @if(request()->routeIs('profile*') || request()->routeIs('account.*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('about') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('about*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('about*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('about') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('about*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('about*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_about') }}
                         @if(request()->routeIs('about*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
                         @endif
                     </a>
-                    <a href="{{ route('contact') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('contact*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('contact*') ? 'aria-current="page"' : '' }}>
+                    <a href="{{ route('contact') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('contact*') ? 'text-blue-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('contact*') ? 'aria-current="page"' : '' }}>
                         {{ __('common.nav_contact') }}
                         @if(request()->routeIs('contact*'))
                             <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
@@ -352,7 +363,7 @@
                     </a>
                     @auth
                         @if(auth()->user()->is_admin)
-                            <a href="{{ route('admin.dashboard') }}" class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
+                            <a href="{{ route('admin.dashboard') }}" wire:navigate class="relative text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('admin.*') ? 'text-teal-400' : 'text-theme-secondary hover:text-theme hover:scale-105' }} focus:outline-none" {{ request()->routeIs('admin.*') ? 'aria-current="page"' : '' }}>
                                 {{ __('common.nav_admin') }}
                                 @if(request()->routeIs('admin.*'))
                                     <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
@@ -415,7 +426,7 @@
                                 <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline"><span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 8, '') }}</span>
                             </button>
                             <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1.5 w-44 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
-                                <a href="{{ route('profile') }}" @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme focus:outline-none">
+                                <a href="{{ route('profile') }}" wire:navigate @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme focus:outline-none">
                                     <span aria-hidden="true">👤</span> {{ __('common.nav_profile') }}
                                 </a>
                                 <hr class="border-theme-subtle">
@@ -429,7 +440,7 @@
                             </div>
                         </div>
                     @else
-                        <a href="{{ route('profile') }}" class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 focus:outline-none">
+                        <a href="{{ route('profile') }}" wire:navigate class="text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 sm:py-1.5 rounded-lg transition-all shadow-md touch-target inline-flex items-center hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 focus:outline-none">
                             {{ __('common.nav_login') }}
                         </a>
                     @endauth
@@ -452,13 +463,13 @@
                 <div class="flex items-center justify-between border-t border-theme-subtle pt-3">
                     <div>&copy; {{ date('Y') }} {{ __('common.footer_copyright') }}</div>
                     <div class="flex gap-2">
-                        <a href="{{ route('about') }}" class="hover:text-theme transition-colors">{{ __('common.footer_about') }}</a>
+                        <a href="{{ route('about') }}" wire:navigate class="hover:text-theme transition-colors">{{ __('common.footer_about') }}</a>
                         <span aria-hidden="true">&middot;</span>
-                        <a href="{{ route('contact') }}" class="hover:text-theme transition-colors">{{ __('common.footer_contact') }}</a>
+                        <a href="{{ route('contact') }}" wire:navigate class="hover:text-theme transition-colors">{{ __('common.footer_contact') }}</a>
                         <span aria-hidden="true">&middot;</span>
-                        <a href="{{ route('terms') }}" class="hover:text-theme transition-colors">{{ __('common.footer_terms') }}</a>
+                        <a href="{{ route('terms') }}" wire:navigate class="hover:text-theme transition-colors">{{ __('common.footer_terms') }}</a>
                         <span aria-hidden="true">&middot;</span>
-                        <a href="{{ route('privacy') }}" class="hover:text-theme transition-colors">{{ __('common.footer_privacy') }}</a>
+                        <a href="{{ route('privacy') }}" wire:navigate class="hover:text-theme transition-colors">{{ __('common.footer_privacy') }}</a>
                     </div>
                 </div>
             </footer>
@@ -495,76 +506,114 @@
         <!-- Sticky Bottom Ad Banner (mobile only) -->
         <x-ads.slot slot="sticky_bottom" className="fixed bottom-14 left-0 right-0 z-40 md:hidden pb-safe" />
 
-        <!-- Sticky Bottom Navigation Bar for Mobile Only (PWA Feel) -->
-        <nav class="fixed bottom-0 left-0 right-0 z-50 bg-theme-nav backdrop-blur-lg border-t border-theme-medium flex justify-around items-center py-1 px-0.5 pb-safe md:hidden pl-safe pr-safe shadow-[0_-4px_20px_rgba(0,0,0,0.15)]" aria-label="{{ __('common.nav_mobile_map') }}">
-            @php $navItems = [
-                ['route' => 'home', 'icon' => '🗺️', 'label' => 'nav_mobile_map', 'pattern' => 'home*', 'color' => 'blue'],
-                ['route' => 'rankings', 'icon' => '🏆', 'label' => 'nav_mobile_rankings', 'pattern' => 'rankings*', 'color' => 'blue'],
-                ['route' => 'profile', 'icon' => '👤', 'label' => 'nav_mobile_profile', 'pattern' => 'profile*|account.*', 'color' => 'blue'],
-                ['route' => 'about', 'icon' => 'ℹ️', 'label' => 'nav_mobile_about', 'pattern' => 'about*', 'color' => 'blue'],
-            ]; @endphp
-            @foreach($navItems as $item)
-                @php $active = request()->routeIs(explode('|', $item['pattern'])); @endphp
-                @if($active)
-                    <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-blue-400 font-bold" aria-current="page">
-                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
-                        <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
-                        <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-blue-400 rounded-full"></span>
-                    </span>
-                @else
-                    <a href="{{ route($item['route']) }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
-                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">{{ $item['icon'] }}</span>
-                        <span class="truncate w-full text-center leading-tight">{{ __("common.{$item['label']}") }}</span>
-                    </a>
-                @endif
-            @endforeach
-            @auth
-                @if(auth()->user()->is_admin)
-                    @php $active = request()->routeIs('admin.*'); @endphp
-                    @if($active)
-                        <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-teal-400 font-bold" aria-current="page">
-                            <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
-                            <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
-                            <span class="absolute -top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-teal-400 rounded-full"></span>
-                        </span>
-                    @else
-                        <a href="{{ route('admin.dashboard') }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
-                            <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">⚙️</span>
-                            <span class="truncate w-full text-center leading-tight">{{ __('common.nav_mobile_admin') }}</span>
-                        </a>
-                    @endif
-                @endif
-            @endauth
-            @guest
-                @php $active = request()->routeIs('login'); @endphp
-                @if($active)
-                    <span class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-blue-400 font-bold" aria-current="page">
-                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
-                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
-                    </span>
-                @else
-                    <a href="{{ route('login') }}" class="relative flex flex-col items-center gap-0 text-xs min-w-0 flex-1 px-0.5 py-0.5 text-theme-secondary hover:text-theme">
-                        <span class="text-base leading-none transition-transform duration-200" aria-hidden="true">🔑</span>
-                        <span class="truncate w-full text-center leading-tight">{{ __('common.nav_login') }}</span>
-                    </a>
-                @endif
-            @endguest
-        </nav>
-
         <!-- Livewire Loading Indicator -->
         <div wire:loading class="livewire-loading-bar"></div>
 
         <!-- Global Toast (share/copy feedback) -->
         <div x-data="appToast()" x-show="show" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] max-w-xs w-full mx-auto px-4 pointer-events-none" role="status">
-            <div class="bg-slate-800/90 backdrop-blur-md text-white text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-slate-600/30 flex items-center gap-2.5">
+            <div class="bg-theme-elevated/90 backdrop-blur-md text-theme text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-theme-medium flex items-center gap-2.5">
                 <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span x-text="message" class="flex-1"></span>
             </div>
         </div>
     </div>
 
-    <!-- Leaflet Map Script (deferred to avoid blocking) -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+    <!-- Mobile Bottom Navigation (outside relative wrapper for proper fixed positioning) -->
+    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px);" aria-label="{{ __('common.nav_mobile_map') }}">
+        <div class="relative">
+            <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-nav)] via-[var(--bg-nav)]/98 to-transparent pointer-events-none"></div>
+            <div class="relative bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]">
+                <div class="flex items-stretch justify-around max-w-lg mx-auto px-1 pt-1 pb-0.5">
+                    @php
+                        $navItems = [
+                            ['route' => 'home', 'label' => 'nav_mobile_map', 'pattern' => 'home*'],
+                            ['route' => 'rankings', 'label' => 'nav_mobile_rankings', 'pattern' => 'rankings*'],
+                            ['route' => 'profile', 'label' => 'nav_mobile_profile', 'pattern' => 'profile*|account.*'],
+                            ['route' => 'about', 'label' => 'nav_mobile_about', 'pattern' => 'about*'],
+                        ];
+                    @endphp
+                    @foreach($navItems as $item)
+                        @php $active = request()->routeIs(explode('|', $item['pattern'])); @endphp
+                        @if($active)
+                            <span class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-blue-400" aria-current="page">
+                                <span class="relative flex items-center justify-center w-7 h-7">
+                                    @if($item['route'] === 'home')
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                                    @elseif($item['route'] === 'rankings')
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z"/></svg>
+                                    @elseif($item['route'] === 'profile')
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                    @elseif($item['route'] === 'about')
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                    @endif
+                                    <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-4 h-[2.5px] bg-blue-400 rounded-full"></span>
+                                </span>
+                                <span class="text-[10px] font-bold leading-none tracking-wide">{{ __("common.{$item['label']}") }}</span>
+                            </span>
+                        @else
+                            <a href="{{ route($item['route']) }}" wire:navigate class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-[var(--text-muted)] active:text-theme transition-colors duration-100">
+                                <span class="flex items-center justify-center w-7 h-7 opacity-70 active:opacity-100 transition-opacity">
+                                    @if($item['route'] === 'home')
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                    @elseif($item['route'] === 'rankings')
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3l4.068 2.034M5 3v4m0-4l4.068-2.034M5 3l4.068-2.034M19 3l-4.068 2.034M19 3v4m0-4l-4.068-2.034M19 3l-4.068-2.034M5 7v10m14-10v10M9 21h6M9 7h6m-6 5h6"/></svg>
+                                    @elseif($item['route'] === 'profile')
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    @elseif($item['route'] === 'about')
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 16v-4m0-4h.01"/></svg>
+                                    @endif
+                                </span>
+                                <span class="text-[10px] font-medium leading-none tracking-wide">{{ __("common.{$item['label']}") }}</span>
+                            </a>
+                        @endif
+                    @endforeach
+                    @auth
+                        @if(auth()->user()->is_admin)
+                            @php $active = request()->routeIs('admin.*'); @endphp
+                            @if($active)
+                                <span class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-teal-400" aria-current="page">
+                                    <span class="relative flex items-center justify-center w-7 h-7">
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.61 3.61 0 0112 15.6z"/></svg>
+                                        <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-4 h-[2.5px] bg-teal-400 rounded-full"></span>
+                                    </span>
+                                    <span class="text-[10px] font-bold leading-none tracking-wide">{{ __('common.nav_mobile_admin') }}</span>
+                                </span>
+                            @else
+                                <a href="{{ route('admin.dashboard') }}" wire:navigate class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-[var(--text-muted)] active:text-theme transition-colors duration-100">
+                                    <span class="flex items-center justify-center w-7 h-7 opacity-70 active:opacity-100 transition-opacity">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    </span>
+                                    <span class="text-[10px] font-medium leading-none tracking-wide">{{ __('common.nav_mobile_admin') }}</span>
+                                </a>
+                            @endif
+                        @endif
+                    @endauth
+                    @guest
+                        @php $active = request()->routeIs('login'); @endphp
+                        @if($active)
+                            <span class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-blue-400" aria-current="page">
+                                <span class="relative flex items-center justify-center w-7 h-7">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+                                    <span class="absolute -top-0.5 left-1/2 -translate-x-1/2 w-4 h-[2.5px] bg-blue-400 rounded-full"></span>
+                                </span>
+                                <span class="text-[10px] font-bold leading-none tracking-wide">{{ __('common.nav_login') }}</span>
+                            </span>
+                        @else
+                            <a href="{{ route('login') }}" wire:navigate class="relative flex flex-col items-center justify-center gap-0 min-w-0 flex-1 py-1.5 text-[var(--text-muted)] active:text-theme transition-colors duration-100">
+                                <span class="flex items-center justify-center w-7 h-7 opacity-70 active:opacity-100 transition-opacity">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                                </span>
+                                <span class="text-[10px] font-medium leading-none tracking-wide">{{ __('common.nav_login') }}</span>
+                            </a>
+                        @endif
+                    @endguest
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Leaflet JS: only loaded on pages that push to this stack (home, beach detail with map) -->
+    @stack('leaflet-js')
 
     <!-- ARIA live region for dynamic notifications -->
     <div aria-live="polite" aria-atomic="true" class="sr-only" id="notification-aria"></div>
@@ -949,7 +998,7 @@
                 return this;
             };
         }
-        const drawShareCard = (canvas, opts) => {
+        if (!window.drawShareCard) window.drawShareCard = (canvas, opts) => {
             const ctx = canvas.getContext('2d');
             const w = canvas.width = 600, h = canvas.height = 314;
             const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -1224,7 +1273,7 @@
          x-transition:leave-end="opacity-0 translate-y-8"
          class="fixed bottom-24 sm:bottom-8 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 glass-card rounded-2xl border border-blue-500/30 p-5 shadow-2xl shadow-blue-500/10"
          role="alert">
-        <button @click="dismiss()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-200 transition-colors p-1" aria-label="Fechar">
+        <button @click="dismiss()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-200 transition-colors p-2 touch-target" aria-label="Fechar">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
         <div class="flex items-start gap-3">
@@ -1243,5 +1292,55 @@
             </div>
         </div>
     </div>
+
+    <!-- Cookie Consent Banner (GDPR) -->
+    @if(config('ads.publisher_id'))
+    <div x-data="cookieConsent()" x-init="init()" x-show="visible" x-cloak
+         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-auto md:max-w-md z-[70]">
+        <div class="glass-card rounded-2xl border border-theme-subtle/60 shadow-2xl p-4 sm:p-5">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0 w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mt-0.5">
+                    <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-theme mb-1">{{ __('common.cookie_title') }}</p>
+                    <p class="text-xs text-theme-secondary leading-relaxed">{{ __('common.cookie_description') }}</p>
+                    <div class="flex items-center gap-2 mt-3">
+                        <button @click="accept()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 touch-target">
+                            {{ __('common.cookie_accept') }}
+                        </button>
+                        <button @click="reject()" class="px-4 py-2 text-xs text-theme-muted hover:text-theme transition-colors font-medium touch-target">
+                            {{ __('common.cookie_reject') }}
+                        </button>
+                        <a href="{{ route('privacy') }}" wire:navigate class="text-[10px] text-blue-400 hover:text-blue-300 underline ml-auto">{{ __('common.cookie_learn_more') }}</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function cookieConsent() {
+            return {
+                visible: false,
+                init() {
+                    const consent = localStorage.getItem('cookie_consent');
+                    if (!consent) this.visible = true;
+                },
+                accept() {
+                    localStorage.setItem('cookie_consent', 'accepted');
+                    this.visible = false;
+                    if (typeof gtag === 'function') gtag('consent', 'update', { ad_storage: 'granted', analytics_storage: 'granted' });
+                },
+                reject() {
+                    localStorage.setItem('cookie_consent', 'rejected');
+                    this.visible = false;
+                    if (typeof gtag === 'function') gtag('consent', 'update', { ad_storage: 'denied', analytics_storage: 'denied' });
+                }
+            }
+        }
+    </script>
+    @endif
 </body>
 </html>

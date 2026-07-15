@@ -5,6 +5,7 @@ return [
     'site_description' => 'Bandeira das praias em tempo real. Previsões automáticas, confirmações da comunidade, temperatura da água, estado do mar e condições meteorológicas.',
     'meta_description' => 'Bandeira atualizada das praias de Portugal: estado do mar, temperatura da água, vento, ondas e previsão meteorológica. Consulta a bandeira antes de ir para a praia.',
     'aria_notifications' => 'Notificações dinâmicas',
+    'skip_to_content' => 'Saltar para o conteúdo',
 
     // Navigation
     'nav_map' => 'Mapa',
@@ -164,7 +165,7 @@ return [
 
     // Search & Filters
     'search_clear' => 'Limpar pesquisa',
-    'search_placeholder' => 'Pesquisar praia ou município...',
+    'search_placeholder' => 'Pesquisar praia',
     'search_nearby' => 'Praias perto de mim',
     'search_nearby_short' => 'Perto de mim',
     'filter_all' => 'Todas',
@@ -289,4 +290,13 @@ return [
     'contact_email_address' => 'checkpraia@example.com',
     'contact_social' => 'Segue-nos nas redes sociais',
     'contact_social_description' => 'Fica a par das novidades, dicas e actualizações.',
+    // Cookie consent
+    'cookie_title' => 'Privacidade e Cookies',
+    'cookie_description' => 'Utilizamos cookies apenas para sessões e preferências. Sem rastreio. Aceitas?',
+    'cookie_accept' => 'Aceitar',
+    'cookie_reject' => 'Rejeitar',
+    'cookie_learn_more' => 'Saber mais',
+
+    // Anonymous
+    'anonymous' => 'Anónimo',
 ];

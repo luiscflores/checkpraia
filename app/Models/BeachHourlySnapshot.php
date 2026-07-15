@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'flag', 'source', 'confidence',
     'wave_height', 'wind_speed', 'water_temp', 'air_temp',
-    'water_quality', 'captured_at', 'vote_time'
+    'water_quality', 'captured_at', 'vote_time',
 ])]
 class BeachHourlySnapshot extends Model
 {

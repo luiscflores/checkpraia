@@ -2,23 +2,32 @@
 
 namespace App\Livewire\Public;
 
-use Livewire\Component;
-use App\Models\User;
-use App\Models\ScoreTransaction;
 use App\Models\Beach;
 use App\Models\FlagReport;
+use App\Models\ScoreTransaction;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class Rankings extends Component
 {
     public $type = 'general';
+
     public $district = '';
+
     public $search = '';
+
     public $perPage = 50;
+
     public $showUserModal = false;
+
     public $selectedUser = null;
+
     public $userBeaches = [];
+
     public $userPosition = null;
+
     public $userRankScore = null;
 
     protected $queryString = [
@@ -38,28 +47,32 @@ class Rankings extends Component
             ->whereNotNull('username')
             ->find($userId);
 
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $this->selectedUser = $user;
         $this->userPosition = $position;
         $this->userRankScore = $rankScore;
 
-        // Get beaches confirmed by this user (accepted reports grouped by beach)
-        $this->userBeaches = FlagReport::where('user_id', $userId)
-            ->where('status', 'confirmed')
-            ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
-            ->select(
-                'beaches.id',
-                'beaches.name',
-                'beaches.district',
-                'beaches.municipality',
-                DB::raw('COUNT(*) as confirmations'),
-                DB::raw('MAX(flag_reports.reported_at) as last_report')
-            )
-            ->groupBy('beaches.id', 'beaches.name', 'beaches.district', 'beaches.municipality')
-            ->orderBy('confirmations', 'desc')
-            ->get()
-            ->toArray();
+        // Cache user beach activity per user — 10 min
+        $this->userBeaches = Cache::remember("user_beaches:{$userId}", 600, function () use ($userId) {
+            return FlagReport::where('user_id', $userId)
+                ->where('status', 'confirmed')
+                ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
+                ->select(
+                    'beaches.id',
+                    'beaches.name',
+                    'beaches.district',
+                    'beaches.municipality',
+                    DB::raw('COUNT(*) as confirmations'),
+                    DB::raw('MAX(flag_reports.reported_at) as last_report')
+                )
+                ->groupBy('beaches.id', 'beaches.name', 'beaches.district', 'beaches.municipality')
+                ->orderBy('confirmations', 'desc')
+                ->get()
+                ->toArray();
+        });
 
         $this->showUserModal = true;
     }
@@ -77,9 +90,9 @@ class Rankings extends Component
         $periodQuery = null;
         if ($this->type !== 'general') {
             $periodQuery = ScoreTransaction::where('status', 'confirmed')
-                ->when($this->type === 'daily', fn($q) => $q->where('created_at', '>=', now()->startOfDay()))
-                ->when($this->type === 'weekly', fn($q) => $q->where('created_at', '>=', now()->startOfWeek()))
-                ->when($this->type === 'monthly', fn($q) => $q->where('created_at', '>=', now()->startOfMonth()));
+                ->when($this->type === 'daily', fn ($q) => $q->where('created_at', '>=', now()->startOfDay()))
+                ->when($this->type === 'weekly', fn ($q) => $q->where('created_at', '>=', now()->startOfWeek()))
+                ->when($this->type === 'monthly', fn ($q) => $q->where('created_at', '>=', now()->startOfMonth()));
         }
 
         // 2. Fetch eligible users sorted by correct score
@@ -116,7 +129,7 @@ class Rankings extends Component
 
         // 4. Apply search filter
         if ($this->search !== '') {
-            $usersQuery->where('username', 'like', '%' . $this->search . '%');
+            $usersQuery->where('username', 'like', '%'.$this->search.'%');
         }
 
         $users = $usersQuery->take($this->perPage + 1)->get();
@@ -124,18 +137,21 @@ class Rankings extends Component
         $hasMore = $users->count() > $this->perPage;
         $displayedUsers = $users->take($this->perPage);
 
-        // 5. Districts for filter dropdown
-        $districts = Beach::whereNotNull('district')
-            ->where('district', '!=', '')
-            ->select('district')
-            ->distinct()
-            ->orderBy('district')
-            ->pluck('district');
+        // 5. Districts for filter dropdown — cache 1 hour (nearly immutable data)
+        $districts = Cache::remember('rankings_districts', 3600, function () {
+            return Beach::whereNotNull('district')
+                ->where('district', '!=', '')
+                ->select('district')
+                ->distinct()
+                ->orderBy('district')
+                ->pluck('district');
+        });
 
         // 6. Current user's position + confirmed beaches
         $currentUserPosition = null;
         $currentUserScore = null;
         $currentUserBeaches = [];
+
         if (auth()->check()) {
             $userId = auth()->id();
             if ($this->type === 'general') {
@@ -165,16 +181,18 @@ class Rankings extends Component
                 $currentUserPosition = $pos + 1;
             }
 
-            // Fetch confirmed beaches for the share card
-            $currentUserBeaches = FlagReport::where('user_id', $userId)
-                ->where('status', 'confirmed')
-                ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
-                ->select('beaches.name', DB::raw('COUNT(*) as count'))
-                ->groupBy('beaches.name')
-                ->orderBy('count', 'desc')
-                ->limit(8)
-                ->pluck('count', 'name')
-                ->toArray();
+            // Fetch confirmed beaches for the share card — cache 10 min per user
+            $currentUserBeaches = Cache::remember("user_beaches_share:{$userId}", 600, function () use ($userId) {
+                return FlagReport::where('user_id', $userId)
+                    ->where('status', 'confirmed')
+                    ->join('beaches', 'flag_reports.beach_id', '=', 'beaches.id')
+                    ->select('beaches.name', DB::raw('COUNT(*) as count'))
+                    ->groupBy('beaches.name')
+                    ->orderBy('count', 'desc')
+                    ->limit(8)
+                    ->pluck('count', 'name')
+                    ->toArray();
+            });
         }
 
         return view('livewire.public.rankings', [

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Beach;
 use App\Models\Restaurant;
+use App\Services\GeoService;
 use App\Services\TheFork\TheForkClient;
 use App\Services\Tripadvisor\TripadvisorClient;
 use Illuminate\Console\Command;
@@ -11,26 +12,26 @@ use Illuminate\Console\Command;
 class SyncRestaurants extends Command
 {
     protected $signature = 'restaurants:sync {--batch=10}';
+
     protected $description = 'Fetch nearby restaurants from TripAdvisor, TheFork, or Overpass for all beaches';
 
     public function handle(TripadvisorClient $tripadvisor, TheForkClient $thefork): int
     {
-        $beaches = Beach::whereNotNull('latitude')->whereNotNull('longitude')->get();
+        $total = Beach::whereNotNull('latitude')->whereNotNull('longitude')->count();
         $batch = (int) $this->option('batch');
-        $total = $beaches->count();
         $synced = 0;
 
         $this->info("Syncing restaurants for {$total} beaches...");
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        foreach ($beaches->chunk($batch) as $chunk) {
-            foreach ($chunk as $beach) {
+        Beach::whereNotNull('latitude')->whereNotNull('longitude')
+            ->cursor()
+            ->each(function (Beach $beach) use ($tripadvisor, $thefork, &$synced, $bar) {
                 $this->syncForBeach($beach, $tripadvisor, $thefork);
                 $synced++;
                 $bar->advance();
-            }
-        }
+            });
 
         $bar->finish();
         $this->newLine();
@@ -53,7 +54,7 @@ class SyncRestaurants extends Command
                 $restaurants = $client->getNearby($lat, $lon);
 
                 foreach ($restaurants as $data) {
-                    $distance = $data['distance'] ?? $this->haversine($lat, $lon, $data['latitude'], $data['longitude']);
+                    $distance = $data['distance'] ?? app(GeoService::class)->haversine($lat, $lon, $data['latitude'], $data['longitude']);
 
                     $restaurant = Restaurant::updateOrCreate(
                         ['external_id' => $data['external_id']],
@@ -77,17 +78,8 @@ class SyncRestaurants extends Command
                     ]);
                 }
             } catch (\Exception $e) {
-                logger()->error("Failed to sync {$source} restaurants for beach {$beach->id}: " . $e->getMessage());
+                logger()->error("Failed to sync {$source} restaurants for beach {$beach->id}: ".$e->getMessage());
             }
         }
-    }
-
-    private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $earthRadius = 6371;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
-        return round($earthRadius * 2 * asin(sqrt($a)), 3);
     }
 }

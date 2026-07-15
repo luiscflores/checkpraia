@@ -4,6 +4,7 @@ namespace App\Services\Tides;
 
 use App\Models\Beach;
 use App\Models\TideForecast;
+use App\Services\GeoService;
 use Carbon\Carbon;
 
 class TideClient
@@ -22,6 +23,8 @@ class TideClient
 
     private array $stationParams;
 
+    private array $computedStations = [];
+
     public function __construct()
     {
         $this->stationParams = config('services.tide_stations', []);
@@ -30,6 +33,13 @@ class TideClient
     public function getTideForecasts(Beach $beach): array
     {
         $stationId = $beach->tide_station_id ?? 'default';
+
+        // Cache per station — many beaches share the same station, avoids redundant computation.
+        // On RPI3, each computation samples 768 points for 8 days of tides.
+        if (isset($this->computedStations[$stationId])) {
+            return $this->computedStations[$stationId];
+        }
+
         $params = $this->getStationParams($stationId, $beach->latitude, $beach->longitude);
 
         $now = Carbon::now('UTC');
@@ -51,6 +61,8 @@ class TideClient
             ];
         }
 
+        $this->computedStations[$stationId] = $forecasts;
+
         return $forecasts;
     }
 
@@ -63,10 +75,10 @@ class TideClient
         $closest = null;
         $minDist = INF;
         foreach ($this->stationParams as $id => $params) {
-            if (!isset($params['lat'], $params['lon'])) {
+            if (! isset($params['lat'], $params['lon'])) {
                 continue;
             }
-            $dist = $this->haversine($lat, $lon, $params['lat'], $params['lon']);
+            $dist = app(GeoService::class)->haversine($lat, $lon, $params['lat'], $params['lon']);
             if ($dist < $minDist) {
                 $minDist = $dist;
                 $closest = $params;
@@ -91,13 +103,11 @@ class TideClient
         $meanRange = $params['range'] ?? 2.5;
         $halfRange = $meanRange / 2.0;
 
-        $refTime = Carbon::parse($startTime->format('Y-m-d') . ' 00:00:00', 'UTC');
+        $refTime = Carbon::parse($startTime->format('Y-m-d').' 00:00:00', 'UTC');
         $refJulian = $this->toJulianDay($refTime);
 
         $tideIntervalHours = self::M2_PERIOD_HOURS;
-        $cycleHours = $tideIntervalHours * 2.0;
 
-        $startJulian = $this->toJulianDay($startTime);
         $startOffsetHours = $startTime->diffInHours($refTime, false);
 
         $stepHours = 0.25;
@@ -120,7 +130,7 @@ class TideClient
 
         $extrema = $this->findExtrema($samples);
 
-        usort($extrema, fn($a, $b) => $a['time']->timestamp <=> $b['time']->timestamp);
+        usort($extrema, fn ($a, $b) => $a['time']->timestamp <=> $b['time']->timestamp);
 
         return $extrema;
     }
@@ -270,14 +280,5 @@ class TideClient
         $jd += ($h + $i / 60.0 + $s / 3600.0) / 24.0;
 
         return $jd;
-    }
-
-    private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $dLat = ($lat2 - $lat1) * self::DEG2RAD;
-        $dLon = ($lon2 - $lon1) * self::DEG2RAD;
-        $a = sin($dLat / 2) ** 2 + cos($lat1 * self::DEG2RAD) * cos($lat2 * self::DEG2RAD) * sin($dLon / 2) ** 2;
-
-        return 6371.0 * 2.0 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

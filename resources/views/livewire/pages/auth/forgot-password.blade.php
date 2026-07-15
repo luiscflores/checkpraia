@@ -38,7 +38,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
 <div>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+        {{ __('auth.forgot_password.description') }}
     </div>
 
     <!-- Session Status -->
@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
         <div class="flex items-center justify-end mt-4">
             <x-primary-button>
-                {{ __('Email Password Reset Link') }}
+                {{ __('auth.forgot_password.submit') }}
             </x-primary-button>
         </div>
     </form>

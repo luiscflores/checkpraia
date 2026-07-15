@@ -147,11 +147,13 @@
     html {
         scroll-behavior: smooth;
         -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
     }
 
     body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -315,9 +317,19 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+    background: linear-gradient(90deg, var(--skeleton-from) 0%, var(--skeleton-to) 50%, var(--skeleton-from) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
+}
+
+/* Forecast hourly scroll snap on mobile */
+.forecast-hourly-scroll {
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+.forecast-hourly-scroll > div {
+    scroll-snap-align: center;
 }
 
 .glass-card {

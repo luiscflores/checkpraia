@@ -2,10 +2,10 @@
 
 namespace App\Domain\Gamification;
 
-use App\Models\User;
 use App\Models\FlagReport;
-use App\Models\ScoreTransaction;
 use App\Models\Referral;
+use App\Models\ScoreTransaction;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class ScoreManager
@@ -28,13 +28,12 @@ class ScoreManager
                 'type' => $isFirst ? 'first_report_bonus' : 'report_accepted',
                 'points' => $points,
                 'status' => 'confirmed',
-                'description' => ($isFirst ? 'Primeira confirmação aceite do dia na ' : 'Confirmação aceite na ') . $report->beach->name,
+                'description' => ($isFirst ? 'Primeira confirmação aceite do dia na ' : 'Confirmação aceite na ').$report->beach->name,
             ]);
 
-            $user->score += $points;
-            $user->confirmations_count += 1;
-            $user->accepted_confirmations_count += 1;
-            $user->save();
+            $user->increment('score', $points);
+            $user->increment('confirmations_count');
+            $user->increment('accepted_confirmations_count');
         });
 
         $this->processReferral($user);
@@ -51,13 +50,16 @@ class ScoreManager
                 'type' => 'report_penalized',
                 'points' => config('gamification.points.penalty'),
                 'status' => 'confirmed',
-                'description' => 'Confirmação penalizada na ' . $report->beach->name,
+                'description' => 'Confirmação penalizada na '.$report->beach->name,
             ]);
 
-            $user->score = max(config('gamification.points.penalty_floor'), $user->score + config('gamification.points.penalty'));
-            $user->confirmations_count += 1;
-            $user->penalized_confirmations_count += 1;
-            $user->save();
+            $penalty = config('gamification.points.penalty');
+            $floor = config('gamification.points.penalty_floor');
+            $user->update([
+                'score' => DB::raw("GREATEST(COALESCE(score, 0) + ({$penalty}), {$floor})"),
+            ]);
+            $user->increment('confirmations_count');
+            $user->increment('penalized_confirmations_count');
         });
     }
 
@@ -85,12 +87,12 @@ class ScoreManager
             ->where('status', 'pending')
             ->first();
 
-        if (!$referral) {
+        if (! $referral) {
             return;
         }
 
         if ($invitedUser->accepted_confirmations_count >= 1) {
-            DB::transaction(function () use ($referral, $invitedUser) {
+            DB::transaction(function () use ($referral) {
                 $referral->status = 'qualified';
                 $referral->qualified_at = now();
                 $referral->save();
@@ -117,11 +119,10 @@ class ScoreManager
                         'type' => 'referral_bonus',
                         'points' => $pointsToGrant,
                         'status' => 'confirmed',
-                        'description' => 'Bónus por convidar ' . ($bonusesToPay * config('gamification.referrals.per_bonus')) . ' amigos válidos',
+                        'description' => 'Bónus por convidar '.($bonusesToPay * config('gamification.referrals.per_bonus')).' amigos válidos',
                     ]);
 
-                    $referrer->score += $pointsToGrant;
-                    $referrer->save();
+                    $referrer->increment('score', $pointsToGrant);
                 }
             });
         }
@@ -138,6 +139,6 @@ class ScoreManager
             ->where('status', '!=', 'cancelled')
             ->exists();
 
-        return !$exists;
+        return ! $exists;
     }
 }

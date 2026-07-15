@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'user_id', 'beach_id', 'flag', 'vote_weight', 'status',
     'distance_to_beach', 'gps_accuracy', 'latitude', 'longitude',
-    'reported_at', 'resolved_at'
+    'reported_at', 'resolved_at',
 ])]
 class FlagReport extends Model
 {

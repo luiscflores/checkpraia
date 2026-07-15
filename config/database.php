@@ -42,8 +42,9 @@ return [
             'journal_mode' => 'wal',
             'synchronous' => 'NORMAL',
             'pragmas' => [
-                'cache_size' => -64000,
+                'cache_size' => -128000,
                 'temp_store' => 'MEMORY',
+                'mmap_size' => 268435456,
             ],
             'transaction_mode' => 'IMMEDIATE',
         ],

@@ -301,7 +301,7 @@
 
     <!-- User Detail Modal -->
     @if($showUserModal && $selectedUser)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" wire:click="closeUserModal">
+        <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" wire:click="closeUserModal" x-on:keydown.escape.window="$wire.closeUserModal()">
             <div class="bg-theme-card rounded-2xl border border-theme-medium shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto" @click.stop x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                 <!-- Header -->
                 <div class="p-5 border-b border-theme-subtle">

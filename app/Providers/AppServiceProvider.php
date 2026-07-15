@@ -2,14 +2,12 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Domain\Forecasting\PredictionEngine;
 use App\Domain\Community\ConsensusResolver;
+use App\Domain\Forecasting\PredictionEngine;
 use App\Domain\Gamification\ScoreManager;
-use App\Services\InfoAgua\InfoAguaClient;
-use App\Services\Ipma\IpmaClient;
-use App\Services\Tides\TideClient;
 use App\Services\GeoService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // No heavy operations in boot() — they are moved to a dedicated console command.
+        // SQLite: all PRAGMAs are set via config/database.php on connection.
+        // Only mmap_size needs a runtime statement since it's not a connection option.
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA mmap_size=268435456'); // 256 MB memory-mapped I/O
+        }
     }
 }

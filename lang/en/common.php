@@ -5,6 +5,7 @@ return [
     'site_description' => 'Real-time beach flag status, water temperature, wave conditions, wind forecast and community reports for Portuguese beaches.',
     'meta_description' => 'Live beach flag status for Portugal: sea conditions, water temperature, wind, waves, jellyfish risk and weather forecast. Check the flag before heading to the beach.',
     'aria_notifications' => 'Dynamic notifications',
+    'skip_to_content' => 'Skip to content',
 
     // Navigation
     'nav_map' => 'Map',
@@ -164,7 +165,7 @@ return [
 
     // Search & Filters
     'search_clear' => 'Clear search',
-    'search_placeholder' => 'Search beach or municipality...',
+    'search_placeholder' => 'Search beach',
     'search_nearby' => 'Beaches near me',
     'search_nearby_short' => 'Near me',
     'filter_all' => 'All',
@@ -289,4 +290,13 @@ return [
     'contact_email_address' => 'checkpraia@example.com',
     'contact_social' => 'Follow us on social media',
     'contact_social_description' => 'Stay up to date with news, tips and updates.',
+    // Cookie consent
+    'cookie_title' => 'Privacy & Cookies',
+    'cookie_description' => 'We use cookies only for sessions and preferences. No tracking. Accept?',
+    'cookie_accept' => 'Accept',
+    'cookie_reject' => 'Reject',
+    'cookie_learn_more' => 'Learn more',
+
+    // Anonymous
+    'anonymous' => 'Anonymous',
 ];

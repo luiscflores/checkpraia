@@ -5,6 +5,7 @@ return [
     'site_description' => 'État des drapeaux des plages en temps réel. Prévisions automatiques, confirmations de la communauté et conditions maritimes.',
     'meta_description' => 'Consulte le drapeau le plus probable des plages maritimes surveillées du Portugal avant de sortir de chez toi.',
     'aria_notifications' => 'Notifications dynamiques',
+    'skip_to_content' => 'Aller au contenu',
 
     // Navigation
     'nav_map' => 'Carte',
@@ -164,7 +165,7 @@ return [
 
     // Search & Filters
     'search_clear' => 'Effacer la recherche',
-    'search_placeholder' => 'Rechercher une plage ou municipalité...',
+    'search_placeholder' => 'Rechercher une plage',
     'search_nearby' => 'Plages près de moi',
     'search_nearby_short' => 'Près de moi',
     'filter_all' => 'Toutes',
@@ -288,10 +289,19 @@ return [
     'contact_email_address' => 'checkpraia@example.com',
     'contact_social' => 'Suis-nous sur les réseaux sociaux',
     'contact_social_description' => 'Reste informé des nouveautés, conseils et mises à jour.',
+    // Cookie consent
+    'cookie_title' => 'Confidentialité et Cookies',
+    'cookie_description' => 'Nous utilisons des cookies uniquement pour les sessions et préférences. Pas de suivi. Acceptez-vous ?',
+    'cookie_accept' => 'Accepter',
+    'cookie_reject' => 'Refuser',
+    'cookie_learn_more' => 'En savoir plus',
 
     // PWA Install
     'pwa_install_title' => 'Installer CheckPraia',
     'pwa_install_description' => 'Installez l\'application pour une meilleure expérience et un accès hors ligne.',
     'pwa_install_button' => 'Installer',
     'pwa_install_dismiss' => 'Pas maintenant',
+
+    // Anonymous
+    'anonymous' => 'Anonyme',
 ];

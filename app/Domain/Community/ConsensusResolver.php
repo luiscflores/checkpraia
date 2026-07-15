@@ -2,34 +2,42 @@
 
 namespace App\Domain\Community;
 
-use App\Models\Beach;
-use App\Models\FlagReport;
-use App\Models\BeachCurrentStatus;
-use App\Models\FlagPrediction;
-use App\Models\OfficialAlert;
 use App\Domain\Gamification\ScoreManager;
-use Illuminate\Support\Facades\DB;
+use App\Models\Beach;
+use App\Models\BeachCurrentStatus;
+use App\Models\BeachHourlySnapshot;
+use App\Models\FlagPrediction;
+use App\Models\FlagReport;
+use App\Models\OceanForecast;
+use App\Models\OfficialAlert;
+use App\Models\TideForecast;
+use App\Models\WaterQualitySnapshot;
+use App\Models\WeatherForecast;
 
 class ConsensusResolver
 {
-    // Reason thresholds (duplicated from PredictionEngine for self-contained reasons)
     protected ScoreManager $scoreManager;
 
     public function __construct(?ScoreManager $scoreManager = null)
     {
-        $this->scoreManager = $scoreManager ?? new ScoreManager();
+        $this->scoreManager = $scoreManager ?? new ScoreManager;
     }
 
-    public function resolveCurrentStatus(Beach $beach): BeachCurrentStatus
+    /**
+     * Resolve the current status for a beach.
+     *
+     * @param  array{ocean: ?OceanForecast, weather: ?WeatherForecast, quality: ?WaterQualitySnapshot}  $payload  Pre-fetched forecast data from PredictionEngine::calculateWithPayload()
+     */
+    public function resolveCurrentStatus(Beach $beach, array $payload = []): BeachCurrentStatus
     {
         $status = BeachCurrentStatus::firstOrNew(['beach_id' => $beach->id]);
         $status->updated_at = now();
 
         // 1. Official alerts (absolute priority)
         $alert = OfficialAlert::where(function ($query) use ($beach) {
-                $query->where('beach_id', $beach->id)
-                      ->orWhereNull('beach_id');
-            })
+            $query->where('beach_id', $beach->id)
+                ->orWhereNull('beach_id');
+        })
             ->where('started_at', '<=', now())
             ->where(function ($q) {
                 $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
@@ -41,14 +49,16 @@ class ConsensusResolver
                 'flag' => 'red',
                 'confidence' => 100,
                 'consensus_reports_count' => 0,
-                'reason' => 'Interdição oficial da autoridade: ' . $alert->description,
+                'reason' => 'Interdição oficial da autoridade: '.$alert->description,
             ]);
-            return $this->saveAndCapture($status, $beach);
+
+            return $this->saveAndCapture($status, $beach, $payload);
         }
 
         // 2. Daily community consensus (all non-cancelled votes from today override algorithm)
         $beachTimezone = $beach->timezone;
         $todayStart = now($beachTimezone)->startOfDay()->timezone(config('app.timezone'));
+
         $todayReports = FlagReport::where('beach_id', $beach->id)
             ->where('reported_at', '>=', $todayStart)
             ->where('status', '!=', 'cancelled')
@@ -89,9 +99,9 @@ class ConsensusResolver
                     : (in_array('yellow', $winners) ? 'yellow' : 'green');
             }
 
-            $reason = 'Confirmado por ' . $distinctUsersCount . ' utilizador' . ($distinctUsersCount > 1 ? 'es' : '') . ' hoje';
+            $reason = 'Confirmado por '.$distinctUsersCount.' utilizador'.($distinctUsersCount > 1 ? 'es' : '').' hoje';
             if ($totalVotes > 1) {
-                $reason .= ' (' . $totalVotes . ' confirmaç' . ($totalVotes > 1 ? 'ões' : 'ão') . ')';
+                $reason .= ' ('.$totalVotes.' confirmaç'.($totalVotes > 1 ? 'ões' : 'ão').')';
             }
             $reason .= '.';
 
@@ -102,13 +112,14 @@ class ConsensusResolver
                 'consensus_reports_count' => $totalVotes,
                 'reason' => $reason,
             ]);
-            return $this->saveAndCapture($status, $beach);
+
+            return $this->saveAndCapture($status, $beach, $payload);
         }
 
         // 3. Fallback to automatic prediction
         $prediction = FlagPrediction::where('beach_id', $beach->id)->orderBy('calculated_at', 'desc')->first();
         if ($prediction && $prediction->calculated_at->isAfter(now()->subHours(config('prediction.consensus.prediction_max_age_hours')))) {
-            $reason = $this->buildPredictionReason($beach, $prediction);
+            $reason = $this->buildPredictionReason($beach, $prediction, $payload);
 
             $status->fill([
                 'source' => 'prediction',
@@ -136,18 +147,18 @@ class ConsensusResolver
             }
         }
 
-        return $this->saveAndCapture($status, $beach);
+        return $this->saveAndCapture($status, $beach, $payload);
     }
 
-    private function buildPredictionReason(Beach $beach, FlagPrediction $prediction): string
+    private function buildPredictionReason(Beach $beach, FlagPrediction $prediction, array $payload = []): string
     {
         if ($prediction->selected_flag === 'gray') {
             return 'Dados insuficientes ou obsoletos para previsão.';
         }
 
-        $ocean   = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $quality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
+        $ocean = $payload['ocean'] ?? OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $weather = $payload['weather'] ?? WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $quality = $payload['quality'] ?? WaterQualitySnapshot::where('beach_id', $beach->id)->orderBy('sampled_at', 'desc')->orderBy('id', 'desc')->first();
 
         if ($quality && $quality->sampled_at && $quality->sampled_at->diffInDays(now()) > config('prediction.quality.max_age_days')) {
             $quality = null;
@@ -160,18 +171,20 @@ class ConsensusResolver
             if ($ocean && $ocean->wave_height_max > config('prediction.consensus.red_wave_height')) {
                 $period = $ocean->wave_period_max ?: $ocean->wave_period_min;
                 $periodNote = $period && $period < config('prediction.consensus.short_wave_period')
-                    ? ' com período curto de ' . round($period, 1) . 's (rebentação intensa)'
+                    ? ' com período curto de '.round($period, 1).'s (rebentação intensa)'
                     : '';
-                return 'Ondulação muito forte com ondas de ' . $ocean->wave_height_max . 'm' . $periodNote . ' — banhos proibidos.';
+
+                return 'Ondulação muito forte com ondas de '.$ocean->wave_height_max.'m'.$periodNote.' — banhos proibidos.';
             }
             if ($weather && $weather->wind_speed > config('prediction.consensus.red_wind_speed')) {
-                return 'Vento extremamente forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h (Perigo de correntes).';
+                return 'Vento extremamente forte de '.(int) round($weather->wind_speed * 1.852).' km/h (Perigo de correntes).';
             }
+
             return 'Condições marítimas perigosas. Entrada na água proibida.';
         }
 
         if ($prediction->selected_flag === 'yellow') {
-            $nextTide = \App\Models\TideForecast::where('tide_station_id', $beach->tide_station_id)
+            $nextTide = TideForecast::where('tide_station_id', $beach->tide_station_id)
                 ->where('tide_time', '>=', now())
                 ->orderBy('tide_time', 'asc')
                 ->first();
@@ -183,27 +196,30 @@ class ConsensusResolver
                 && ($beach->type === 'estuarine' || ($beach->features && $beach->features->river_influence))
                 && now()->diffInMinutes($nextTide->tide_time) / 60.0 < config('prediction.consensus.estuary_current_hours')) {
                 $hours = round(now()->diffInMinutes($nextTide->tide_time) / 60.0, 1);
-                return 'Corrente de vazante forte no estuário (' . $hours . 'h para a maré baixa).';
+
+                return 'Corrente de vazante forte no estuário ('.$hours.'h para a maré baixa).';
             }
             if ($ocean && $ocean->wave_height_max > config('prediction.consensus.yellow_wave_height')) {
-                return 'Ondulação moderada com ondas de até ' . $ocean->wave_height_max . 'm (Recomenda-se precaução).';
+                return 'Ondulação moderada com ondas de até '.$ocean->wave_height_max.'m (Recomenda-se precaução).';
             }
             if ($weather && $weather->wind_speed > config('prediction.consensus.yellow_wind_speed')) {
-                return 'Vento moderado a forte de ' . (int)round($weather->wind_speed * 1.852) . ' km/h.';
+                return 'Vento moderado a forte de '.(int) round($weather->wind_speed * 1.852).' km/h.';
             }
             if ($nextTide && $nextTide->tide_type === 'low') {
-                return 'Maré baixa (' . $nextTide->tide_height . 'm) com risco acrescido de correntes e rochas expostas.';
+                return 'Maré baixa ('.$nextTide->tide_height.'m) com risco acrescido de correntes e rochas expostas.';
             }
             if ($beach->features && $beach->features->current_risk === 'high') {
                 return 'Risco elevado de correntes permanentes nesta praia.';
             }
+
             return 'Condições marítimas requerem atenção reforçada.';
         }
 
         // Green
         if ($ocean && $ocean->wave_height_max < 0.6) {
-            return 'Mar calmo (' . $ocean->wave_height_max . 'm) e vento fraco.';
+            return 'Mar calmo ('.$ocean->wave_height_max.'m) e vento fraco.';
         }
+
         return 'Condições favoráveis de vento, ondulação e qualidade da água.';
     }
 
@@ -240,6 +256,7 @@ class ConsensusResolver
                 $report->save();
 
                 $this->scoreManager->penalizeReport($report);
+
                 return;
             }
         }
@@ -251,26 +268,27 @@ class ConsensusResolver
         $this->scoreManager->addReportPoints($report);
     }
 
-    private function saveAndCapture(BeachCurrentStatus $status, Beach $beach): BeachCurrentStatus
+    private function saveAndCapture(BeachCurrentStatus $status, Beach $beach, array $payload = []): BeachCurrentStatus
     {
         $status->save();
-        $this->captureSnapshotForBeach($beach, $status);
+        $this->captureSnapshotForBeach($beach, $status, $payload);
+
         return $status;
     }
 
-    public function captureSnapshotForBeach(Beach $beach, BeachCurrentStatus $status): void
+    public function captureSnapshotForBeach(Beach $beach, BeachCurrentStatus $status, array $payload = []): void
     {
         $now = now();
         $capturedAt = $now->copy()->startOfHour();
 
-        $ocean = \App\Models\OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $weather = \App\Models\WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
-        $latestQuality = \App\Models\WaterQualitySnapshot::where('beach_id', $beach->id)
+        $ocean = $payload['ocean'] ?? OceanForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $weather = $payload['weather'] ?? WeatherForecast::where('beach_id', $beach->id)->orderBy('forecasted_at', 'desc')->first();
+        $latestQuality = $payload['quality'] ?? WaterQualitySnapshot::where('beach_id', $beach->id)
             ->orderBy('sampled_at', 'desc')
             ->orderBy('id', 'desc')
             ->first();
 
-        \App\Models\BeachHourlySnapshot::updateOrCreate(
+        BeachHourlySnapshot::updateOrCreate(
             [
                 'beach_id' => $beach->id,
                 'captured_at' => $capturedAt,

@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Beach;
-use App\Models\BeachTranslation;
-use App\Models\BeachService;
 use App\Models\BeachFeature;
 use App\Models\BeachPredictionProfile;
+use App\Models\BeachService;
+use App\Models\BeachTranslation;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

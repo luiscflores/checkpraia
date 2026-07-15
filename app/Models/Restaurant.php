@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'external_id', 'source', 'name', 'image_url', 'cuisine_type',
     'rating', 'reviews_count', 'latitude', 'longitude', 'address',
-    'average_price', 'booking_url', 'external_url'
+    'average_price', 'booking_url', 'external_url',
 ])]
 class Restaurant extends Model
 {

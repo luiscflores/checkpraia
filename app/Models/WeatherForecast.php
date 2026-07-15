@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'wind_speed', 'wind_direction', 'precipitation',
-    'visibility', 'temp', 'uv_index', 'weather_code', 'forecasted_at'
+    'visibility', 'temp', 'uv_index', 'weather_code', 'forecasted_at',
 ])]
 class WeatherForecast extends Model
 {

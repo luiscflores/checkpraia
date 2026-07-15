@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'exposure_factor', 'shelter_factor', 'current_risk_factor',
     'wave_height_weight', 'wave_period_weight', 'wave_direction_weight',
     'wind_weight', 'tide_weight', 'warning_weight', 'water_quality_weight',
-    'algorithm_version'
+    'algorithm_version',
 ])]
 class BeachPredictionProfile extends Model
 {

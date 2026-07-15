@@ -10,8 +10,8 @@ class EnsureIsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || !$request->user()->is_admin) {
-            abort(403, 'Acesso restrito a administradores.');
+        if (! $request->user() || ! $request->user()->is_admin) {
+            abort(403, __('beach.admin_access_restricted'));
         }
 
         return $next($request);

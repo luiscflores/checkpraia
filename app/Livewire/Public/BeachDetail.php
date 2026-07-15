@@ -12,8 +12,11 @@ use App\Models\OfficialAlert;
 use App\Models\ScoreTransaction;
 use App\Models\TideForecast;
 use App\Services\GeoService;
+use App\Services\Ipma\IpmaClient;
 use App\Services\PushNotificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
@@ -23,8 +26,6 @@ class BeachDetail extends Component
     {
         return (int) config('gamification.report.cooldown_minutes', 60);
     }
-
-
 
     private function maxDistanceKm(): float
     {
@@ -43,7 +44,7 @@ class BeachDetail extends Component
 
     public $isFavorited = false;
 
-    public function mount($slug)
+    public function mount(string $slug): void
     {
         $beach = Beach::where('slug', $slug)->firstOrFail(['id', 'latitude', 'longitude', 'tide_station_id', 'slug']);
 
@@ -57,13 +58,21 @@ class BeachDetail extends Component
             ->exists();
     }
 
-    public function toggleFavorite()
+    public function toggleFavorite(): void
     {
         if (! auth()->check()) {
             session()->flash('favorite_error', __('common.favorite_login_required'));
 
             return;
         }
+
+        $throttleKey = 'favorite:'.auth()->id();
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            session()->flash('favorite_error', __('common.favorite_login_required'));
+
+            return;
+        }
+        RateLimiter::hit($throttleKey, 60);
 
         $user = auth()->user();
 
@@ -78,7 +87,7 @@ class BeachDetail extends Component
         }
     }
 
-    public function submitReport($flag, $lat, $lon, $accuracy = null)
+    public function submitReport(string $flag, float $lat, float $lon, ?float $accuracy = null): void
     {
         if (! auth()->check()) {
             $this->addError('report', __('common.favorite_login_required'));
@@ -96,17 +105,17 @@ class BeachDetail extends Component
         $isAdmin = $user->is_admin;
 
         $beach = Beach::findOrFail($this->beachId);
-        if (!$isAdmin && !$beach->isInLifeguardHours()) {
+        if (! $isAdmin && ! $beach->isInLifeguardHours()) {
             $this->addError('report', __('beach.report_outside_lifeguard_hours', [
-                'start' => \Carbon\Carbon::parse($beach->lifeguard_start)->format('H:i'),
-                'end' => \Carbon\Carbon::parse($beach->lifeguard_end)->format('H:i'),
+                'start' => Carbon::parse($beach->lifeguard_start)->format('H:i'),
+                'end' => Carbon::parse($beach->lifeguard_end)->format('H:i'),
             ]));
+
             return;
         }
 
-        $throttleKey = 'report:'.$user->id;
+        $throttleKey = 'report:'.$user->id.':'.$this->beachId;
         if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
             $this->addError('report', __('beach.report_rate_limit'));
 
             return;
@@ -133,46 +142,54 @@ class BeachDetail extends Component
 
         $distance = $this->calculateDistance((float) $lat, (float) $lon, (float) $this->beachLatitude, (float) $this->beachLongitude);
 
-        if (!$isAdmin && $distance > $this->maxDistanceKm()) {
+        if (! $isAdmin && $distance > $this->maxDistanceKm()) {
             $this->addError('report', __('beach.report_too_far', ['distance' => round($distance, 1), 'max' => $this->maxDistanceKm()]));
+
             return;
         }
 
-        $scoreManager = new ScoreManager;
+        $scoreManager = app(ScoreManager::class);
         $weight = $isAdmin ? 10 : $scoreManager->getVoteWeight($user);
 
-        // Save report (confirmed immediately — points awarded straight away)
-        $report = FlagReport::create([
-            'user_id' => $user->id,
-            'beach_id' => $this->beachId,
-            'flag' => $flag,
-            'vote_weight' => $weight,
-            'status' => 'pending',
-            'distance_to_beach' => $distance,
-            'gps_accuracy' => $accuracy,
-            'latitude' => $lat,
-            'longitude' => $lon,
-            'reported_at' => now(),
-        ]);
+        // Wrap report + consensus in a transaction to prevent partial writes
+        $report = DB::transaction(function () use ($user, $flag, $weight, $distance, $accuracy, $lat, $lon) {
+            $report = FlagReport::create([
+                'user_id' => $user->id,
+                'beach_id' => $this->beachId,
+                'flag' => $flag,
+                'vote_weight' => $weight,
+                'status' => 'pending',
+                'distance_to_beach' => $distance,
+                'gps_accuracy' => $accuracy,
+                'latitude' => $lat,
+                'longitude' => $lon,
+                'reported_at' => now(),
+            ]);
 
-        $resolver = new ConsensusResolver;
+            $resolver = app(ConsensusResolver::class);
 
-        // Points only once per hour per beach
-        $hasPointsThisHour = ScoreTransaction::where('user_id', $user->id)
-            ->whereHas('report', fn ($q) => $q->where('beach_id', $this->beachId))
-            ->where('created_at', '>=', now()->startOfHour())
-            ->exists();
+            // Points only once per hour per beach
+            $hasPointsThisHour = ScoreTransaction::where('user_id', $user->id)
+                ->whereHas('report', fn ($q) => $q->where('beach_id', $this->beachId))
+                ->where('created_at', '>=', now()->startOfHour())
+                ->exists();
 
-        if ($hasPointsThisHour) {
-            $report->status = 'confirmed';
-            $report->resolved_at = now();
-            $report->save();
-        } else {
-            $resolver->resolveReport($report);
-        }
+            if ($hasPointsThisHour) {
+                $report->status = 'confirmed';
+                $report->resolved_at = now();
+                $report->save();
+            } else {
+                $resolver->resolveReport($report);
+            }
+
+            return $report;
+        });
 
         $beach = Beach::find($this->beachId);
-        $resolver->resolveCurrentStatus($beach);
+        app(ConsensusResolver::class)->resolveCurrentStatus($beach);
+
+        // Invalidate today's reports cache so the new vote shows immediately
+        Cache::forget("beach_today_reports:{$this->beachId}:".now()->format('Y-m-d'));
 
         // Notify subscribers (favorites + nearby)
         try {
@@ -195,83 +212,140 @@ class BeachDetail extends Component
         return app(GeoService::class)->haversine($lat1, $lon1, $lat2, $lon2);
     }
 
-    public function render()
+    // ─── Cached data helpers ─────────────────────────────────────────────────
+
+    /**
+     * Beach with static relations — changes very rarely, cache for 1 hour.
+     * Cached separately from dynamic data (reports, status).
+     */
+    private function getCachedBeach(): Beach
     {
-        $beach = Beach::with([
-            'currentStatus',
-            'translations',
-            'services',
-            'features',
-            'restaurants' => fn ($q) => $q->take(6),
-            'latestOceanForecast',
-            'latestWeatherForecast',
-            'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
-        ])->findOrFail($this->beachId);
+        return Cache::remember("beach_detail_static:{$this->beachId}", 3600, function () {
+            return Beach::with([
+                'currentStatus',
+                'translations',
+                'services',
+                'features',
+                'restaurants' => fn ($q) => $q->take(6),
+                'latestOceanForecast',
+                'latestWeatherForecast',
+                'qualitySnapshots' => fn ($q) => $q->latest('sampled_at')->latest('id')->take(1),
+            ])->findOrFail($this->beachId);
+        });
+    }
 
-        $beachTimezone = $beach->timezone;
-        $startOfDay = now($beachTimezone)->startOfDay()->timezone(config('app.timezone'));
+    /**
+     * Today's flag reports — short cache (2 min), invalidated on submitReport().
+     */
+    private function getTodayReports(string $startOfDay)
+    {
+        $key = "beach_today_reports:{$this->beachId}:".now()->format('Y-m-d');
 
-        $todayReports = FlagReport::where('beach_id', $this->beachId)
-            ->where('reported_at', '>=', $startOfDay)
-            ->where('status', '!=', 'cancelled')
-            ->with('user')
-            ->orderBy('reported_at', 'desc')
-            ->get();
+        return Cache::remember($key, 120, function () use ($startOfDay) {
+            return FlagReport::where('beach_id', $this->beachId)
+                ->where('reported_at', '>=', $startOfDay)
+                ->where('status', '!=', 'cancelled')
+                ->with(['user:id,name,username,avatar'])  // restrict columns — no N+1
+                ->orderBy('reported_at', 'desc')
+                ->get();
+        });
+    }
 
-        $latestOcean = $beach->latestOceanForecast;
-        $latestWeather = $beach->latestWeatherForecast;
-        $latestQuality = $beach->qualitySnapshots->first();
-        $latestPrediction = FlagPrediction::where('beach_id', $this->beachId)
-            ->orderBy('calculated_at', 'desc')
-            ->first();
+    /**
+     * Tides for today+tomorrow — changes at most once per day.
+     */
+    private function getCachedTides()
+    {
+        $key = "beach_tides:{$this->beachTideStationId}:".now()->format('Y-m-d');
 
-        $todaySnapshots = BeachHourlySnapshot::where('beach_id', $this->beachId)
-            ->where('captured_at', '>=', $startOfDay)
-            ->orderBy('captured_at')
-            ->get()
-            ->each(function ($snapshot) use ($beach) {
-                // Pre-compute so the blade never needs to call Beach model methods directly
-                $snapshot->within_hours = $beach->isTimeInLifeguardHours($snapshot->captured_at);
-            });
+        return Cache::remember($key, 21600, function () { // 6 hours
+            return TideForecast::where('tide_station_id', $this->beachTideStationId)
+                ->whereBetween('tide_time', [now()->startOfDay(), now()->endOfDay()->addHours(12)])
+                ->orderBy('tide_time', 'asc')
+                ->get();
+        });
+    }
 
-        $activeAlerts = OfficialAlert::where(function ($q) {
-            $q->where('beach_id', $this->beachId)
-                ->orWhereNull('beach_id');
-        })
-            ->where('started_at', '<=', now())
-            ->where(function ($q) {
-                $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
-            })->get();
+    /**
+     * Latest flag prediction — cache 10 min.
+     */
+    private function getCachedPrediction(): ?FlagPrediction
+    {
+        return Cache::remember("beach_prediction:{$this->beachId}", 600, function () {
+            return FlagPrediction::where('beach_id', $this->beachId)
+                ->orderBy('calculated_at', 'desc')
+                ->first();
+        });
+    }
 
-        $tides = TideForecast::where('tide_station_id', $this->beachTideStationId)
-            ->whereBetween('tide_time', [now()->startOfDay(), now()->endOfDay()->addHours(12)])
-            ->orderBy('tide_time', 'asc')
-            ->get();
+    /**
+     * Active official alerts — cache 5 min.
+     */
+    private function getCachedAlerts()
+    {
+        return Cache::remember("beach_alerts:{$this->beachId}", 300, function () {
+            return OfficialAlert::where(function ($q) {
+                $q->where('beach_id', $this->beachId)
+                    ->orWhereNull('beach_id');
+            })
+                ->where('started_at', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
+                })->get();
+        });
+    }
 
-        $nextTide = null;
-        $tideDirection = null;
-        if ($tides->isNotEmpty()) {
-            $nextTide = $tides->firstWhere('tide_time', '>', now());
-            if ($nextTide) {
-                $prevTide = $tides->where('tide_time', '<=', now())->last();
-                if ($prevTide) {
-                    $tideDirection = $nextTide->tide_type === 'high' ? 'up' : 'down';
-                } else {
-                    $tideDirection = $nextTide->tide_type === 'high' ? 'up' : 'down';
-                }
-            } else {
-                $tideDirection = null;
-            }
+    /**
+     * Today's hourly snapshots — cache 15 min.
+     */
+    private function getCachedTodaySnapshots(Beach $beach, string $startOfDay)
+    {
+        $key = "beach_snapshots:{$this->beachId}:".now()->format('Y-m-d-H');
+
+        return Cache::remember($key, 900, function () use ($beach, $startOfDay) {
+            return BeachHourlySnapshot::where('beach_id', $this->beachId)
+                ->where('captured_at', '>=', $startOfDay)
+                ->orderBy('captured_at')
+                ->get()
+                ->each(function ($snapshot) use ($beach) {
+                    $snapshot->within_hours = $beach->isTimeInLifeguardHours($snapshot->captured_at);
+                });
+        });
+    }
+
+    /**
+     * Moon phase — pure math, cache 1 hour.
+     */
+    private function getCachedMoonData(): array
+    {
+        return Cache::remember('moon_phases:'.now()->format('Y-m-d-H'), 3600, function () {
+            return [
+                'phase' => TideForecast::moonPhase(),
+                'upcoming' => TideForecast::upcomingMoonPhases(),
+            ];
+        });
+    }
+
+    /**
+     * Tide curve computation (48-point interpolation) — derived from tides, cache per day.
+     */
+    private function buildTideCurve($tides): array
+    {
+        if ($tides->isEmpty()) {
+            return ['curve' => [], 'points' => ''];
         }
 
-        $tideCurve = [];
-        $tideCurvePoints = '';
-        if ($tides->isNotEmpty()) {
+        $key = "beach_tide_curve:{$this->beachTideStationId}:".now()->format('Y-m-d');
+
+        return Cache::remember($key, 21600, function () use ($tides) {
             $maxH = $tides->pluck('tide_height')->push(4)->max();
             $minH = $tides->pluck('tide_height')->push(0)->min();
             $rangeH = max($maxH - $minH, 0.5);
             $dayStart = now()->startOfDay();
             $steps = 48;
+
+            $tideCurve = [];
+            $tideCurvePoints = '';
 
             for ($i = 0; $i <= $steps; $i++) {
                 $t = $dayStart->copy()->addMinutes($i * 1440 / $steps);
@@ -296,15 +370,60 @@ class BeachDetail extends Component
                 $tideCurve[] = ['time' => $t->format('H:i'), 'pct' => round($pct, 3), 'height' => round($height, 2)];
                 $tideCurvePoints .= " {$x},{$y}";
             }
+
+            return ['curve' => $tideCurve, 'points' => $tideCurvePoints];
+        });
+    }
+
+    // ─── Render ──────────────────────────────────────────────────────────────
+
+    public function render()
+    {
+        $beach = $this->getCachedBeach();
+
+        $beachTimezone = $beach->timezone;
+        $startOfDay = now($beachTimezone)->startOfDay()->timezone(config('app.timezone'));
+        $startOfDayStr = $startOfDay->toDateTimeString();
+
+        $todayReports = $this->getTodayReports($startOfDayStr);
+        $tides = $this->getCachedTides();
+        $latestOcean = $beach->latestOceanForecast;
+        $latestWeather = $beach->latestWeatherForecast;
+        $latestQuality = $beach->qualitySnapshots->first();
+        $latestPrediction = $this->getCachedPrediction();
+        $activeAlerts = $this->getCachedAlerts();
+        $todaySnapshots = $this->getCachedTodaySnapshots($beach, $startOfDayStr);
+
+        // Tide direction (cheap: runs on already-cached collection)
+        $nextTide = null;
+        $tideDirection = null;
+        if ($tides->isNotEmpty()) {
+            $nextTide = $tides->firstWhere('tide_time', '>', now());
+            if ($nextTide) {
+                $tideDirection = $nextTide->tide_type === 'high' ? 'up' : 'down';
+            }
         }
+
+        // Tide curve — cached per day
+        $tideData = $this->buildTideCurve($tides);
+        $tideCurve = $tideData['curve'];
+        $tideCurvePoints = $tideData['points'];
 
         $tidesToday = $tides->filter(fn ($t) => $t->tide_time->isToday());
         $tidesTomorrow = $tides->filter(fn ($t) => $t->tide_time->isTomorrow());
 
         // Daily weather forecast (cached 1h)
         $dailyForecast = Cache::remember("beach_daily_forecast:{$beach->id}", 3600, function () use ($beach) {
-            return (new \App\Services\Ipma\IpmaClient())->getDailyForecast($beach->latitude, $beach->longitude);
+            return (new IpmaClient)->getDailyForecast($beach->latitude, $beach->longitude);
         });
+
+        // Hourly weather forecast (cached 1h)
+        $hourlyForecast = Cache::remember("beach_hourly_forecast:{$beach->id}", 3600, function () use ($beach) {
+            return (new IpmaClient)->getHourlyForecast($beach->latitude, $beach->longitude);
+        });
+
+        // Moon data — cached 1h
+        $moonData = $this->getCachedMoonData();
 
         return view('livewire.public.beach-detail', [
             'todayReports' => $todayReports,
@@ -321,10 +440,11 @@ class BeachDetail extends Component
             'tideDirection' => $tideDirection,
             'tideCurve' => $tideCurve,
             'tideCurvePoints' => $tideCurvePoints,
-            'moonPhase' => TideForecast::moonPhase(),
-            'upcomingMoonPhases' => TideForecast::upcomingMoonPhases(),
+            'moonPhase' => $moonData['phase'],
+            'upcomingMoonPhases' => $moonData['upcoming'],
             'todaySnapshots' => $todaySnapshots,
             'dailyForecast' => $dailyForecast,
+            'hourlyForecast' => $hourlyForecast,
         ])->layout('components.layouts.app');
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['admin_user_id', 'target_user_id', 'previous_points', 'new_points', 'difference', 'justification'])]
 class AdminScoreAdjustment extends Model

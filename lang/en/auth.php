@@ -37,4 +37,26 @@ return [
         'success' => 'Account created successfully!',
         'referral_invalid' => 'The referral code you entered is not valid.',
     ],
+    'forgot_password' => [
+        'page_title' => 'Reset Password - CheckPraia',
+        'heading' => 'Forgot your password?',
+        'description' => 'No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.',
+        'submit' => 'Email Password Reset Link',
+    ],
+    'reset_password' => [
+        'page_title' => 'Reset Password - CheckPraia',
+        'submit' => 'Reset Password',
+    ],
+    'verify_email' => [
+        'page_title' => 'Verify Email - CheckPraia',
+        'description' => 'Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.',
+        'verification_sent' => 'A new verification link has been sent to the email address you provided during registration.',
+        'resend' => 'Resend Verification Email',
+        'logout' => 'Log Out',
+    ],
+    'confirm_password' => [
+        'page_title' => 'Confirm Password - CheckPraia',
+        'description' => 'This is a secure area of the application. Please confirm your password before continuing.',
+        'submit' => 'Confirm',
+    ],
 ];

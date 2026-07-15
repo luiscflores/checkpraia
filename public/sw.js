@@ -85,6 +85,25 @@ async function limitCacheSize(cache, maxItems) {
   }
 }
 
+async function networkWithTimeout(request, cacheName, ms, onSuccess) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request).catch(() => null);
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ms);
+    const response = await fetch(request, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (response.ok || response.type === 'opaqueredirect') {
+      if (onSuccess) onSuccess(cache, response);
+    }
+    return response;
+  } catch {
+    if (cached) return cached;
+    const offline = await caches.match('/offline').catch(() => null);
+    return offline || new Response('', { status: 504 });
+  }
+}
+
 // ── Fetch handler ────────────────────────────────────────────────────────
 
 self.addEventListener('fetch', (event) => {
@@ -114,19 +133,12 @@ self.addEventListener('fetch', (event) => {
     }
   } catch (e) { /* ignore */ }
 
-  // 1. Map tiles: cache-first with LRU limit
+  // 1. Map tiles: network-first with timeout (6s), fallback to cache
   if (isTileRequest(url)) {
     event.respondWith(
-      caches.open(TILE_CACHE).then(async (cache) => {
-        const cached = await cache.match(request);
-        const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
-            cache.put(request, response.clone());
-            limitCacheSize(cache, MAX_TILES);
-          }
-          return response;
-        }).catch(() => cached);
-        return cached || fetchPromise || new Response('', { status: 504 });
+      networkWithTimeout(request, TILE_CACHE, 6000, (cache, response) => {
+        cache.put(request, response.clone());
+        limitCacheSize(cache, MAX_TILES);
       })
     );
     return;
@@ -140,18 +152,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static build assets: cache-first (immutable, hashed filenames)
+  // 3. Static build assets: network-first with timeout (6s), fallback to cache
   if (isStaticAsset(url)) {
     event.respondWith(
-      caches.open(STATIC_CACHE).then((cache) =>
-        cache.match(request).then((cached) => {
-          const fetched = fetch(request).then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          }).catch(() => cached);
-          return cached || fetched || new Response('', { status: 504 });
-        })
-      )
+      networkWithTimeout(request, STATIC_CACHE, 6000, (cache, response) => {
+        cache.put(request, response.clone());
+      })
     );
     return;
   }

@@ -202,7 +202,7 @@
                                     {{ $favFlagName }}
                                 </span>
                                 
-                                <button wire:click="removeFavorite({{ $favorite->id }})" class="text-theme-muted hover:text-rose-400 text-sm transition-colors" title="{{ __('common.favorite_remove') }}">
+                                <button wire:click="removeFavorite({{ $favorite->id }})" class="text-theme-muted hover:text-rose-400 text-sm transition-colors" title="{{ __('common.favorite_remove') }}" aria-label="{{ __('common.favorite_remove') }}">
                                     🗑️
                                 </button>
                             </div>

@@ -5,9 +5,8 @@ namespace App\Services;
 use App\Models\Beach;
 use App\Models\FlagReport;
 use App\Models\PushSubscription;
-use App\Models\User;
-use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
+use Minishlink\WebPush\WebPush;
 
 class PushNotificationService
 {
@@ -30,9 +29,9 @@ class PushNotificationService
     public function notifyBeachVote(Beach $beach, FlagReport $report): void
     {
         $flagName = match ($report->flag) {
-            'green' => '🟢 ' . __('common.flag_green'),
-            'yellow' => '🟡 ' . __('common.flag_yellow'),
-            'red' => '🔴 ' . __('common.flag_red'),
+            'green' => '🟢 '.__('common.flag_green'),
+            'yellow' => '🟡 '.__('common.flag_yellow'),
+            'red' => '🔴 '.__('common.flag_red'),
             default => $report->flag,
         };
 
@@ -65,7 +64,9 @@ class PushNotificationService
             ->get();
 
         foreach ($subscribers as $sub) {
-            if (!$sub->endpoint) continue;
+            if (! $sub->endpoint) {
+                continue;
+            }
 
             try {
                 $subscription = Subscription::create([
@@ -95,7 +96,7 @@ class PushNotificationService
         }
 
         foreach ($this->webPush->flush() as $reportResult) {
-            if (!$reportResult->isSuccess()) {
+            if (! $reportResult->isSuccess()) {
                 $endpoint = $reportResult->getEndpoint();
                 PushSubscription::where('endpoint', $endpoint)->delete();
             }
@@ -124,14 +125,16 @@ class PushNotificationService
             $results = $this->webPush->flush();
             $result = reset($results);
 
-            if ($result && !$result->isSuccess()) {
+            if ($result && ! $result->isSuccess()) {
                 $subscription->delete();
+
                 return false;
             }
 
             return true;
         } catch (\Exception $e) {
             $subscription->delete();
+
             return false;
         }
     }

@@ -82,6 +82,7 @@ sudo phpenmod opcache 2>/dev/null || true
 echo "=== 6. Configurar nginx ==="
 
 sudo cp scripts/checkpraia-nginx.conf /etc/nginx/sites-available/checkpraia
+sudo cp scripts/security-headers.conf /etc/nginx/snippets/security-headers.conf 2>/dev/null || true
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
 
@@ -183,6 +184,13 @@ echo "=== 14. Arrancar servicos ==="
 
 sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor
 sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor
+
+# ── 15. Security hardening ──────────────────────────────────────────────
+echo "=== 15. Security hardening ==="
+
+if [ -f "$WORK_TREE/scripts/security-hardening.sh" ]; then
+    bash "$WORK_TREE/scripts/security-hardening.sh"
+fi
 
 echo ""
 echo "============================================"

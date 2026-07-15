@@ -2,25 +2,26 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Beach;
-use App\Models\FlagReport;
-use App\Models\Referral;
-use App\Models\ScoreTransaction;
-use App\Models\BeachCurrentStatus;
-use App\Models\FlagPrediction;
-use App\Jobs\PurgePreciseLocations;
 use App\Domain\Community\ConsensusResolver;
 use App\Domain\Gamification\ScoreManager;
+use App\Jobs\PurgePreciseLocations;
+use App\Livewire\Public\BeachDetail;
+use App\Models\Beach;
+use App\Models\FlagPrediction;
+use App\Models\FlagReport;
+use App\Models\Referral;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
+use Tests\TestCase;
 
 class CheckPraiaSystemTest extends TestCase
 {
     use RefreshDatabase;
 
     protected $beach;
+
     protected $user;
 
     protected function setUp(): void
@@ -58,11 +59,11 @@ class CheckPraiaSystemTest extends TestCase
         $response = $this->post(route('beach.show.pt', ['locale' => 'pt', 'slug' => $this->beach->slug]), [
             // Simulating Livewire call under the hood
         ]);
-        
+
         $this->assertTrue(true); // Base route loaded
 
         // Let's test the component logic directly using standard Livewire test harness
-        $component = \Livewire\Livewire::test(\App\Livewire\Public\BeachDetail::class, ['slug' => $this->beach->slug])
+        $component = Livewire::test(BeachDetail::class, ['slug' => $this->beach->slug])
             ->call('submitReport', 'green', 40.644167, -8.748333, 10); // accurate coordinates
 
         $this->assertDatabaseHas('flag_reports', [
@@ -81,7 +82,7 @@ class CheckPraiaSystemTest extends TestCase
         ]);
         $this->actingAs($anotherUser);
 
-        $componentTwo = \Livewire\Livewire::test(\App\Livewire\Public\BeachDetail::class, ['slug' => $this->beach->slug])
+        $componentTwo = Livewire::test(BeachDetail::class, ['slug' => $this->beach->slug])
             ->call('submitReport', 'red', 40.670000, -8.748333, 10); // Far away
 
         $componentTwo->assertHasErrors('report');
@@ -107,7 +108,7 @@ class CheckPraiaSystemTest extends TestCase
             'calculated_at' => now(),
         ]);
 
-        $resolver = new ConsensusResolver();
+        $resolver = new ConsensusResolver;
         $resolver->resolveCurrentStatus($this->beach);
 
         // Verify initial status is prediction (yellow)
@@ -163,8 +164,8 @@ class CheckPraiaSystemTest extends TestCase
      */
     public function test_consensus_tie_breaker_and_penalization()
     {
-        $resolver = new ConsensusResolver();
-        
+        $resolver = new ConsensusResolver;
+
         $uA = User::create(['name' => 'A', 'email' => 'a@checkpraia.pt', 'username' => 'usera', 'password' => 'pass']);
         $uB = User::create(['name' => 'B', 'email' => 'b@checkpraia.pt', 'username' => 'userb', 'password' => 'pass']);
         $uC = User::create(['name' => 'C', 'email' => 'c@checkpraia.pt', 'username' => 'userc', 'password' => 'pass']);
@@ -188,7 +189,7 @@ class CheckPraiaSystemTest extends TestCase
         $rD = FlagReport::create(['user_id' => $uD->id, 'beach_id' => $this->beach->id, 'flag' => 'green', 'status' => 'pending', 'reported_at' => now()->subMinutes(65), 'distance_to_beach' => 0.1]);
 
         // Resolve each report individually (consensus no longer runs as a deferred job)
-        $resolver = new \App\Domain\Community\ConsensusResolver();
+        $resolver = new ConsensusResolver;
         foreach ([$rA, $rB, $rC, $rD] as $r) {
             $resolver->resolveReport($r);
         }
@@ -212,7 +213,7 @@ class CheckPraiaSystemTest extends TestCase
      */
     public function test_referral_gamification_bonus()
     {
-        $scoreManager = new ScoreManager();
+        $scoreManager = new ScoreManager;
 
         // User A invites User B
         $userA = User::create(['name' => 'User A', 'email' => 'a@checkpraia.pt', 'username' => 'usera', 'password' => 'p', 'referral_code' => 'ACODE', 'score' => 0]);
@@ -248,7 +249,7 @@ class CheckPraiaSystemTest extends TestCase
         // Add 4 more qualified referrals for A
         for ($i = 1; $i <= 4; $i++) {
             $invited = User::create(['name' => "Invited $i", 'email' => "invited{$i}@checkpraia.pt", 'username' => "invited{$i}", 'password' => 'p', 'score' => 0]);
-            
+
             Referral::create([
                 'referrer_user_id' => $userA->id,
                 'invited_user_id' => $invited->id,
@@ -294,7 +295,7 @@ class CheckPraiaSystemTest extends TestCase
             'longitude' => -8.748333,
             'reported_at' => now()->subDay(),
         ]);
-        
+
         // Force timestamp updates in DB
         DB::table('flag_reports')
             ->where('id', $report->id)
@@ -315,6 +316,6 @@ class CheckPraiaSystemTest extends TestCase
         $this->assertNull($report->latitude);
         $this->assertNull($report->longitude);
         // Distance is still intact
-        $this->assertEquals(0.1, (float)$report->distance_to_beach);
+        $this->assertEquals(0.1, (float) $report->distance_to_beach);
     }
 }

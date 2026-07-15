@@ -16,6 +16,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -27,7 +28,7 @@ class Dashboard extends Component
     // ─── Tab Navigation ───
     public $activeTab = 'visao-geral';
 
-    public function setTab($tab)
+    public function setTab(string $tab): void
     {
         $this->activeTab = $tab;
     }
@@ -43,7 +44,7 @@ class Dashboard extends Component
 
     public $justification;
 
-    public function selectUser($userId)
+    public function selectUser(int $userId): void
     {
         $this->selectedUserId = $userId;
         $this->selectedUser = User::find($userId);
@@ -72,7 +73,7 @@ class Dashboard extends Component
                 'type' => 'admin_adjustment',
                 'points' => $difference,
                 'status' => 'confirmed',
-                'description' => 'Ajuste manual administrativo: '.$this->justification,
+                'description' => __('beach.admin_score_adjustment_description', ['justification' => $this->justification]),
             ]);
 
             AdminScoreAdjustment::create([
@@ -88,7 +89,7 @@ class Dashboard extends Component
             $targetUser->save();
         });
 
-        session()->flash('adjust_success', 'Pontuação de '.$targetUser->username.' ajustada para '.$newPoints.'!');
+        session()->flash('adjust_success', __('beach.admin_score_adjusted', ['username' => $targetUser->username, 'points' => $newPoints]));
         $this->selectedUserId = null;
         $this->selectedUser = null;
         $this->justification = '';
@@ -100,7 +101,7 @@ class Dashboard extends Component
         if ($user) {
             $user->is_suspended = ! $user->is_suspended;
             $user->save();
-            session()->flash('user_action', 'Estado de suspensão de '.$user->username.' alterado.');
+            session()->flash('user_action', __('beach.admin_suspension_changed', ['username' => $user->username]));
         }
     }
 
@@ -110,14 +111,14 @@ class Dashboard extends Component
         if ($user && ! $user->is_admin) {
             $user->is_admin = true;
             $user->save();
-            session()->flash('user_action', $user->username.' promovido a administrador.');
+            session()->flash('user_action', __('beach.admin_promoted', ['username' => $user->username]));
         }
     }
 
     public function removeAdmin($userId)
     {
         if ($userId === Auth::id()) {
-            session()->flash('sync_error', 'Não podes remover os teus próprios privilégios de admin.');
+            session()->flash('sync_error', __('beach.admin_cannot_remove_own'));
 
             return;
         }
@@ -125,7 +126,7 @@ class Dashboard extends Component
         if ($user && $user->is_admin) {
             $user->is_admin = false;
             $user->save();
-            session()->flash('user_action', 'Privilégios de admin removidos de '.$user->username.'.');
+            session()->flash('user_action', __('beach.admin_privileges_removed', ['username' => $user->username]));
         }
     }
 
@@ -152,7 +153,7 @@ class Dashboard extends Component
         if ($beach) {
             $beach->is_active = ! $beach->is_active;
             $beach->save();
-            session()->flash('beach_action', $beach->name.' '.($beach->is_active ? 'ativada' : 'desativada').'.');
+            session()->flash('beach_action', $beach->is_active ? __('beach.admin_beach_activated', ['name' => $beach->name]) : __('beach.admin_beach_deactivated', ['name' => $beach->name]));
         }
     }
 
@@ -188,7 +189,7 @@ class Dashboard extends Component
         $resolver->resolveCurrentStatus($beach);
 
         $this->confirmResetBeachId = null;
-        session()->flash('beach_action', 'Votos de hoje em '.$beach->name.' foram cancelados.');
+        session()->flash('beach_action', __('beach.admin_votes_cancelled', ['name' => $beach->name]));
     }
 
     public function showOverride($beachId)
@@ -229,12 +230,12 @@ class Dashboard extends Component
             'flag' => $this->overrideFlag,
             'confidence' => 100,
             'consensus_reports_count' => 0,
-            'reason' => 'Sobreposição manual pelo administrador.',
+            'reason' => __('beach.admin_manual_override'),
         ]);
         $status->save();
 
         $this->overrideBeachId = null;
-        session()->flash('beach_action', 'Bandeira de '.$beach->name.' sobreposta para '.$this->overrideFlag.'.');
+        session()->flash('beach_action', __('beach.admin_flag_overridden', ['name' => $beach->name, 'flag' => $this->overrideFlag]));
     }
 
     // ─── Settings Management ───
@@ -258,7 +259,7 @@ class Dashboard extends Component
             'value' => $this->newSettingValue,
         ]);
 
-        session()->flash('settings_success', 'Definição "'.$this->newSettingKey.'" criada.');
+        session()->flash('settings_success', __('beach.admin_setting_created', ['key' => $this->newSettingKey]));
         $this->newSettingKey = '';
         $this->newSettingValue = '';
     }
@@ -280,7 +281,7 @@ class Dashboard extends Component
         if ($this->editingSetting) {
             $this->editingSetting->value = $this->editSettingValue;
             $this->editingSetting->save();
-            session()->flash('settings_success', 'Definição "'.$this->editingSetting->key.'" atualizada.');
+            session()->flash('settings_success', __('beach.admin_setting_updated', ['key' => $this->editingSetting->key]));
             $this->editingSetting = null;
             $this->editSettingValue = '';
         }
@@ -297,7 +298,7 @@ class Dashboard extends Component
         $setting = Setting::find($settingId);
         if ($setting) {
             $setting->delete();
-            session()->flash('settings_success', 'Definição "'.$setting->key.'" eliminada.');
+            session()->flash('settings_success', __('beach.admin_setting_deleted', ['key' => $setting->key]));
         }
     }
 
@@ -306,9 +307,9 @@ class Dashboard extends Component
     {
         try {
             Artisan::call('cache:clear');
-            session()->flash('cache_success', 'Cache de aplicação limpa com sucesso.');
+            session()->flash('cache_success', __('beach.admin_cache_cleared'));
         } catch (\Exception $e) {
-            session()->flash('sync_error', 'Erro ao limpar cache: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_cache_clear_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -317,9 +318,9 @@ class Dashboard extends Component
         try {
             Artisan::call('optimize:clear');
             $output = Artisan::output();
-            session()->flash('cache_success', 'Cache total limpa: '.nl2br(e($output)));
+            session()->flash('cache_success', __('beach.admin_cache_total_cleared', ['output' => nl2br(e($output))]));
         } catch (\Exception $e) {
-            session()->flash('sync_error', 'Erro ao limpar cache total: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_cache_total_clear_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -327,9 +328,9 @@ class Dashboard extends Component
     {
         try {
             Artisan::call('view:clear');
-            session()->flash('cache_success', 'Cache de views limpa com sucesso.');
+            session()->flash('cache_success', __('beach.admin_view_cache_cleared'));
         } catch (\Exception $e) {
-            session()->flash('sync_error', 'Erro ao limpar cache de views: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_view_cache_clear_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -337,9 +338,9 @@ class Dashboard extends Component
     {
         try {
             Artisan::call('config:clear');
-            session()->flash('cache_success', 'Cache de configuração limpa com sucesso.');
+            session()->flash('cache_success', __('beach.admin_config_cache_cleared'));
         } catch (\Exception $e) {
-            session()->flash('sync_error', 'Erro ao limpar cache de configuração: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_config_cache_clear_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -349,10 +350,10 @@ class Dashboard extends Component
         try {
             Artisan::call('migrate', ['--force' => true]);
             $output = Artisan::output();
-            session()->flash('sync_success', 'Migrações executadas: '.nl2br(e($output)));
+            session()->flash('sync_success', __('beach.admin_migrations_run', ['output' => nl2br(e($output))]));
         } catch (\Exception $e) {
             logger()->error('Admin migrations run failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao executar migrações: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_migrations_failed', ['error' => $e->getMessage()]));
         }
     }
 
@@ -361,10 +362,10 @@ class Dashboard extends Component
         try {
             Artisan::call('db:seed', ['--force' => true]);
             $output = Artisan::output();
-            session()->flash('sync_success', 'Seeders executados: '.nl2br(e($output)));
+            session()->flash('sync_success', __('beach.admin_seeders_run', ['output' => nl2br(e($output))]));
         } catch (\Exception $e) {
             logger()->error('Admin seeders run failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao executar seeders: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_seeders_failed', ['error' => $e->getMessage()]));
         }
     }
 
@@ -374,10 +375,10 @@ class Dashboard extends Component
         try {
             FetchIpmaForecasts::dispatch();
             Setting::set('last_ipma_sync_attempt', now()->toIso8601String());
-            session()->flash('sync_success', 'Sincronização IPMA/Open-Meteo iniciada em segundo plano.');
+            session()->flash('sync_success', __('beach.admin_ipma_sync_started'));
         } catch (\Exception $e) {
             logger()->error('Ipma manual sync failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao iniciar sincronização IPMA: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_ipma_sync_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -389,10 +390,10 @@ class Dashboard extends Component
                 FetchIpmaForecasts::dispatchSync($beach);
             }
             Setting::set('last_ipma_sync', now()->toIso8601String());
-            session()->flash('sync_success', 'Previsões IPMA para '.$beaches->count().' praias sincronizadas.');
+            session()->flash('sync_success', __('beach.admin_ipma_synced', ['count' => $beaches->count()]));
         } catch (\Exception $e) {
             logger()->error('Ipma manual sync sync failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao sincronizar IPMA: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_ipma_sync_failed', ['error' => $e->getMessage()]));
         }
     }
 
@@ -401,10 +402,10 @@ class Dashboard extends Component
         try {
             FetchInfoAguaData::dispatch();
             Setting::set('last_infoagua_sync_attempt', now()->toIso8601String());
-            session()->flash('sync_success', 'Sincronização InfoÁgua iniciada em segundo plano.');
+            session()->flash('sync_success', __('beach.admin_infoagua_sync_started'));
         } catch (\Exception $e) {
             logger()->error('InfoAgua manual sync failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao iniciar sincronização InfoÁgua: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_infoagua_sync_error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -416,10 +417,10 @@ class Dashboard extends Component
                 FetchInfoAguaData::dispatchSync($beach);
             }
             Setting::set('last_infoagua_sync', now()->toIso8601String());
-            session()->flash('sync_success', 'Dados InfoÁgua para '.$beaches->count().' praias sincronizados.');
+            session()->flash('sync_success', __('beach.admin_infoagua_synced', ['count' => $beaches->count()]));
         } catch (\Exception $e) {
             logger()->error('InfoAgua manual sync sync failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao sincronizar InfoÁgua: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_infoagua_sync_failed', ['error' => $e->getMessage()]));
         }
     }
 
@@ -428,30 +429,28 @@ class Dashboard extends Component
         try {
             Artisan::call('queue:work', ['--stop-when-empty' => true]);
             $output = Artisan::output();
-            session()->flash('sync_success', 'Fila processada: '.nl2br(e($output)));
+            session()->flash('sync_success', __('beach.admin_queue_processed', ['output' => nl2br(e($output))]));
         } catch (\Exception $e) {
             logger()->error('Admin queue:work failed: '.$e->getMessage());
-            session()->flash('sync_error', 'Falha ao processar fila: '.$e->getMessage());
+            session()->flash('sync_error', __('beach.admin_queue_failed', ['error' => $e->getMessage()]));
         }
     }
 
     // ─── System ───
     public function getSystemInfo(): array
     {
+        $driver = DB::connection()->getDriverName();
+
         $queueSize = 0;
         try {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $queueSize = DB::table('jobs')->count();
-            }
+            $queueSize = DB::table('jobs')->count();
         } catch (\Exception $e) {
             $queueSize = -1;
         }
 
         $failedJobs = 0;
         try {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $failedJobs = DB::table('failed_jobs')->count();
-            }
+            $failedJobs = DB::table('failed_jobs')->count();
         } catch (\Exception $e) {
             $failedJobs = -1;
         }
@@ -463,32 +462,47 @@ class Dashboard extends Component
             'debug_mode' => config('app.debug'),
             'queue_size' => $queueSize,
             'failed_jobs' => $failedJobs,
-            'last_ipma_sync' => Setting::get('last_ipma_sync', 'Nunca'),
-            'last_infoagua_sync' => Setting::get('last_infoagua_sync', 'Nunca'),
-            'db_driver' => DB::connection()->getDriverName(),
+            'last_ipma_sync' => Setting::get('last_ipma_sync', __('beach.admin_never')),
+            'last_infoagua_sync' => Setting::get('last_infoagua_sync', __('beach.admin_never')),
+            'db_driver' => $driver,
         ];
     }
 
     // ─── Render ───
     public function render()
     {
-        // Metrics (cheap — always compute for visao-geral tab)
-        $totalUsers = User::count();
-        $reportsToday = FlagReport::where('reported_at', '>=', now()->startOfDay())->count();
-        $totalPredictions = FlagPrediction::where('calculated_at', '>=', now()->subHours(24))->count();
-        $activeAlerts = OfficialAlert::where('started_at', '<=', now())
-            ->where(function ($q) {
-                $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
-            })->count();
-        $totalBeaches = Beach::count();
-        $activeBeaches = Beach::where('is_active', true)->count();
-        $suspendedUsers = User::where('is_suspended', true)->count();
-        $adminUsers = User::where('is_admin', true)->count();
-        $beachesWithStatus = BeachCurrentStatus::count();
-        $flagDistribution = BeachCurrentStatus::select('flag', DB::raw('count(*) as total'))
-            ->groupBy('flag')
-            ->pluck('total', 'flag')
-            ->toArray();
+        // Metrics cached for 60s — avoids re-running 8 queries on every Livewire action
+        $metrics = Cache::remember('admin_dashboard_metrics', 60, function () {
+            return [
+                'totalUsers' => User::count(),
+                'reportsToday' => FlagReport::where('reported_at', '>=', now()->startOfDay())->count(),
+                'totalPredictions' => FlagPrediction::where('calculated_at', '>=', now()->subHours(24))->count(),
+                'activeAlerts' => OfficialAlert::where('started_at', '<=', now())
+                    ->where(function ($q) {
+                        $q->whereNull('ended_at')->orWhere('ended_at', '>=', now());
+                    })->count(),
+                'totalBeaches' => Beach::count(),
+                'activeBeaches' => Beach::where('is_active', true)->count(),
+                'suspendedUsers' => User::where('is_suspended', true)->count(),
+                'adminUsers' => User::where('is_admin', true)->count(),
+                'beachesWithStatus' => BeachCurrentStatus::count(),
+                'flagDistribution' => BeachCurrentStatus::select('flag', DB::raw('count(*) as total'))
+                    ->groupBy('flag')
+                    ->pluck('total', 'flag')
+                    ->toArray(),
+            ];
+        });
+
+        $totalUsers = $metrics['totalUsers'];
+        $reportsToday = $metrics['reportsToday'];
+        $totalPredictions = $metrics['totalPredictions'];
+        $activeAlerts = $metrics['activeAlerts'];
+        $totalBeaches = $metrics['totalBeaches'];
+        $activeBeaches = $metrics['activeBeaches'];
+        $suspendedUsers = $metrics['suspendedUsers'];
+        $adminUsers = $metrics['adminUsers'];
+        $beachesWithStatus = $metrics['beachesWithStatus'];
+        $flagDistribution = $metrics['flagDistribution'];
 
         // Tab-specific queries (only run when needed)
         $users = User::whereKey(0)->paginate(15);

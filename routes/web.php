@@ -1,85 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\LocaleSwitchController;
+use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\SitemapController;
+use App\Livewire\Account\Profile;
+use App\Livewire\Actions\Logout;
+use App\Livewire\Admin\Dashboard;
+use App\Livewire\Public\BeachDetail;
 use App\Livewire\Public\Home;
 use App\Livewire\Public\Rankings;
-use App\Livewire\Public\BeachDetail;
-use App\Livewire\Account\Profile;
-use App\Livewire\Admin\Dashboard;
-use App\Http\Controllers\Auth\GoogleAuthController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 Route::pattern('locale', implode('|', config('locales.supported', ['pt', 'en', 'es', 'fr'])));
 
-Route::post('/locale/{locale}', function ($locale) {
-    $supported = config('locales.supported', ['pt', 'en', 'es', 'fr']);
-    $default = config('locales.default', 'pt');
-
-    if (!in_array($locale, $supported)) {
-        $locale = $default;
-    }
-
-    session(['locale' => $locale]);
-    app()->setLocale($locale);
-
-    if (auth()->check()) {
-        auth()->user()->update(['locale' => $locale]);
-    }
-
-    $referrer = request()->headers->get('referer');
-    if ($referrer) {
-        $parsedUrl = parse_url($referrer);
-        $path = $parsedUrl['path'] ?? '';
-        
-        // Don't translate internal / debug / auth paths
-        if (
-            !str_starts_with($path, '/api') &&
-            !str_starts_with($path, '/livewire') &&
-            !str_starts_with($path, '/filament') &&
-            !str_starts_with($path, '/_debugbar') &&
-            !str_starts_with($path, '/auth') &&
-            !str_contains($path, '.')
-        ) {
-            $trimmedPath = trim($path, '/');
-            $segments = explode('/', $trimmedPath);
-            
-            $beachPrefixes = [
-                'en' => 'beaches',
-                'es' => 'playas',
-                'fr' => 'plages',
-                'pt' => 'praias',
-            ];
-            
-            if (count($segments) > 0 && $segments[0] !== '') {
-                if (in_array($segments[0], $supported)) {
-                    // The URL is already localized with a prefix.
-                    $segments[0] = $locale;
-                    
-                    if (isset($segments[1]) && in_array($segments[1], $beachPrefixes)) {
-                        $segments[1] = $beachPrefixes[$locale];
-                    }
-                    
-                    $newPath = '/' . implode('/', $segments);
-                } else {
-                    // The URL is NOT localized with a prefix.
-                    if (in_array($segments[0], $beachPrefixes)) {
-                        $segments[0] = $beachPrefixes[$locale];
-                    }
-                    $newPath = '/' . $locale . '/' . implode('/', $segments);
-                }
-            } else {
-                $newPath = '/' . $locale;
-            }
-            
-            if (isset($parsedUrl['query'])) {
-                $newPath .= '?' . $parsedUrl['query'];
-            }
-            
-            return redirect($newPath);
-        }
-    }
-
-    return redirect()->back();
-})->name('locale.switch');
+Route::post('/locale/{locale}', LocaleSwitchController::class)->name('locale.switch')->middleware('throttle:30,1');
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
@@ -91,13 +30,13 @@ Route::view('/termos', 'public.terms')->name('terms');
 Route::view('/privacidade', 'public.privacy')->name('privacy');
 
 Route::prefix('push')->middleware('auth')->group(function () {
-    Route::post('/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
-    Route::post('/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
-    Route::get('/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('push.status');
-    Route::post('/test', [\App\Http\Controllers\PushSubscriptionController::class, 'test'])->name('push.test');
+    Route::post('/subscribe', [PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
+    Route::get('/status', [PushSubscriptionController::class, 'status'])->name('push.status');
+    Route::post('/test', [PushSubscriptionController::class, 'test'])->name('push.test');
 });
 
-Route::post('/favorites/toggle', [\App\Http\Controllers\FavoriteController::class, 'toggle'])->name('favorites.toggle');
+Route::post('/favorites/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:30,1');
 
 Route::get('/', Home::class)->name('home');
 Route::get('/rankings', Rankings::class)->name('rankings');
@@ -120,45 +59,53 @@ Route::prefix('{locale}')->group(function () {
     Route::get('/admin-dashboard', Dashboard::class)->name('admin.dashboard')->middleware(['auth', 'admin']);
 });
 
-Route::get('/sitemap.xml', function () {
-    $beaches = \App\Models\Beach::select('slug', 'updated_at')->get();
-
-    $segments = [];
-    foreach (config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale) {
-        $segments[$locale] = match ($locale) {
-            'en' => 'beaches',
-            'es' => 'playas',
-            'fr' => 'plages',
-            default => 'praias',
-        };
-    }
-
-    return response()->view('sitemap', [
-        'locales' => $segments,
-        'beaches' => $beaches,
-        'staticPages' => [
-            ['loc' => url('/'), 'priority' => '1.0', 'changefreq' => 'hourly'],
-            ['loc' => url('/rankings'), 'priority' => '0.8', 'changefreq' => 'daily'],
-            ['loc' => url('/sobre'), 'priority' => '0.6', 'changefreq' => 'monthly'],
-            ['loc' => url('/contactos'), 'priority' => '0.5', 'changefreq' => 'monthly'],
-            ['loc' => url('/termos'), 'priority' => '0.3', 'changefreq' => 'yearly'],
-            ['loc' => url('/privacidade'), 'priority' => '0.3', 'changefreq' => 'yearly'],
-        ],
-    ])->header('Content-Type', 'text/xml');
-})->name('sitemap');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 Route::get('/ads.txt', function () {
     $id = config('ads.publisher_id');
     if ($id) {
         return response("google.com, pub-{$id}, DIRECT, f08c47fec0942fa0\n", 200, ['Content-Type' => 'text/plain']);
     }
+
     return response('', 404);
 });
 
-Route::post('/logout', function (\Illuminate\Http\Request $request) {
-    $logout = new \App\Livewire\Actions\Logout();
+Route::post('/logout', function (Request $request) {
+    $logout = new Logout;
     $logout();
+
     return redirect()->route('home');
 })->name('logout')->middleware('auth');
+
+// Health check for uptime monitoring (no auth required)
+Route::get('/health', function () {
+    $checks = [
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+        'php' => PHP_VERSION,
+        'database' => 'unknown',
+        'cache' => 'unknown',
+    ];
+
+    try {
+        DB::select('SELECT 1');
+        $checks['database'] = 'ok';
+    } catch (Exception $e) {
+        $checks['database'] = 'error';
+        $checks['status'] = 'degraded';
+    }
+
+    try {
+        Cache::remember('health_check', 60, fn () => true);
+        $checks['cache'] = 'ok';
+    } catch (Exception $e) {
+        $checks['cache'] = 'error';
+        $checks['status'] = 'degraded';
+    }
+
+    $code = $checks['status'] === 'ok' ? 200 : 503;
+
+    return response()->json($checks, $code);
+})->name('health');
 
 require __DIR__.'/auth.php';

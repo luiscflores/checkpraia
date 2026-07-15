@@ -773,8 +773,5 @@
         </div>
     </div>
 
-    {{-- Pagination styles (Livewire default) --}}
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+
 </div>

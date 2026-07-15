@@ -1,4 +1,14 @@
 <div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches), @js($defaultRegion ?? null))">
+
+@pushOnce('leaflet-css')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin=""></noscript>
+@endPushOnce
+
+@pushOnce('leaflet-js')
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin="" defer></script>
+@endPushOnce
+
     @section('title', __('home.title'))
     @section('og_title', __('home.og_title'))
     @section('og_description', __('home.og_description'))
@@ -83,16 +93,17 @@
                 <input 
                     id="beach-search"
                     type="text" 
-                    wire:model.live.debounce.300ms="search" 
+                    wire:model.live.debounce.400ms="search" 
                     placeholder="{{ __('common.search_placeholder') }}" 
                     @focus="searchFocused = true" @blur="searchFocused = false"
+                    aria-label="{{ __('common.search_placeholder') }}"
                     class="w-full bg-theme-input border border-theme-subtle/60 px-4 py-3.5 pl-11 pr-10 rounded-2xl text-base sm:text-sm text-theme placeholder:text-theme-muted focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-inner"
                 />
                 <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-theme-muted transition-colors" :class="searchFocused && 'text-blue-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 @if(strlen($search) > 0)
-                    <button wire:click="$set('search', '')" class="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme transition-colors p-1" aria-label="{{ __('common.search_clear') }}">
+                    <button wire:click="$set('search', '')" class="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme transition-colors p-2 touch-target" aria-label="{{ __('common.search_clear') }}">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 @endif
@@ -111,7 +122,7 @@
                     <div class="bg-red-600/90 backdrop-blur-md text-white text-sm font-medium px-4 py-3 rounded-xl shadow-2xl border border-red-400/30 flex items-center gap-2">
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                         <span x-text="locationError" class="flex-1"></span>
-                        <button @click="locationError = null" class="shrink-0 p-1 hover:bg-white/10 rounded-lg transition-colors" aria-label="Dismiss">
+                        <button @click="locationError = null" class="shrink-0 p-2 hover:bg-white/10 rounded-lg transition-colors touch-target" aria-label="Dismiss">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
@@ -223,7 +234,7 @@
             </template>
         </div>
         <!-- Backdrop to close dropdown on outside click -->
-        <div x-show="flagOpen" @click="flagOpen = false" x-cloak class="fixed inset-0 z-[9998]" style="display:none;"></div>
+        <div x-show="flagOpen" @click="flagOpen = false" x-cloak x-init="$watch('flagOpen', v => { if(v) { const close = () => { flagOpen = false; window.removeEventListener('scroll', close); }; window.addEventListener('scroll', close, {once:true, passive:true}); } })" class="fixed inset-0 z-[9998]" style="display:none;"></div>
     </div>
 
     <!-- Nearby Beaches (closest 5) -->
@@ -279,39 +290,19 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 min-h-[450px] sm:min-h-[550px]">
         
         <!-- Left Side: Beach Cards List -->
-        <div class="lg:col-span-5 flex flex-col gap-4 lg:max-h-[720px] lg:overflow-y-auto pr-0.5 sm:pr-2 lg:pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
+        <div id="beach-scroll-container" class="lg:col-span-5 flex flex-col gap-4 lg:max-h-[720px] lg:overflow-y-auto pr-0.5 sm:pr-2 lg:pb-6 scrollbar-thin" :class="viewState === 'list' ? 'flex' : 'hidden lg:flex'">
             <x-ads.slot slot="home_sidebar_top" className="col-span-full mx-1" />
 
-            <!-- Skeleton placeholders shown while Livewire is loading -->
-            <div wire:loading.block class="space-y-3">
-                @for($s = 0; $s < 5; $s++)
-                    <div class="skeleton-box p-4 rounded-3xl border border-theme-subtle/50 h-28 flex flex-col justify-between">
-                        <div class="flex justify-between">
-                            <div>
-                                <div class="skeleton h-4 w-36 mb-2"></div>
-                                <div class="skeleton h-3 w-24"></div>
-                            </div>
-                            <div class="skeleton h-6 w-16 rounded-full"></div>
-                        </div>
-                        <div class="flex gap-3 mt-4">
-                            <div class="skeleton h-3 w-12 rounded"></div>
-                            <div class="skeleton h-3 w-12 rounded"></div>
-                            <div class="skeleton h-3 w-12 rounded"></div>
-                            <div class="skeleton h-3 w-12 rounded"></div>
-                        </div>
-                    </div>
-                @endfor
-            </div>
-
-            <div wire:loading.remove class="flex flex-col gap-4" x-data="cardFavorites(@js($beachesList))">
+            <div class="flex flex-col gap-4" x-data="cardFavorites(@js($beachesList))" x-ref="beachList">
 
             @forelse($beachesList as $i => $beach)
                 @if($i > 0 && $i % 3 === 0)
                     <x-ads.slot slot="home_between_cards" className="col-span-full" />
                 @endif
-                <a href="{{ $beach['url'] }}" 
+                <a href="{{ $beach['url'] }}"
+                   data-beach-id="{{ $beach['id'] }}"
                    @mouseenter="hoverBeach(@js($beach))"
-                   wire:key="{{ $beach['id'] }}"
+                   wire:key="beach-{{ $beach['id'] }}"
                    class="glass-card card-lift shrink-0 p-4 rounded-3xl border transition-all duration-300 flex flex-col gap-3.5 group active:scale-[0.99] relative overflow-hidden"
                    :class="isFav({{ $beach['id'] }}) ? 'border-amber-500/30 bg-amber-500/[0.03] shadow-[inset_0_0_16px_rgba(245,158,11,0.03)]' : 'border-theme-medium hover:border-blue-500/40'">
                     
@@ -336,9 +327,9 @@
                                     @click.prevent.stop="
                                         $el.querySelector('.fav-star').classList.add('animate-fav-bounce');
                                         setTimeout(() => $el.querySelector('.fav-star').classList.remove('animate-fav-bounce'), 500);
-                                        toggleFav({{ $beach['id'] }}, $el.closest('a'));
+                                        toggleFav({{ $beach['id'] }});
                                     "
-                                    class="p-1 rounded-xl transition-all hover:scale-125 active:scale-90 hover:bg-white/5"
+                                    class="p-2 touch-target rounded-xl transition-all hover:scale-125 active:scale-90 hover:bg-white/5"
                                     :class="isFav({{ $beach['id'] }}) ? 'opacity-100 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)] text-amber-400' : 'opacity-30 hover:opacity-80 text-slate-400'"
                                     :title="isFav({{ $beach['id'] }}) ? '{{ __('common.favorite_remove') }}' : '{{ __('common.favorite_add') }}'">
                                     <span class="fav-star block text-lg">★</span>
@@ -463,7 +454,50 @@
                     <p class="text-sm text-theme-muted">{{ __('common.no_results_hint') }}</p>
                 </div>
             @endforelse
-            </div><!-- end wire:loading.remove -->
+
+            @if($hasMore)
+                <div wire:key="load-more-sentinel" id="infinite-scroll-sentinel"
+                     x-data="{
+                         observer: null,
+                         init() {
+                             if (!window._cpScroll) window._cpScroll = { loading: false, scrollPos: 0 };
+                             const sentinel = this.$el;
+                             const rootEl = document.getElementById('beach-scroll-container');
+                             const useRoot = rootEl && getComputedStyle(rootEl).overflowY !== 'visible';
+
+                             const load = () => {
+                                 if (window._cpScroll.loading || !$wire.hasMore) return;
+                                 window._cpScroll.loading = true;
+                                 const container = useRoot ? rootEl : window;
+                                 window._cpScroll.scrollPos = useRoot ? rootEl.scrollTop : window.scrollY;
+                                 $wire.loadMore().then(() => {
+                                     window._cpScroll.loading = false;
+                                     requestAnimationFrame(() => {
+                                         if (useRoot) rootEl.scrollTop = window._cpScroll.scrollPos;
+                                         else window.scrollTo(0, window._cpScroll.scrollPos);
+                                     });
+                                 });
+                             };
+
+                             this.observer = new IntersectionObserver((entries) => {
+                                 if (entries[0].isIntersecting) load();
+                             }, {
+                                 root: useRoot ? rootEl : null,
+                                 rootMargin: useRoot ? '0px' : '600px',
+                                 threshold: 0
+                             });
+                             this.observer.observe(sentinel);
+                         },
+                         destroy() { this.observer?.disconnect(); }
+                     }"
+                     class="flex justify-center py-4">
+                    <div wire:loading class="flex items-center gap-2 text-theme-muted text-sm">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span>{{ __('common.loading') ?? 'A carregar...' }}</span>
+                    </div>
+                </div>
+            @endif
+            </div><!-- end card list -->
 
             <x-ads.slot slot="home_bottom" className="col-span-full" />
         </div>
@@ -473,6 +507,13 @@
 
             <!-- Main Map (holds whichever region is primary) -->
             <div id="map-primary-slot" class="flex-1 rounded-xl sm:rounded-2xl overflow-hidden border border-theme-medium relative min-h-[240px] sm:min-h-[280px] transition-all duration-300">
+                <!-- Loading skeleton shown until first tile loads -->
+                <div id="map-continente-skeleton" class="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/60" aria-hidden="true">
+                    <div class="flex flex-col items-center gap-2 text-slate-500">
+                        <svg class="w-8 h-8 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        <span class="text-xs font-medium">{{ __('common.loading') ?? 'A carregar...' }}</span>
+                    </div>
+                </div>
                 <div id="map-continente" class="w-full h-full absolute inset-0 z-0" role="application" aria-label="{{ __('home.map_continent_label') }}"></div>
             </div>
 
@@ -506,7 +547,12 @@
 
     <!-- Floating View Toggle Button -->
     <div class="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 md:hidden pb-safe">
-        <button @click="viewState = (viewState === 'map' ? 'list' : 'map'); setTimeout(() => { if (viewState === 'map') invalidateAllMaps(); }, 150);" 
+        <button @click="
+                viewState = (viewState === 'map' ? 'list' : 'map');
+                if (viewState === 'map') {
+                    window.dispatchEvent(new Event('checkpraia:map-visible'));
+                    setTimeout(() => invalidateAllMaps(), 150);
+                }" 
                 class="bg-blue-600 hover:bg-blue-500 active:scale-90 text-white font-bold px-5 py-3.5 rounded-full shadow-lg shadow-blue-500/25 flex items-center gap-2 text-sm uppercase tracking-wider touch-target transition-all backdrop-blur-sm bg-blue-600/90 hover:shadow-xl hover:shadow-blue-500/30">
             <svg x-show="viewState === 'map'" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -535,31 +581,22 @@
                 }
             },
             isFav(id) { return !!this.favs[id]; },
-            toggleFav(id, cardEl) {
-                this.favs[id] = !this.favs[id];
-                const container = cardEl.parentElement;
-                const isFavNow = this.favs[id];
-
-                if (isFavNow) {
-                    const name = (cardEl.querySelector('h2')?.textContent || '').trim().toLowerCase();
-                    const kids = [...container.children].filter(c => c.tagName === 'A' && c !== cardEl);
-                    const before = kids.find(c => c.querySelector('.fav-star')?.classList.contains('text-amber-400') && (c.querySelector('h2')?.textContent || '').trim().toLowerCase() > name);
-                    if (before) { container.insertBefore(cardEl, before); }
-                    else {
-                        let last = null;
-                        for (let i = kids.length - 1; i >= 0; i--) {
-                            if (kids[i].querySelector('.fav-star')?.classList.contains('text-amber-400')) { last = kids[i]; break; }
-                        }
-                        if (last) last.after(cardEl); else container.prepend(cardEl);
-                    }
-                } else {
-                    const kids = [...container.children].filter(c => c.tagName === 'A' && c !== cardEl);
-                    let last = null;
-                    for (let i = kids.length - 1; i >= 0; i--) {
-                        if (kids[i].querySelector('.fav-star')?.classList.contains('text-amber-400')) { last = kids[i]; break; }
-                    }
-                    if (last) last.after(cardEl); else container.prepend(cardEl);
+            _reorderCards(container) {
+                const cards = [...container.children].filter(c => c.hasAttribute('data-beach-id'));
+                const favCards = [];
+                const nonFavCards = [];
+                for (const c of cards) {
+                    (this.favs[c.dataset.beachId] ? favCards : nonFavCards).push(c);
                 }
+                const sortByName = (a, b) => (a.querySelector('h2')?.textContent || '').trim().localeCompare((b.querySelector('h2')?.textContent || '').trim());
+                favCards.sort(sortByName);
+                nonFavCards.sort(sortByName);
+                for (const card of [...favCards, ...nonFavCards]) container.appendChild(card);
+            },
+            toggleFav(id) {
+                this.favs[id] = !this.favs[id];
+                const container = this.$refs.beachList;
+                if (container) this.$nextTick(() => this._reorderCards(container));
 
                 fetch('{{ route('favorites.toggle') }}', {
                     method: 'POST',
@@ -573,6 +610,7 @@
                     if (!r.ok) return r.json().then(d => { throw new Error(d.error || 'Error'); });
                 }).catch(err => {
                     this.favs[id] = !this.favs[id];
+                    if (container) this.$nextTick(() => this._reorderCards(container));
                     window.dispatchEvent(new CustomEvent('favorite-error', { detail: { message: err.message || '{{ __('common.favorite_login_required') }}' } }));
                 });
             }
@@ -596,16 +634,39 @@
             _swapPending: null,
 
             init() {
-                if (typeof L === 'undefined') {
-                    const check = setInterval(() => {
-                        if (typeof L !== 'undefined') {
-                            clearInterval(check);
-                            this._initMaps();
-                        }
-                    }, 100);
+                const isMobile = window.innerWidth < 1024;
+
+                if (isMobile) {
+                    // On mobile the map starts hidden (display:none via Alpine x-show).
+                    // IntersectionObserver can't observe display:none — instead, the toggle
+                    // button dispatches 'checkpraia:map-visible' when the user switches to map view.
+                    const handler = () => {
+                        window.removeEventListener('checkpraia:map-visible', handler);
+                        this._waitForLeafletAndInit();
+                    };
+                    window.addEventListener('checkpraia:map-visible', handler);
+                } else {
+                    // Desktop: map is always visible — initialise as soon as Leaflet loads.
+                    this._waitForLeafletAndInit();
+                }
+            },
+
+            _waitForLeafletAndInit() {
+                if (typeof L !== 'undefined') {
+                    this._initMaps();
                     return;
                 }
-                this._initMaps();
+                // Script is loading (defer) — poll until ready (max 10s)
+                let attempts = 0;
+                const check = setInterval(() => {
+                    attempts++;
+                    if (typeof L !== 'undefined') {
+                        clearInterval(check);
+                        this._initMaps();
+                    } else if (attempts > 200) {
+                        clearInterval(check); // Timeout safety — 10s
+                    }
+                }, 50);
             },
 
             _initMaps() {
@@ -644,7 +705,7 @@
                     }, 200);
                 };
 
-                // Init main continental map immediately
+                // Init main continental map — only when Leaflet is ready
                 this.mapContinente = L.map('map-continente', {
                     zoomControl: true,
                     maxZoom: 18,
@@ -657,6 +718,12 @@
                 this.tileLayers.continente = this.createTileLayer();
                 this.tileLayers.continente.addTo(this.mapContinente);
 
+                // Hide skeleton once first tile loads
+                this.tileLayers.continente.once('tileload', () => {
+                    const sk = document.getElementById('map-continente-skeleton');
+                    if (sk) { sk.style.transition = 'opacity 0.3s'; sk.style.opacity = '0'; setTimeout(() => sk.remove(), 300); }
+                });
+
                 // Island maps: defer via requestIdleCallback to keep main thread free
                 const initIslands = () => {
                     this.lazyLoadMap('map-acores', 'acores', [[36.7, -28.9], [38.8, -24.7]], removePopupHref);
@@ -664,9 +731,9 @@
                 };
 
                 if ('requestIdleCallback' in window) {
-                    requestIdleCallback(initIslands, { timeout: 2000 });
+                    requestIdleCallback(initIslands, { timeout: 3000 });
                 } else {
-                    setTimeout(initIslands, 500);
+                    setTimeout(initIslands, 800);
                 }
 
                 this.renderMarkers();
@@ -762,18 +829,21 @@
             },
 
             createTileLayer() {
-                const isMobile = window.innerWidth < 768;
-                const url = isMobile
-                    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-                    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-                const att = isMobile
-                    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                    : '&copy; <a href="https://www.esri.com/">Esri</a>';
-                const layer = L.tileLayer(url, {
-                    attribution: att,
-                    maxZoom: 19,
-                    alt: 'Mapa'
-                });
+                // CARTO Positron — lightweight vector-look tiles (~4-8 KB/tile vs ~100 KB for satellite).
+                // Works well on both mobile and desktop. Fast CDN with sub-domains for parallelism.
+                const layer = L.tileLayer(
+                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                        subdomains: 'abcd',
+                        maxZoom: 19,
+                        alt: 'Mapa',
+                        // Fetch only tiles needed for viewport to reduce bandwidth
+                        keepBuffer: 1,
+                        updateWhenIdle: true,
+                        updateWhenZooming: false,
+                    }
+                );
                 let tileCounter = 0;
                 layer.on('tileload', function(e) {
                     if (e.tile) {

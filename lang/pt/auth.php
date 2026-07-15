@@ -37,4 +37,26 @@ return [
         'success' => 'Conta criada com sucesso!',
         'referral_invalid' => 'O código de convite inserido não é válido.',
     ],
+    'forgot_password' => [
+        'page_title' => 'Recuperar Palavra-passe - CheckPraia',
+        'heading' => 'Esqueceu-se da Palavra-passe?',
+        'description' => 'Sem problema. Basta indicar o seu endereço de email e enviar-lhe-emos um link de recuperação que lhe permitirá escolher uma nova.',
+        'submit' => 'Enviar Link de Recuperação',
+    ],
+    'reset_password' => [
+        'page_title' => 'Repor Palavra-passe - CheckPraia',
+        'submit' => 'Repor Palavra-passe',
+    ],
+    'verify_email' => [
+        'page_title' => 'Verificar Email - CheckPraia',
+        'description' => 'Obrigado por se registar! Antes de começar, pode verificar o seu email clicando no link que acabámos de enviar. Se não recebeu o email, enviamos outro com prazer.',
+        'verification_sent' => 'Um novo link de verificação foi enviado para o endereço de email que forneceu durante o registo.',
+        'resend' => 'Reenviar Email de Verificação',
+        'logout' => 'Sair',
+    ],
+    'confirm_password' => [
+        'page_title' => 'Confirmar Palavra-passe - CheckPraia',
+        'description' => 'Esta é uma área segura da aplicação. Por favor confirme a sua palavra-passe antes de continuar.',
+        'submit' => 'Confirmar',
+    ],
 ];

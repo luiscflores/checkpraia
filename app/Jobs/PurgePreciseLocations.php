@@ -30,11 +30,11 @@ class PurgePreciseLocations implements ShouldQueue
         FlagReport::where('created_at', '<', now()->startOfDay())
             ->where(function ($query) {
                 $query->whereNotNull('latitude')
-                      ->orWhereNotNull('longitude');
+                    ->orWhereNotNull('longitude');
             })
             ->update([
                 'latitude' => null,
-                'longitude' => null
+                'longitude' => null,
             ]);
     }
 }

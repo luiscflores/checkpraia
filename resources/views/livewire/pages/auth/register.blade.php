@@ -91,41 +91,74 @@ new #[Layout('components.layouts.app')] class extends Component
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.name_label') }}</label>
-                <input type="text" wire:model="name" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.name_placeholder') }}" />
+                <input type="text" wire:model="name" autocomplete="name" autofocus class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.name_placeholder') }}" />
                 @error('name') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.username_label') }}</label>
-                <input type="text" wire:model="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.username_placeholder') }}" />
+                <input type="text" wire:model="username" autocomplete="username" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.username_placeholder') }}" />
                 @error('username') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.email_label') }}</label>
-                <input type="email" wire:model="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.email_placeholder') }}" />
+                <input type="email" wire:model="email" autocomplete="email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.email_placeholder') }}" />
                 @error('email') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
-            <div class="space-y-1">
+            <div class="space-y-1" x-data="{
+                strength: 0,
+                get color() { return this.strength < 2 ? '#ef4444' : this.strength < 3 ? '#f59e0b' : this.strength < 4 ? '#10b981' : '#06b6d4'; },
+                get label() { return this.strength < 2 ? 'Fraca' : this.strength < 3 ? 'Razoável' : this.strength < 4 ? 'Forte' : 'Muito forte'; },
+                calc(pw) {
+                    let s = 0;
+                    if (pw.length >= 8) s++;
+                    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+                    if (/\d/.test(pw)) s++;
+                    if (/[^A-Za-z0-9]/.test(pw)) s++;
+                    this.strength = s;
+                }
+            }">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.password_label') }}</label>
-                <input type="password" wire:model="password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_placeholder') }}" />
+                <input type="password" wire:model="password" autocomplete="new-password" @input="calc($event.target.value)" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_placeholder') }}" />
+                <div class="mt-1.5">
+                    <div class="flex gap-1">
+                        <template x-for="i in 4" :key="i">
+                            <div class="h-1 flex-1 rounded-full transition-colors duration-300" :style="`background: ${i <= strength ? color : 'rgba(255,255,255,0.15)'}`"></div>
+                        </template>
+                    </div>
+                    <p x-show="strength > 0" x-transition class="text-xs mt-1 font-medium" :style="`color: ${color}`" x-text="label"></p>
+                </div>
                 @error('password') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
             </div>
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.password_confirm_label') }}</label>
-                <input type="password" wire:model="password_confirmation" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_confirm_placeholder') }}" />
+                <input type="password" wire:model="password_confirmation" autocomplete="new-password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.password_confirm_placeholder') }}" />
             </div>
 
-            <div class="space-y-1">
-                <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.referral_label') }}</label>
-                <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.referral_placeholder') }}" />
-                @error('referralCodeInput') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
+            <div x-data="{ showReferral: @js(request()->has('ref')) }">
+                <template x-if="!showReferral">
+                    <button type="button" @click="showReferral = true" class="text-xs text-theme-secondary hover:text-theme underline mt-2">
+                        {{ __('auth.register.has_referral') ?? 'Tenho código de convite' }}
+                    </button>
+                </template>
+                <template x-if="showReferral">
+                    <div class="space-y-1">
+                        <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.register.referral_label') }}</label>
+                        <input type="text" wire:model="referralCodeInput" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.register.referral_placeholder') }}" />
+                        @error('referralCodeInput') <span class="text-xs text-rose-400 block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </template>
             </div>
 
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
-                {{ __('auth.register.submit') }} &rarr;
+            <button type="submit" wire:loading.attr="disabled" wire:loading.class="opacity-50 cursor-not-allowed" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
+                <span wire:loading.remove>{{ __('auth.register.submit') }} &rarr;</span>
+                <span wire:loading class="flex items-center justify-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    {{ __('common.loading') ?? 'A carregar...' }}
+                </span>
             </button>
 
             <p class="text-xs text-center text-theme-muted pt-2">

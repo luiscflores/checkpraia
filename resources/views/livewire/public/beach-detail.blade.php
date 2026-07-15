@@ -1,4 +1,14 @@
 <div class="space-y-8" x-data="beachDetailHandler()" @if(auth()->check() && auth()->user()->is_admin) data-is-admin="1" @endif>
+
+@pushOnce('leaflet-css')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin=""></noscript>
+@endPushOnce
+
+@pushOnce('leaflet-js')
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin="" defer></script>
+@endPushOnce
+
     @section('title', $beach->name . ' - ' . __('common.site_name'))
     @section('meta_description', __('beach.meta_description', ['name' => $beach->name, 'municipality' => $beach->municipality]))
     @section('og_title', $beach->name . ' - Bandeira e Condições do Mar')
@@ -66,6 +76,13 @@
     @endif
 
     <!-- Beach Header Banner -->
+    <nav aria-label="Breadcrumb" class="mb-3 text-xs text-theme-muted">
+        <ol class="flex items-center gap-1.5">
+            <li><a href="{{ route('home') }}" wire:navigate class="hover:text-blue-400 transition-colors">{{ __('home.page_title') ?? 'Início' }}</a></li>
+            <li aria-hidden="true" class="opacity-50">›</li>
+            <li aria-current="page" class="text-theme font-medium">{{ $beach->name }}</li>
+        </ol>
+    </nav>
     <div class="glass-card p-6 md:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden border border-theme-subtle/50 shadow-xl shadow-black/[0.02] animate-fade-in-up" data-animate>
         <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-transparent pointer-events-none"></div>
         <div class="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none animate-float"></div>
@@ -446,7 +463,7 @@
                         <span class="text-[10px] text-theme-muted font-normal ml-auto">{{ $totalSnapshots }} {{ __('beach.history_entries') }}</span>
                     </h3>
 
-                    <div class="relative pl-6 space-y-0">
+                    <div class="relative pl-6 space-y-0 overflow-visible">
                         @php
                             $prevFlag = null;
                             $flagColors = [
@@ -471,7 +488,7 @@
                                     : $snapshot->captured_at->timezone($beach->timezone);
                                 $isHidden = $loop->index >= 6;
                             @endphp
-                            <div {{ $isHidden ? 'x-cloak' : '' }} class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px] {{ $isHidden ? 'hidden md:block' : '' }}" {{ $isHidden ? 'x-show="expanded"' : '' }}>
+                            <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]">
                                 @if($changed)
                                     <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full {{ $dotColor }} ring-2 ring-theme-card ring-offset-2 ring-offset-theme-card shadow-lg animate-fade-in"></div>
                                 @else
@@ -641,35 +658,126 @@
                         {{ $quality && $quality->sampled_at ? __('beach.quality_analysis', ['date' => $quality->sampled_at->timezone($beach->timezone)->format('d/m/y')]) : __('beach.quality_analysis_none') }}
                         @if($qualityStale) · <span class="font-bold">{{ __('beach.quality_days', ['days' => $qualityDays]) }}</span> @endif
                     </span>
+                    @if($quality && $quality->source)
+                        <span class="text-[10px] text-slate-600 block leading-tight mt-0.5">
+                            {{ __('beach.quality_source', ['source' => __('beach.quality_source_'.$quality->source)]) }}
+                        </span>
+                    @endif
                 </div>
             </div>
 
             <x-ads.slot slot="beach_detail_inline" />
 
-            <!-- 7-Day Weather Forecast -->
-            @if(!empty($dailyForecast))
-            <div class="glass-card rounded-3xl border border-theme-subtle/40 shadow-xl animate-fade-in-up overflow-hidden" data-animate>
-                <div class="p-4 sm:p-5 border-b border-theme-subtle">
+            <!-- Weather Forecast — Hourly + Daily -->
+            @if(!empty($hourlyForecast) || !empty($dailyForecast))
+            @php
+                $now = \Carbon\Carbon::now($beach->timezone ?? config('app.timezone'));
+                $currentHour = (int) $now->format('G');
+                // Filter hourly to show only from now onwards (skip past hours)
+                $upcomingHourly = collect($hourlyForecast)->filter(function ($h) use ($now) {
+                    return \Carbon\Carbon::parse($h['time'])->greaterThanOrEqualTo($now->copy()->subHour());
+                })->take(18)->values()->all();
+                // Daily: skip today, take next 4 days
+                $upcomingDaily = collect($dailyForecast)->filter(function ($d) {
+                    return !\Carbon\Carbon::parse($d['date'])->isToday();
+                })->take(4)->values()->all();
+            @endphp
+            <div x-data="{ forecastTab: 'hourly' }" class="glass-card rounded-3xl border border-theme-subtle/40 shadow-xl animate-fade-in-up overflow-x-hidden" data-animate>
+                <!-- Header + Tabs -->
+                <div class="flex items-center justify-between p-4 sm:p-5 border-b border-theme-subtle">
                     <h3 class="text-sm font-bold text-theme flex items-center gap-2">
                         <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
                         {{ __('beach.weather_forecast_title') }}
                     </h3>
+                    <div class="flex bg-theme-subtle/30 rounded-xl p-0.5">
+                        <button @click="forecastTab = 'hourly'" :class="forecastTab === 'hourly' ? 'bg-theme-elevated text-theme font-bold shadow-sm' : 'text-theme-muted hover:text-theme-secondary'" class="px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all">{{ __('beach.forecast_hourly') }}</button>
+                        <button @click="forecastTab = 'daily'" :class="forecastTab === 'daily' ? 'bg-theme-elevated text-theme font-bold shadow-sm' : 'text-theme-muted hover:text-theme-secondary'" class="px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all">{{ __('beach.forecast_daily') }}</button>
+                    </div>
                 </div>
-                <div class="overflow-x-auto scrollbar-none">
-                    <div class="flex min-w-max divide-x divide-theme-subtle/30">
-                        @foreach($dailyForecast as $i => $day)
+
+                <!-- Hourly Forecast Tab -->
+                @if(!empty($upcomingHourly))
+                <div x-show="forecastTab === 'hourly'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    <div class="overflow-x-auto scrollbar-none forecast-hourly-scroll">
+                        <div class="flex min-w-max">
+                            @foreach($upcomingHourly as $i => $hour)
+                                @php
+                                    $hTime = \Carbon\Carbon::parse($hour['time']);
+                                    $isNow = $now->diffInMinutes($hTime) < 30;
+                                    $code = $hour['weather_code'];
+                                    $isDay = $hour['is_day'];
+                                @endphp
+                                <div class="flex flex-col items-center py-4 px-4 {{ $isNow ? 'bg-gradient-to-b from-amber-500/8 to-transparent min-w-[72px]' : 'min-w-[64px]' }} {{ $i === 0 ? 'pl-5' : '' }} border-r border-theme-subtle/20 last:border-r-0">
+                                    @if($i === 0)
+                                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">{{ __('beach.forecast_now') }}</span>
+                                    @else
+                                        <span class="text-[11px] font-bold text-theme-secondary">{{ $hour['hour'] }}</span>
+                                    @endif
+                                    <div class="my-2">
+                                        @if($code === 0)
+                                            @if($isDay)
+                                                <svg class="w-6 h-6 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></g></svg>
+                                            @else
+                                                <svg class="w-6 h-6 text-indigo-300" viewBox="0 0 24 24" fill="currentColor"><path d="M20 12a8 8 0 01-8-8c0 1 1 3 1 3s-3 1-3 5a8 8 0 0010 0z"/></svg>
+                                            @endif
+                                        @elseif($code <= 3)
+                                            @if($isDay)
+                                                <svg class="w-6 h-6" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5" fill="currentColor" class="text-amber-400"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" class="text-amber-300"><line x1="10" y1="1" x2="10" y2="3"/><line x1="4.5" y1="3.5" x2="5.9" y2="4.9"/><line x1="2.5" y1="9" x2="4.5" y2="9"/><line x1="15.5" y1="3.5" x2="14.1" y2="4.9"/></g><path d="M7 17a4.5 4.5 0 014.5-4.5h3a3.5 3.5 0 010 7H9a3 3 0 010-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/></svg>
+                                            @else
+                                                <svg class="w-6 h-6" viewBox="0 0 24 24"><path d="M20 12a8 8 0 01-8-8c0 1 1 3 1 3s-3 1-3 5a8 8 0 0010 0z" fill="currentColor" class="text-indigo-300"/><path d="M7 17a4.5 4.5 0 014.5-4.5h3a3.5 3.5 0 010 7H9a3 3 0 010-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/></svg>
+                                            @endif
+                                        @elseif($code <= 49)
+                                            <svg class="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="10" x2="21" y2="10"/><line x1="5" y1="14" x2="19" y2="14"/><line x1="7" y1="18" x2="17" y2="18"/><line x1="4" y1="6" x2="20" y2="6" opacity=".4"/></svg>
+                                        @elseif($code <= 59)
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="9" y1="19" x2="8" y2="21"/><line x1="14" y1="19" x2="13" y2="21"/></g></svg>
+                                        @elseif($code <= 69)
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="8" y1="19" x2="7" y2="22"/><line x1="12" y1="19" x2="11" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>
+                                        @elseif($code <= 79)
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-cyan-300"><line x1="9" y1="19" x2="9" y2="21"/><line x1="13" y1="18" x2="13" y2="20"/><line x1="17" y1="19" x2="17" y2="21"/></g></svg>
+                                        @else
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><path d="M13 15l-2 5m2-5l2 5m-2-5l2.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"/></svg>
+                                        @endif
+                                    </div>
+                                    <span class="text-sm font-extrabold text-theme">{{ round($hour['temp']) }}°</span>
+                                    <span class="text-[8px] text-theme-muted leading-tight text-center max-w-[60px]">{{ __('beach.weather_' . $hour['condition']) }}</span>
+                                    @if($hour['precipitation_probability'] > 0)
+                                        <div class="flex items-center gap-0.5 mt-1">
+                                            <svg class="w-3 h-3 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 6-7 9-7 13a7 7 0 0014 0c0-4-3-7-7-13z"/></svg>
+                                            <span class="text-[9px] text-blue-400 font-bold">{{ $hour['precipitation_probability'] }}%</span>
+                                        </div>
+                                    @else
+                                        <div class="h-[14px]"></div>
+                                    @endif
+                                    <span class="text-[9px] text-theme-muted mt-0.5">{{ round($hour['wind_speed']) }} km/h</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Daily Forecast Tab -->
+                @if(!empty($upcomingDaily))
+                <div x-show="forecastTab === 'daily'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    <div class="p-4 sm:p-5 space-y-3">
+                        @foreach($upcomingDaily as $day)
                             @php
                                 $date = \Carbon\Carbon::parse($day['date']);
-                                $isToday = $date->isToday();
                                 $isTomorrow = $date->isTomorrow();
-                                $dayName = $isToday ? __('common.today') : ($isTomorrow ? __('common.tomorrow') : $date->translatedFormat('D'));
-                                $dateStr = $date->format('d/m');
+                                $dayName = $isTomorrow ? __('common.tomorrow') : $date->translatedFormat('l');
+                                $dateStr = $date->translatedFormat('d/M');
                                 $code = $day['weather_code'];
+                                $rainChance = $day['precipitation_probability'];
                             @endphp
-                            <div class="flex flex-col items-center py-4 px-5 {{ $isToday ? 'bg-blue-500/5' : '' }}">
-                                <span class="text-[11px] font-bold {{ $isToday ? 'text-blue-400' : 'text-theme-secondary' }} uppercase tracking-wide">{{ $dayName }}</span>
-                                <span class="text-[10px] text-theme-muted mt-0.5">{{ $dateStr }}</span>
-                                <div class="my-2.5">
+                            <div class="flex items-center gap-3 p-3 rounded-2xl bg-theme-subtle/20 border border-theme-subtle/30">
+                                <!-- Day + Date -->
+                                <div class="w-20 shrink-0">
+                                    <span class="text-xs font-bold text-theme block">{{ $dayName }}</span>
+                                    <span class="text-[10px] text-theme-muted capitalize">{{ $dateStr }}</span>
+                                </div>
+
+                                <!-- Weather Icon + Condition -->
+                                <div class="shrink-0 flex flex-col items-center gap-0.5">
                                     @if($code === 0)
                                         <svg class="w-7 h-7 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></g></svg>
                                     @elseif($code <= 3)
@@ -677,7 +785,7 @@
                                     @elseif($code <= 49)
                                         <svg class="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="10" x2="21" y2="10"/><line x1="5" y1="14" x2="19" y2="14"/><line x1="7" y1="18" x2="17" y2="18"/><line x1="4" y1="6" x2="20" y2="6" opacity=".4"/></svg>
                                     @elseif($code <= 59)
-                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="9" y1="19" x2="8" y2="21"/><line x1="14" y1="19" x2="13" y2="21"/></g></svg>
+                                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="8" y1="19" x2="7" y2="22"/><line x1="12" y1="19" x2="11" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>
                                     @elseif($code <= 69)
                                         <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-blue-400"><line x1="8" y1="19" x2="7" y2="22"/><line x1="12" y1="19" x2="11" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>
                                     @elseif($code <= 79)
@@ -685,22 +793,36 @@
                                     @else
                                         <svg class="w-7 h-7" viewBox="0 0 24 24"><path d="M6 17a4.5 4.5 0 014.5-4.5h1a3.5 3.5 0 01.5 6.95" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-400"/><path d="M9 12.5A5 5 0 0119 12a4 4 0 01-1 7.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-slate-300"/><path d="M13 15l-2 5m2-5l2 5m-2-5l2.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"/></svg>
                                     @endif
+                                    <span class="text-[8px] text-theme-muted leading-none">{{ __('beach.weather_' . $day['condition']) }}</span>
                                 </div>
-                                <div class="flex items-baseline gap-1">
-                                    <span class="text-sm font-extrabold text-theme">{{ round($day['temp_max']) }}°</span>
+
+                                <!-- Rain probability bar -->
+                                <div class="flex-1 min-w-0">
+                                    @if($rainChance > 0)
+                                        <div class="flex items-center gap-1.5 mb-1">
+                                            <svg class="w-3 h-3 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 6-7 9-7 13a7 7 0 0014 0c0-4-3-7-7-13z"/></svg>
+                                            <div class="flex-1 h-1.5 bg-theme-subtle/40 rounded-full overflow-hidden">
+                                                <div class="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all" style="width: {{ $rainChance }}%"></div>
+                                            </div>
+                                            <span class="text-[10px] text-blue-400 font-bold tabular-nums">{{ $rainChance }}%</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-center gap-1 text-[10px] text-theme-muted">
+                                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10m0 0l3-3m-3 3l-3-3"/></svg>
+                                        <span>{{ round($day['wind_speed']) }} km/h {{ $day['wind_direction'] }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Temps -->
+                                <div class="flex items-baseline gap-1 shrink-0">
+                                    <span class="text-base font-extrabold text-theme">{{ round($day['temp_max']) }}°</span>
                                     <span class="text-xs text-theme-muted">{{ round($day['temp_min']) }}°</span>
                                 </div>
-                                @if($day['precipitation_probability'] > 0)
-                                    <div class="flex items-center gap-1 mt-1.5">
-                                        <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 6-7 9-7 13a7 7 0 0014 0c0-4-3-7-7-13z"/></svg>
-                                        <span class="text-[10px] text-blue-400 font-bold">{{ $day['precipitation_probability'] }}%</span>
-                                    </div>
-                                @endif
-                                <span class="text-[10px] text-theme-muted mt-1">{{ round($day['wind_speed']) }} km/h</span>
                             </div>
                         @endforeach
                     </div>
                 </div>
+                @endif
             </div>
             @endif
 
@@ -708,13 +830,13 @@
             <div x-data="{ activeTideTab: 'tides' }" class="glass-card rounded-3xl overflow-hidden border border-theme-subtle/40 shadow-xl animate-fade-in-up" data-animate>
                 <!-- Tab Headers -->
                 <div class="flex border-b border-theme-subtle bg-slate-950/30 p-2 gap-2">
-                    <button @click="activeTideTab = 'tides'" 
+                    <button @click="activeTideTab = 'tides'" role="tab" :aria-selected="activeTideTab === 'tides'"
                             :class="activeTideTab === 'tides' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
                             class="flex-1 py-2.5 rounded-xl border border-transparent text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 15c2-3 4-5 6-5s4 3 6 3 4-3 6-3"/><path d="M3 19c2-3 4-5 6-5s4 3 6 3 4-3 6-3" opacity=".4"/></svg>
                         {{ __('beach.tide_title') }}
                     </button>
-                    <button @click="activeTideTab = 'moon'" 
+                    <button @click="activeTideTab = 'moon'" role="tab" :aria-selected="activeTideTab === 'moon'"
                             :class="activeTideTab === 'moon' ? 'bg-indigo-600/10 border-indigo-500/20 text-indigo-400 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
                             class="flex-1 py-2.5 rounded-xl border border-transparent text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 12a8 8 0 01-8-8c0 1 1 3 1 3s-3 1-3 5a8 8 0 0010 0z"/></svg>
@@ -725,7 +847,7 @@
                 <!-- Tab Contents -->
                 <div class="p-6">
                     <!-- Tab 1: Tides -->
-                    <div x-show="activeTideTab === 'tides'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                    <div x-show="activeTideTab === 'tides'" role="tabpanel" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                         <div class="flex items-center justify-between">
                             <div class="space-y-0.5">
                                 <span class="text-xs text-slate-400 uppercase tracking-widest font-bold">{{ __('beach.tide_state') }}</span>
@@ -862,7 +984,7 @@
                     </div>
 
                     <!-- Tab 2: Moon Cycle -->
-                    <div x-show="activeTideTab === 'moon'" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
+                    <div x-show="activeTideTab === 'moon'" role="tabpanel" class="space-y-6" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" style="display: none;">
                         <div class="flex flex-col items-center text-center space-y-4">
                             <div class="relative w-24 h-24 rounded-full bg-slate-950 flex items-center justify-center border border-indigo-500/25">
                                 <div class="absolute inset-0 rounded-full blur-2xl opacity-25 bg-indigo-500"></div>
@@ -1098,8 +1220,8 @@
                     }, 200);
 
                     let tileCounter = 0;
-                    const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    const layer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
                         maxZoom: 19,
                         alt: 'Mapa'
                     });

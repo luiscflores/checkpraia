@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'wave_height_min', 'wave_height_max', 'wave_period_min',
-    'wave_period_max', 'wave_direction', 'water_temp', 'forecasted_at'
+    'wave_period_max', 'wave_direction', 'water_temp', 'forecasted_at',
 ])]
 class OceanForecast extends Model
 {

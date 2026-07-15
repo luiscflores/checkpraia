@@ -3,8 +3,11 @@
 namespace App\Livewire\Public;
 
 use App\Services\GeoService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 class Home extends Component
@@ -23,6 +26,12 @@ class Home extends Component
 
     public $nearby = [];
 
+    public int $perPage = 20;
+
+    public int $page = 1;
+
+    public bool $hasMore = true;
+
     private ?array $cachedBeachesList = null;
 
     protected $queryString = [
@@ -31,122 +40,249 @@ class Home extends Component
         'selectedFlag' => ['except' => ''],
     ];
 
-    public function toggleFavorite($beachId)
+    public function mount(): void
     {
-        if (! auth()->check()) {
-            session()->flash('favorite_error', __('common.favorite_login_required'));
+        $this->favoriteIds = $this->loadFavoriteIds();
+    }
 
+    private function loadFavoriteIds(): array
+    {
+        return auth()->check()
+            ? auth()->user()->favorites()->pluck('beach_id')->map(fn ($id) => (int) $id)->toArray()
+            : [];
+    }
+
+    public function loadMore(): void
+    {
+        if (! $this->hasMore) {
             return;
         }
 
-        $user = auth()->user();
-
-        if (in_array($beachId, $this->favoriteIds)) {
-            $user->favorites()->detach($beachId);
-            $this->favoriteIds = array_values(array_filter($this->favoriteIds, fn ($id) => (int) $id !== (int) $beachId));
-            session()->flash('favorite_success', __('common.favorite_removed'));
-        } else {
-            $user->favorites()->attach($beachId);
-            $this->favoriteIds[] = (int) $beachId;
-            session()->flash('favorite_success', __('common.favorite_added'));
-        }
+        $this->page++;
     }
 
-    public function findNearby()
+    public function updatedSearch(): void
+    {
+        $this->resetPagination();
+        $this->cachedBeachesList = null;
+        $this->dispatchBeachesUpdated();
+    }
+
+    public function updatedSelectedRegion(): void
+    {
+        $this->resetPagination();
+        $this->cachedBeachesList = null;
+        $this->dispatchBeachesUpdated();
+    }
+
+    public function updatedSelectedFlag(): void
+    {
+        $this->resetPagination();
+        $this->cachedBeachesList = null;
+        $this->dispatchBeachesUpdated();
+    }
+
+    private function resetPagination(): void
+    {
+        $this->page = 1;
+        $this->hasMore = true;
+    }
+
+    public function findNearby(): void
     {
         $this->validate([
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
         ]);
 
-        $geoService = app(GeoService::class);
-        $locale = app()->getLocale();
-        $routeName = Route::has("beach.show.{$locale}") ? "beach.show.{$locale}" : 'beach.show.pt';
-        $user = auth()->user();
-        $isAdmin = $user && $user->is_admin;
-        $now = now();
-
         $lat = (float) $this->latitude;
         $lon = (float) $this->longitude;
 
-        $rows = DB::select('
-            SELECT b.*,
-                   bcs.flag as current_flag,
-                   bt.name as translated_name,
-                   wf.temp as air_temp,
-                   of2.water_temp, of2.wave_height_min, of2.wave_height_max
-            FROM beaches b
-            LEFT JOIN beach_current_statuses bcs ON bcs.beach_id = b.id
-            LEFT JOIN beach_translations bt ON bt.beach_id = b.id AND bt.locale = ?
-            LEFT JOIN weather_forecasts wf ON wf.beach_id = b.id
-            LEFT JOIN ocean_forecasts of2 ON of2.beach_id = b.id
-            WHERE b.is_active = 1
-        ', [$locale]);
+        $cacheKey = 'nearby:'.round($lat, 3).':'.round($lon, 3);
 
-        $result = [];
-        foreach ($rows as $r) {
-            $distance = $geoService->haversine($lat, $lon, (float) $r->latitude, (float) $r->longitude);
+        $this->nearby = Cache::remember($cacheKey, 900, function () use ($lat, $lon) {
+            $geoService = app(GeoService::class);
+            $locale = app()->getLocale();
+            $routeName = $this->routeNameFor($locale);
+            $isAdmin = auth()->user()?->is_admin ?? false;
+            $now = now();
 
-            $flag = 'gray';
-            if ($isAdmin) {
-                $flag = $r->current_flag ?? 'gray';
-            } else {
-                $inSeason = !$r->season_start || !$r->season_end || $now->between($r->season_start, $r->season_end);
-                if ($inSeason) {
-                    $tz = $r->longitude < -20 ? 'Atlantic/Azores' : 'Europe/Lisbon';
-                    $t = $now->copy()->timezone($tz)->format('H:i:s');
-                    $inHours = !$r->is_supervised || !$r->lifeguard_start || !$r->lifeguard_end || ($t >= $r->lifeguard_start && $t <= $r->lifeguard_end);
-                    if ($inHours) $flag = $r->current_flag ?? 'gray';
+            $latDelta = 0.25;
+            $lngDelta = 0.25;
+
+            $sql = $this->baseSelect('
+                b.id, b.name, b.slug, b.beachcam_slug, b.latitude, b.longitude,
+                b.blue_flag, b.accessible, b.region, b.municipality,
+                b.is_supervised, b.season_start, b.season_end,
+                b.lifeguard_start, b.lifeguard_end,
+                bcs.flag as current_flag,
+                bt.name as translated_name,
+                wf.temp as air_temp,
+                of2.water_temp, of2.wave_height_min, of2.wave_height_max
+            ');
+            $sql .= ' AND b.latitude BETWEEN ? AND ? AND b.longitude BETWEEN ? AND ?';
+
+            $bindings = [$locale, $lat - $latDelta, $lat + $latDelta, $lon - $lngDelta, $lon + $lngDelta];
+
+            $rows = DB::select($sql, $bindings);
+
+            $result = [];
+            foreach ($rows as $r) {
+                $distance = $geoService->haversine($lat, $lon, (float) $r->latitude, (float) $r->longitude);
+                if ($distance <= 30) {
+                    $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $now, $distance);
                 }
             }
 
-            $result[] = [
-                'id' => (int) $r->id,
-                'name' => $r->translated_name ?? $r->name,
-                'slug' => $r->slug,
-                'beachcam_slug' => $r->beachcam_slug,
-                'latitude' => (float) $r->latitude,
-                'longitude' => (float) $r->longitude,
-                'distance_km' => round($distance, 1),
-                'url' => route($routeName, ['locale' => $locale, 'slug' => $r->slug]),
-                'blue_flag' => (bool) $r->blue_flag,
-                'accessible' => (bool) $r->accessible,
-                'region' => $r->region,
-                'municipality' => $r->municipality,
-                'flag' => $flag,
-                'air_temp' => $r->air_temp !== null ? (float) $r->air_temp : null,
-                'water_temp' => $r->water_temp !== null ? (float) $r->water_temp : null,
-                'wave_height_min' => $r->wave_height_min !== null ? (float) $r->wave_height_min : null,
-                'wave_height_max' => $r->wave_height_max !== null ? (float) $r->wave_height_max : null,
-            ];
-        }
+            usort($result, fn ($a, $b) => $a['distance_km'] <=> $b['distance_km']);
 
-        usort($result, fn ($a, $b) => $a['distance_km'] <=> $b['distance_km']);
+            return array_slice($result, 0, 5);
+        });
 
-        $this->nearby = array_slice($result, 0, 5);
         $this->dispatch('nearby-updated', nearby: $this->nearby);
     }
 
-    public function updatedSearch()
+    #[Renderless]
+    public function saveDefaultRegion(string $region): void
     {
-        $this->dispatchBeachesUpdated();
+        if (! auth()->check()) {
+            return;
+        }
+
+        $allowed = ['Continental', 'Açores', 'Madeira'];
+        if (! in_array($region, $allowed)) {
+            return;
+        }
+
+        auth()->user()->update(['default_region' => $region]);
     }
 
-    public function updatedSelectedRegion()
+    public function render()
     {
-        $this->dispatchBeachesUpdated();
+        $allBeaches = $this->buildBeachesList();
+        $locale = app()->getLocale();
+        $routeName = $this->routeNameFor($locale);
+
+        $total = count($allBeaches);
+        $visibleCount = $this->page * $this->perPage;
+        $this->hasMore = $visibleCount < $total;
+
+        $beachesList = array_slice($allBeaches, 0, $visibleCount);
+
+        $mapBeaches = [];
+        foreach ($allBeaches as $b) {
+            $mapBeaches[] = [
+                'id' => $b['id'],
+                'name' => $b['name'],
+                'latitude' => $b['latitude'],
+                'longitude' => $b['longitude'],
+                'flag' => $b['flag'],
+                'region' => $b['region'],
+                'municipality' => $b['municipality'],
+                'url' => route($routeName, ['locale' => $locale, 'slug' => $b['slug']]),
+            ];
+        }
+
+        $defaultRegion = auth()->check() ? auth()->user()->default_region : null;
+
+        return view('livewire.public.home', [
+            'beachesList' => $beachesList,
+            'mapBeaches' => $mapBeaches,
+            'flagFilters' => config('flags.labels'),
+            'flagIcons' => config('flags.icons'),
+            'defaultRegion' => $defaultRegion,
+        ])->layout('components.layouts.app');
     }
 
-    public function updatedSelectedFlag()
+    // ── Shared query helpers ──────────────────────────────────────────────
+
+    private function routeNameFor(string $locale): string
     {
-        $this->dispatchBeachesUpdated();
+        return Route::has("beach.show.{$locale}") ? "beach.show.{$locale}" : 'beach.show.pt';
+    }
+
+    private function baseSelect(string $columns): string
+    {
+        return "SELECT {$columns}
+            FROM beaches b
+            LEFT JOIN beach_current_statuses bcs ON bcs.beach_id = b.id
+            LEFT JOIN beach_translations bt ON bt.beach_id = b.id AND bt.locale = ?
+            LEFT JOIN (
+                SELECT beach_id, MAX(id) as max_id FROM weather_forecasts GROUP BY beach_id
+            ) wf_latest ON wf_latest.beach_id = b.id
+            LEFT JOIN weather_forecasts wf ON wf.id = wf_latest.max_id
+            LEFT JOIN (
+                SELECT beach_id, MAX(id) as max_id FROM ocean_forecasts GROUP BY beach_id
+            ) of2_latest ON of2_latest.beach_id = b.id
+            LEFT JOIN ocean_forecasts of2 ON of2.id = of2_latest.max_id
+            WHERE b.is_active = 1";
+    }
+
+    private function resolveFlag(array $r, bool $isAdmin, $now): string
+    {
+        if ($isAdmin) {
+            return $r['current_flag'] ?? 'gray';
+        }
+
+        $sStart = $r['season_start'] ? new Carbon($r['season_start']) : null;
+        $sEnd = $r['season_end'] ? new Carbon($r['season_end']) : null;
+        $inSeason = ! $sStart || ! $sEnd || $now->between($sStart, $sEnd);
+
+        if (! $inSeason) {
+            return 'gray';
+        }
+
+        $tz = $r['longitude'] < -20 ? 'Atlantic/Azores' : 'Europe/Lisbon';
+        $t = $now->copy()->timezone($tz)->format('H:i:s');
+        $inHours = ! $r['is_supervised'] || ! $r['lifeguard_start'] || ! $r['lifeguard_end']
+            || ($t >= $r['lifeguard_start'] && $t <= $r['lifeguard_end']);
+
+        return $inHours ? ($r['current_flag'] ?? 'gray') : 'gray';
+    }
+
+    private function mapRow(object|array $r, string $routeName, string $locale, bool $isAdmin, $now, ?float $distance = null): array
+    {
+        $row = is_object($r) ? (array) $r : $r;
+
+        $mapped = [
+            'id' => (int) $row['id'],
+            'name' => $row['translated_name'] ?? $row['name'],
+            'slug' => $row['slug'],
+            'beachcam_slug' => $row['beachcam_slug'],
+            'latitude' => (float) $row['latitude'],
+            'longitude' => (float) $row['longitude'],
+            'url' => route($routeName, ['locale' => $locale, 'slug' => $row['slug']]),
+            'blue_flag' => (bool) $row['blue_flag'],
+            'accessible' => (bool) $row['accessible'],
+            'region' => $row['region'],
+            'municipality' => $row['municipality'],
+            'flag' => $this->resolveFlag($row, $isAdmin, $now),
+            'air_temp' => $row['air_temp'] !== null ? (float) $row['air_temp'] : null,
+            'water_temp' => $row['water_temp'] !== null ? (float) $row['water_temp'] : null,
+            'wave_height_min' => $row['wave_height_min'] !== null ? (float) $row['wave_height_min'] : null,
+            'wave_height_max' => $row['wave_height_max'] !== null ? (float) $row['wave_height_max'] : null,
+        ];
+
+        if ($distance !== null) {
+            $mapped['distance_km'] = round($distance, 1);
+        }
+
+        if (isset($row['wind_speed'])) {
+            $mapped['wind_speed'] = $row['wind_speed'] !== null ? (float) $row['wind_speed'] : null;
+            $mapped['wind_direction'] = $row['wind_direction'];
+            $mapped['wave_direction'] = $row['wave_direction'];
+            $mapped['source'] = $row['current_source'] ?? 'prediction';
+            $mapped['is_favorited'] = isset(array_flip($this->favoriteIds)[$row['id']]);
+        }
+
+        return $mapped;
     }
 
     private function dispatchBeachesUpdated(): void
     {
         $beaches = $this->buildBeachesList();
         $locale = app()->getLocale();
-        $routeName = Route::has("beach.show.{$locale}") ? "beach.show.{$locale}" : 'beach.show.pt';
+        $routeName = $this->routeNameFor($locale);
         $mapBeaches = [];
         foreach ($beaches as $b) {
             $mapBeaches[] = [
@@ -163,61 +299,11 @@ class Home extends Component
         $this->dispatch('beaches-updated', beaches: $mapBeaches);
     }
 
-    public function saveDefaultRegion($region)
-    {
-        if (! auth()->check()) {
-            return;
-        }
-
-        $allowed = ['Continental', 'Açores', 'Madeira'];
-        if (! in_array($region, $allowed)) {
-            return;
-        }
-
-        auth()->user()->update(['default_region' => $region]);
-    }
-
-    public function render()
-    {
-        $this->favoriteIds = auth()->check()
-            ? auth()->user()->favorites()->pluck('beach_id')->map(fn ($id) => (int) $id)->toArray()
-            : [];
-
-        $beaches = $this->buildBeachesList();
-
-        $locale = app()->getLocale();
-        $routeName = Route::has("beach.show.{$locale}") ? "beach.show.{$locale}" : 'beach.show.pt';
-
-        foreach ($beaches as &$b) {
-            $b['url'] = route($routeName, ['locale' => $locale, 'slug' => $b['slug']]);
-        }
-        unset($b);
-
-        $mapBeaches = [];
-        foreach ($beaches as $b) {
-            $mapBeaches[] = [
-                'id' => $b['id'],
-                'name' => $b['name'],
-                'latitude' => $b['latitude'],
-                'longitude' => $b['longitude'],
-                'flag' => $b['flag'],
-                'region' => $b['region'],
-                'municipality' => $b['municipality'],
-                'url' => $b['url'],
-            ];
-        }
-
-        $defaultRegion = auth()->check() ? auth()->user()->default_region : null;
-
-        return view('livewire.public.home', [
-            'beachesList' => $beaches,
-            'mapBeaches' => $mapBeaches,
-            'flagFilters' => config('flags.labels'),
-            'flagIcons' => config('flags.icons'),
-            'defaultRegion' => $defaultRegion,
-        ])->layout('components.layouts.app');
-    }
-
+    /**
+     * Build the filtered beach rows — cached per filter combination.
+     * Returns ALL matching beaches (up to 570) so the map and pagination both work.
+     * Cache is invalidated when search/region/flag changes.
+     */
     private function buildBeachesList(): array
     {
         if ($this->cachedBeachesList !== null) {
@@ -225,27 +311,24 @@ class Home extends Component
         }
 
         $locale = app()->getLocale();
-        $routeName = Route::has("beach.show.{$locale}") ? "beach.show.{$locale}" : 'beach.show.pt';
         $now = now();
-        $user = auth()->user();
-        $isAdmin = $user && $user->is_admin;
+        $isAdmin = auth()->user()?->is_admin ?? false;
 
-        $sql = 'SELECT b.*,
-                   bcs.flag as current_flag, bcs.source as current_source,
-                   bt.name as translated_name,
-                   wf.temp as air_temp, wf.wind_speed, wf.wind_direction,
-                   of2.water_temp, of2.wave_height_min, of2.wave_height_max, of2.wave_direction
-            FROM beaches b
-            LEFT JOIN beach_current_statuses bcs ON bcs.beach_id = b.id
-            LEFT JOIN beach_translations bt ON bt.beach_id = b.id AND bt.locale = ?
-            LEFT JOIN weather_forecasts wf ON wf.beach_id = b.id
-            LEFT JOIN ocean_forecasts of2 ON of2.beach_id = b.id
-            WHERE b.is_active = 1';
+        $sql = $this->baseSelect('
+            b.id, b.name, b.slug, b.beachcam_slug, b.latitude, b.longitude,
+            b.blue_flag, b.accessible, b.region, b.municipality,
+            b.is_supervised, b.season_start, b.season_end,
+            b.lifeguard_start, b.lifeguard_end,
+            bcs.flag as current_flag, bcs.source as current_source,
+            bt.name as translated_name,
+            wf.temp as air_temp, wf.wind_speed, wf.wind_direction,
+            of2.water_temp, of2.wave_height_min, of2.wave_height_max, of2.wave_direction
+        ');
 
         $bindings = [$locale];
 
         if ($this->search) {
-            $searchVal = '%' . trim($this->search) . '%';
+            $searchVal = '%'.trim($this->search).'%';
             $sql .= ' AND (b.name LIKE ? OR b.municipality LIKE ? OR b.district LIKE ? OR b.region LIKE ?)';
             $bindings = array_merge($bindings, [$searchVal, $searchVal, $searchVal, $searchVal]);
         }
@@ -260,66 +343,36 @@ class Home extends Component
             if (isset($flagMap[$this->selectedFlag])) {
                 if ($isAdmin) {
                     $sql .= ' AND bcs.flag = ?';
-                    $bindings[] = $this->selectedFlag;
                 } else {
                     $sql .= ' AND COALESCE(bcs.flag, \'gray\') = ?';
-                    $bindings[] = $this->selectedFlag;
                 }
+                $bindings[] = $this->selectedFlag;
             }
         }
 
         $sql .= ' ORDER BY b.latitude DESC';
 
-        $rows = DB::select($sql, $bindings);
+        $cacheKey = 'beach_rows:'.md5(implode(':', [
+            $locale,
+            $this->search ?: '',
+            $this->selectedRegion ?: '',
+            $this->selectedFlag ?: '',
+            $isAdmin ? 'admin' : 'user',
+        ]));
 
-        $favoriteSet = array_flip($this->favoriteIds);
-        $hasFavorites = count($favoriteSet) > 0;
-        $tzCache = [];
+        $rows = Cache::remember($cacheKey, 300, function () use ($sql, $bindings) {
+            return array_map(fn ($row) => (array) $row, DB::select($sql, $bindings));
+        });
+
+        $routeName = $this->routeNameFor($locale);
         $result = [];
 
         foreach ($rows as $r) {
-            $flag = 'gray';
-            if ($isAdmin) {
-                $flag = $r->current_flag ?? 'gray';
-            } else {
-                $sStart = $r->season_start ? new \Carbon\Carbon($r->season_start) : null;
-                $sEnd = $r->season_end ? new \Carbon\Carbon($r->season_end) : null;
-                $inSeason = !$sStart || !$sEnd || $now->between($sStart, $sEnd);
-                if ($inSeason) {
-                    $tz = $tzCache[$r->id] ??= ($r->longitude < -20 ? 'Atlantic/Azores' : 'Europe/Lisbon');
-                    $t = $now->copy()->timezone($tz)->format('H:i:s');
-                    $inHours = !$r->is_supervised || !$r->lifeguard_start || !$r->lifeguard_end || ($t >= $r->lifeguard_start && $t <= $r->lifeguard_end);
-                    if ($inHours) {
-                        $flag = $r->current_flag ?? 'gray';
-                    }
-                }
-            }
-
-            $result[] = [
-                'id' => (int) $r->id,
-                'name' => $r->translated_name ?? $r->name,
-                'slug' => $r->slug,
-                'beachcam_slug' => $r->beachcam_slug,
-                'latitude' => (float) $r->latitude,
-                'longitude' => (float) $r->longitude,
-                'flag' => $flag,
-                'source' => $r->current_source ?? 'prediction',
-                'blue_flag' => (bool) $r->blue_flag,
-                'accessible' => (bool) $r->accessible,
-                'region' => $r->region,
-                'municipality' => $r->municipality,
-                'is_favorited' => isset($favoriteSet[$r->id]),
-                'air_temp' => $r->air_temp !== null ? (float) $r->air_temp : null,
-                'water_temp' => $r->water_temp !== null ? (float) $r->water_temp : null,
-                'wave_height_min' => $r->wave_height_min !== null ? (float) $r->wave_height_min : null,
-                'wave_height_max' => $r->wave_height_max !== null ? (float) $r->wave_height_max : null,
-                'wave_direction' => $r->wave_direction,
-                'wind_speed' => $r->wind_speed !== null ? (float) $r->wind_speed : null,
-                'wind_direction' => $r->wind_direction,
-            ];
+            $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $now);
         }
 
-        if ($hasFavorites) {
+        $favoriteSet = array_flip($this->favoriteIds);
+        if (count($favoriteSet) > 0) {
             usort($result, function ($a, $b) use ($favoriteSet) {
                 $aFav = isset($favoriteSet[$a['id']]) ? 0 : 1;
                 $bFav = isset($favoriteSet[$b['id']]) ? 0 : 1;
@@ -333,10 +386,8 @@ class Home extends Component
         return $result;
     }
 
-    public function updated($property): void
-    {
-        if (in_array($property, ['search', 'selectedRegion', 'selectedFlag'])) {
-            $this->cachedBeachesList = null;
-        }
-    }
+    /**
+     * Get beaches for the current page only — uses SQL LIMIT/OFFSET.
+     * Caches the full filtered result set to avoid re-querying on each loadMore().
+     */
 }

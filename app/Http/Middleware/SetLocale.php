@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 
@@ -28,6 +29,7 @@ class SetLocale
             $locale = $this->resolveLocale($request, $supportedLocales, $defaultLocale);
             App::setLocale($locale);
             URL::defaults(['locale' => $locale]);
+
             return $next($request);
         }
 
@@ -41,7 +43,7 @@ class SetLocale
         URL::defaults(['locale' => $locale]);
         session(['locale' => $locale]);
 
-        if (auth()->check() && Schema::hasColumn('users', 'locale') && auth()->user()->locale !== $locale) {
+        if (auth()->check() && $this->hasLocaleColumn() && auth()->user()->locale !== $locale) {
             auth()->user()->updateQuietly(['locale' => $locale]);
         }
 
@@ -56,7 +58,7 @@ class SetLocale
             return $locale;
         }
 
-        if (auth()->check() && Schema::hasColumn('users', 'locale')) {
+        if (auth()->check() && $this->hasLocaleColumn()) {
             $userLocale = auth()->user()->locale;
             if ($userLocale && in_array($userLocale, $supportedLocales)) {
                 return $userLocale;
@@ -64,5 +66,12 @@ class SetLocale
         }
 
         return $request->getPreferredLanguage($supportedLocales) ?: $defaultLocale;
+    }
+
+    private function hasLocaleColumn(): bool
+    {
+        return Cache::remember('schema_has_locale_column', 86400, function () {
+            return Schema::hasColumn('users', 'locale');
+        });
     }
 }

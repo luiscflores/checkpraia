@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
-use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 
 #[Fillable([
     'type', 'external_id', 'name', 'slug', 'beachcam_slug', 'region', 'district', 'municipality', 'island',
     'latitude', 'longitude', 'is_active', 'is_supervised', 'season_start', 'season_end',
     'lifeguard_start', 'lifeguard_end', 'image_path', 'blue_flag', 'accessible',
-    'tide_station_id', 'weather_zone', 'ocean_zone'
+    'tide_station_id', 'weather_zone', 'ocean_zone',
 ])]
 class Beach extends Model
 {
@@ -31,18 +32,20 @@ class Beach extends Model
 
     public function isInSeason(): bool
     {
-        if (!$this->season_start || !$this->season_end) {
+        if (! $this->season_start || ! $this->season_end) {
             return true;
         }
+
         return now($this->timezone)->between($this->season_start, $this->season_end);
     }
 
-    public function isTimeInLifeguardHours(\Carbon\Carbon $time): bool
+    public function isTimeInLifeguardHours(Carbon $time): bool
     {
-        if (!$this->is_supervised || !$this->lifeguard_start || !$this->lifeguard_end) {
+        if (! $this->is_supervised || ! $this->lifeguard_start || ! $this->lifeguard_end) {
             return true;
         }
         $formattedTime = $time->copy()->timezone($this->timezone)->format('H:i:s');
+
         return $formattedTime >= $this->lifeguard_start && $formattedTime <= $this->lifeguard_end;
     }
 
@@ -69,12 +72,14 @@ class Beach extends Model
     public function getNameAttribute($value)
     {
         $translation = $this->translations->where('locale', app()->getLocale())->first();
+
         return $translation ? $translation->name : $value;
     }
 
     public function getDescriptionAttribute()
     {
         $translation = $this->translations->where('locale', app()->getLocale())->first();
+
         return $translation ? $translation->description : '';
     }
 
@@ -86,10 +91,11 @@ class Beach extends Model
     public function getUrlAttribute()
     {
         $locale = app()->getLocale();
-        $routeName = 'beach.show.' . $locale;
-        if (!\Illuminate\Support\Facades\Route::has($routeName)) {
+        $routeName = 'beach.show.'.$locale;
+        if (! Route::has($routeName)) {
             $routeName = 'beach.show.pt';
         }
+
         return route($routeName, ['locale' => $locale, 'slug' => $this->slug]);
     }
 
@@ -98,8 +104,10 @@ class Beach extends Model
         parent::boot();
 
         static::saved(function ($beach) {
-            Cache::forget('beach_weather:' . $beach->id);
-            Cache::forget('beach_ocean:' . $beach->id);
+            Cache::forget('beach_weather:'.$beach->id);
+            Cache::forget('beach_ocean:'.$beach->id);
+            // Invalidate the render cache used by BeachDetail
+            Cache::forget('beach_detail_static:'.$beach->id);
         });
     }
 
@@ -146,7 +154,7 @@ class Beach extends Model
     public function getCachedLatestWeatherForecast(): ?WeatherForecast
     {
         return Cache::remember(
-            'beach_weather:' . $this->id,
+            'beach_weather:'.$this->id,
             300,
             fn () => $this->latestWeatherForecast
         );
@@ -155,7 +163,7 @@ class Beach extends Model
     public function getCachedLatestOceanForecast(): ?OceanForecast
     {
         return Cache::remember(
-            'beach_ocean:' . $this->id,
+            'beach_ocean:'.$this->id,
             300,
             fn () => $this->latestOceanForecast
         );
@@ -170,7 +178,7 @@ class Beach extends Model
     {
         return $this->hasMany(OfficialAlert::class)->where(function ($query) {
             $query->whereNull('ended_at')
-                  ->orWhere('ended_at', '>', now());
+                ->orWhere('ended_at', '>', now());
         });
     }
 

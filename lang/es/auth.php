@@ -37,4 +37,26 @@ return [
         'success' => '¡Cuenta creada con éxito!',
         'referral_invalid' => 'El código de referido introducido no es válido.',
     ],
+    'forgot_password' => [
+        'page_title' => 'Recuperar Contraseña - CheckPraia',
+        'heading' => '¿Olvidaste tu contraseña?',
+        'description' => 'Sin problema. Solo indícanos tu correo electrónico y te enviaremos un enlace de recuperación que te permitirá elegir una nueva.',
+        'submit' => 'Enviar Enlace de Recuperación',
+    ],
+    'reset_password' => [
+        'page_title' => 'Restablecer Contraseña - CheckPraia',
+        'submit' => 'Restablecer Contraseña',
+    ],
+    'verify_email' => [
+        'page_title' => 'Verificar Email - CheckPraia',
+        'description' => '¡Gracias por registrarte! Antes de comenzar, ¿podrías verificar tu correo electrónico haciendo clic en el enlace que acabamos de enviarte? Si no recibiste el email, con gusto te enviamos otro.',
+        'verification_sent' => 'Se ha enviado un nuevo enlace de verificación al correo electrónico que proporcionaste durante el registro.',
+        'resend' => 'Reenviar Email de Verificación',
+        'logout' => 'Cerrar Sesión',
+    ],
+    'confirm_password' => [
+        'page_title' => 'Confirmar Contraseña - CheckPraia',
+        'description' => 'Esta es un área segura de la aplicación. Por favor confirma tu contraseña antes de continuar.',
+        'submit' => 'Confirmar',
+    ],
 ];

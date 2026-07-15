@@ -5,6 +5,7 @@ return [
     'site_description' => 'Estado de las banderas de las playas en tiempo real. Pronósticos automáticos, confirmaciones de la comunidad y condiciones del mar.',
     'meta_description' => 'Consulta la bandera más probable de las playas marítimas vigiladas de Portugal antes de salir de casa.',
     'aria_notifications' => 'Notificaciones dinámicas',
+    'skip_to_content' => 'Saltar al contenido',
 
     // Navigation
     'nav_map' => 'Mapa',
@@ -164,7 +165,7 @@ return [
 
     // Search & Filters
     'search_clear' => 'Limpiar búsqueda',
-    'search_placeholder' => 'Buscar playa o municipio...',
+    'search_placeholder' => 'Buscar playa',
     'search_nearby' => 'Playas cerca de mí',
     'search_nearby_short' => 'Cerca de mí',
     'filter_all' => 'Todas',
@@ -289,4 +290,13 @@ return [
     'contact_email_address' => 'checkpraia@example.com',
     'contact_social' => 'Síguenos en redes sociales',
     'contact_social_description' => 'Entérate de las novedades, consejos y actualizaciones.',
+    // Cookie consent
+    'cookie_title' => 'Privacidad y Cookies',
+    'cookie_description' => 'Usamos cookies solo para sesiones y preferencias. Sin rastreo. ¿Aceptas?',
+    'cookie_accept' => 'Aceptar',
+    'cookie_reject' => 'Rechazar',
+    'cookie_learn_more' => 'Más información',
+
+    // Anonymous
+    'anonymous' => 'Anónimo',
 ];

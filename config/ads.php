@@ -3,7 +3,7 @@
 return [
     'publisher_id' => env('ADSENSE_PUBLISHER_ID', ''),
 
-    'publisher_src' => 'ca-pub-' . env('ADSENSE_PUBLISHER_ID', ''),
+    'publisher_src' => 'ca-pub-'.env('ADSENSE_PUBLISHER_ID', ''),
 
     'auto_ads_enabled' => env('ADSENSE_AUTO_ADS_ENABLED', true),
 

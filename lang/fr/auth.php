@@ -37,4 +37,26 @@ return [
         'success' => 'Compte créé avec succès !',
         'referral_invalid' => 'Le code de parrainage que vous avez saisi n\'est pas valide.',
     ],
+    'forgot_password' => [
+        'page_title' => 'Mot de passe oublié - CheckPraia',
+        'heading' => 'Mot de passe oublié ?',
+        'description' => 'Pas de problème. Indiquez simplement votre adresse email et nous vous enverrons un lien de réinitialisation qui vous permettra d\'en choisir un nouveau.',
+        'submit' => 'Envoyer le lien de réinitialisation',
+    ],
+    'reset_password' => [
+        'page_title' => 'Réinitialiser le mot de passe - CheckPraia',
+        'submit' => 'Réinitialiser le mot de passe',
+    ],
+    'verify_email' => [
+        'page_title' => 'Vérifier l\'email - CheckPraia',
+        'description' => 'Merci pour votre inscription ! Avant de commencer, pourriez-vous vérifier votre email en cliquant sur le lien que nous venons de vous envoyer ? Si vous n\'avez pas reçu l\'email, nous vous en enverrons un autre avec plaisir.',
+        'verification_sent' => 'Un nouveau lien de vérification a été envoyé à l\'adresse email que vous avez fournie lors de l\'inscription.',
+        'resend' => 'Renvoyer l\'email de vérification',
+        'logout' => 'Se déconnecter',
+    ],
+    'confirm_password' => [
+        'page_title' => 'Confirmer le mot de passe - CheckPraia',
+        'description' => 'Ceci est une zone sécurisée de l\'application. Veuillez confirmer votre mot de passe avant de continuer.',
+        'submit' => 'Confirmer',
+    ],
 ];

@@ -40,7 +40,9 @@ class PushSubscriptionController extends Controller
     {
         $request->validate(['endpoint' => 'required|string']);
 
-        PushSubscription::where('endpoint', $request->endpoint)->delete();
+        PushSubscription::where('endpoint', $request->endpoint)
+            ->where('user_id', auth()->id())
+            ->delete();
 
         return response()->json(['success' => true]);
     }
@@ -62,9 +64,11 @@ class PushSubscriptionController extends Controller
     {
         $request->validate(['endpoint' => 'required|string']);
 
-        $subscription = PushSubscription::where('endpoint', $request->endpoint)->first();
+        $subscription = PushSubscription::where('endpoint', $request->endpoint)
+            ->where('user_id', auth()->id())
+            ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['success' => false, 'error' => 'Subscription not found'], 404);
         }
 

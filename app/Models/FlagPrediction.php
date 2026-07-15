@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'green_probability', 'yellow_probability', 'red_probability',
-    'selected_flag', 'confidence', 'algorithm_version', 'calculated_at'
+    'selected_flag', 'confidence', 'algorithm_version', 'calculated_at',
 ])]
 class FlagPrediction extends Model
 {

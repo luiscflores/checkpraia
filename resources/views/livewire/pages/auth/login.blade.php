@@ -55,13 +55,13 @@ new #[Layout('components.layouts.app')] class extends Component
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.login.email_label') }}</label>
-                <input type="email" wire:model="form.email" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.login.email_placeholder') }}" />
+                <input type="email" wire:model="form.email" autocomplete="email" autofocus class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="{{ __('auth.login.email_placeholder') }}" />
                 <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
             </div>
 
             <div class="space-y-1">
                 <label class="text-xs text-theme-secondary font-bold uppercase tracking-wider block">{{ __('auth.login.password_label') }}</label>
-                <input type="password" wire:model="form.password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="******" />
+                <input type="password" wire:model="form.password" autocomplete="current-password" class="w-full glass-input px-4 py-2.5 rounded-xl text-base sm:text-sm" placeholder="******" />
                 <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
             </div>
 
@@ -77,8 +77,12 @@ new #[Layout('components.layouts.app')] class extends Component
                 @endif
             </div>
 
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
-                {{ __('auth.login.submit') }} &rarr;
+            <button type="submit" wire:loading.attr="disabled" wire:loading.class="opacity-50 cursor-not-allowed" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20">
+                <span wire:loading.remove>{{ __('auth.login.submit') }} &rarr;</span>
+                <span wire:loading class="flex items-center justify-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    {{ __('common.loading') ?? 'A carregar...' }}
+                </span>
             </button>
 
             <div class="relative my-4">
@@ -90,7 +94,7 @@ new #[Layout('components.layouts.app')] class extends Component
                 </div>
             </div>
 
-            <a href="{{ route('auth.google') }}" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-bold py-3 rounded-xl text-sm transition-all shadow-md">
+            <a href="{{ route('auth.google') }}" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-bold py-3 rounded-xl text-sm transition-all shadow-md">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

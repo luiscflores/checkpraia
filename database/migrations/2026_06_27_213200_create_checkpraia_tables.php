@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -41,13 +41,13 @@ return new class extends Migration
             $hasPostgis = false;
             try {
                 $hasPostgis = count(DB::select("SELECT 1 FROM pg_extension WHERE extname = 'postgis'")) > 0;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 //
             }
 
             if ($hasPostgis) {
-                DB::statement("ALTER TABLE beaches ADD COLUMN location geography(Point, 4326)");
-                DB::statement("CREATE INDEX beaches_location_gix ON beaches USING GIST (location)");
+                DB::statement('ALTER TABLE beaches ADD COLUMN location geography(Point, 4326)');
+                DB::statement('CREATE INDEX beaches_location_gix ON beaches USING GIST (location)');
             }
         }
 

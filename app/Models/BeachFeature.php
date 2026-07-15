@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'coast_orientation', 'exposure_direction', 'exposure_factor',
     'shelter_factor', 'beach_type', 'bottom_type', 'slope', 'current_risk',
-    'has_jetties', 'has_bays', 'has_cliffs', 'has_rocks', 'river_influence'
+    'has_jetties', 'has_bays', 'has_cliffs', 'has_rocks', 'river_influence',
 ])]
 class BeachFeature extends Model
 {

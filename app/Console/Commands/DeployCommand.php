@@ -2,7 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\FetchInfoAguaData;
+use App\Jobs\FetchIpmaForecasts;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 
 class DeployCommand extends Command
 {
@@ -21,8 +24,9 @@ class DeployCommand extends Command
         $this->info('2/6 Running migrations...');
         $this->call('migrate', ['--force' => true]);
 
-        if (!\Illuminate\Support\Facades\Schema::hasTable('beaches')) {
+        if (! Schema::hasTable('beaches')) {
             $this->warn('Beaches table not found, skipping seed and jobs.');
+
             return self::SUCCESS;
         }
 
@@ -36,8 +40,8 @@ class DeployCommand extends Command
         $this->call('optimize');
 
         $this->info('6/6 Dispatching data fetch jobs...');
-        \App\Jobs\FetchIpmaForecasts::dispatch();
-        \App\Jobs\FetchInfoAguaData::dispatch();
+        FetchIpmaForecasts::dispatch();
+        FetchInfoAguaData::dispatch();
 
         $this->info('Deploy complete!');
 

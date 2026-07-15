@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['beach_id', 'quality_class', 'sampled_at'])]
+#[Fillable(['beach_id', 'quality_class', 'source', 'sampled_at'])]
 class WaterQualitySnapshot extends Model
 {
     protected function casts(): array

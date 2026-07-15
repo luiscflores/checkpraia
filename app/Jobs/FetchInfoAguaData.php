@@ -2,12 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Domain\Community\ConsensusResolver;
+use App\Domain\Forecasting\PredictionEngine;
 use App\Models\Beach;
 use App\Models\Setting;
 use App\Models\WaterQualitySnapshot;
 use App\Services\InfoAgua\InfoAguaClient;
-use App\Domain\Forecasting\PredictionEngine;
-use App\Domain\Community\ConsensusResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +20,9 @@ class FetchInfoAguaData implements ShouldQueue
 
     public $timeout = 300;
 
-    public $tries = 1;
+    public $tries = 3;
+
+    public $backoff = 30;
 
     protected ?Beach $beach;
 
@@ -31,25 +33,41 @@ class FetchInfoAguaData implements ShouldQueue
 
     public function handle(): void
     {
-        $beaches = $this->beach ? collect([$this->beach]) : Beach::with('translations')->where('is_active', true)->get();
-
-        if (!$this->beach) {
+        if (! $this->beach) {
             Setting::set('last_infoagua_sync', now()->toIso8601String());
         }
 
-        $infoAgua = new InfoAguaClient();
-        $engine = new PredictionEngine();
-        $resolver = new ConsensusResolver();
+        $infoAgua = app(InfoAguaClient::class);
+        $engine = app(PredictionEngine::class);
+        $resolver = app(ConsensusResolver::class);
 
-        foreach ($beaches as $beach) {
+        if ($this->beach) {
             try {
-                $this->processBeach($beach, $infoAgua, $engine, $resolver);
+                $this->processBeach($this->beach, $infoAgua, $engine, $resolver);
             } catch (\Exception $e) {
-                logger()->warning('InfoÁgua fetch failed for beach ' . $beach->id, [
+                logger()->warning('InfoÁgua fetch failed for beach '.$this->beach->id, [
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            return;
         }
+
+        // Process in chunks to avoid loading all 570 beaches into memory at once
+        Beach::where('is_active', true)
+            ->select('id')
+            ->chunk(20, function ($beaches) use ($infoAgua, $engine, $resolver) {
+                foreach ($beaches as $beach) {
+                    try {
+                        $beach->load('translations');
+                        $this->processBeach($beach, $infoAgua, $engine, $resolver);
+                    } catch (\Exception $e) {
+                        logger()->warning('InfoÁgua fetch failed for beach '.$beach->id, [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            });
     }
 
     private function processBeach(Beach $beach, InfoAguaClient $infoAgua, PredictionEngine $engine, ConsensusResolver $resolver): void
@@ -66,13 +84,14 @@ class FetchInfoAguaData implements ShouldQueue
             WaterQualitySnapshot::create([
                 'beach_id' => $beach->id,
                 'quality_class' => $class,
+                'source' => 'apa_arcgis',
                 'sampled_at' => $result['sampled_at'] ?? now(),
             ]);
         }
 
-        $prediction = $engine->calculate($beach);
-        $prediction->save();
+        $payload = $engine->calculateWithPayload($beach);
+        $payload['prediction']->save();
 
-        $resolver->resolveCurrentStatus($beach);
+        $resolver->resolveCurrentStatus($beach, $payload);
     }
 }

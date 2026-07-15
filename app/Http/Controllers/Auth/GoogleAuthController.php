@@ -16,11 +16,17 @@ class GoogleAuthController
 
     public function callback()
     {
-        $googleUser = Socialite::driver('google')->stateless()->user();
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+        } catch (\Exception $e) {
+            logger()->error('Google OAuth failed: '.$e->getMessage());
+
+            return redirect()->route('login')->withErrors(['google' => 'Authentication with Google failed. Please try again.']);
+        }
 
         $user = User::where('google_id', $googleUser->getId())->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user) {
@@ -33,7 +39,7 @@ class GoogleAuthController
                 $username = $baseUsername;
                 $counter = 1;
                 while (User::where('username', $username)->exists()) {
-                    $username = $baseUsername . $counter;
+                    $username = $baseUsername.$counter;
                     $counter++;
                 }
 
@@ -52,11 +58,12 @@ class GoogleAuthController
 
         if ($user->is_suspended) {
             Auth::logout();
-            return redirect()->route('profile')->with('error', 'A tua conta está suspensa.');
+
+            return redirect()->route('home')->withErrors(['account' => 'A tua conta está suspensa.']);
         }
 
         Auth::login($user);
 
-        return redirect()->route('profile');
+        return redirect()->intended(route('home'));
     }
 }

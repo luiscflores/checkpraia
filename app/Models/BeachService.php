@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'beach_id', 'parking', 'bathrooms', 'showers', 'accessible',
     'amphibious_chair', 'first_aid', 'lifeguard_post', 'bar',
-    'restaurant', 'surf_school', 'equipment_rental'
+    'restaurant', 'surf_school', 'equipment_rental',
 ])]
 class BeachService extends Model
 {

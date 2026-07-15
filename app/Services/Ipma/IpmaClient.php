@@ -2,6 +2,7 @@
 
 namespace App\Services\Ipma;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 class IpmaClient
@@ -31,7 +32,7 @@ class IpmaClient
                     // Convert wind degree to compass direction
                     $windDegree = (int) ($current['wind_direction_10m'] ?? 0);
                     $windDirection = $this->getCompassDirection($windDegree);
-                    
+
                     $uv = (float) ($current['uv_index'] ?? 0.0);
 
                     // Visibility classification
@@ -59,7 +60,7 @@ class IpmaClient
             }
             throw new \Exception('Weather forecast data is missing in the API response.');
         } catch (\Exception $e) {
-            logger()->error('Open-Meteo Weather API failed: ' . $e->getMessage());
+            logger()->error('Open-Meteo Weather API failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -101,7 +102,7 @@ class IpmaClient
             }
             throw new \Exception('Ocean forecast data is missing in the API response.');
         } catch (\Exception $e) {
-            logger()->error('Open-Meteo Marine API failed: ' . $e->getMessage());
+            logger()->error('Open-Meteo Marine API failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -148,7 +149,8 @@ class IpmaClient
 
             return [];
         } catch (\Exception $e) {
-            logger()->error('Open-Meteo daily forecast failed: ' . $e->getMessage());
+            logger()->error('Open-Meteo daily forecast failed: '.$e->getMessage());
+
             return [];
         }
     }
@@ -192,13 +194,62 @@ class IpmaClient
     }
 
     /**
+     * Fetch 48-hour hourly weather forecast for a beach.
+     * Returns hourly data points with temperature, precipitation, weather code, wind.
+     */
+    public function getHourlyForecast(float $latitude, float $longitude): array
+    {
+        try {
+            $cfg = config('services.openmeteo');
+            $response = Http::retry($cfg['retry_times'], $cfg['retry_gap'])->timeout($cfg['timeout'])->get($cfg['weather_url'], [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'hourly' => 'temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m,uv_index,is_day',
+                'timezone' => $cfg['timezone'],
+                'forecast_hours' => 48,
+            ]);
+
+            if ($response->successful()) {
+                $hourly = $response->json('hourly', []);
+                $times = $hourly['time'] ?? [];
+                $result = [];
+
+                for ($i = 0, $len = count($times); $i < $len; $i++) {
+                    $code = (int) ($hourly['weather_code'][$i] ?? 0);
+                    $result[] = [
+                        'time' => $times[$i],
+                        'hour' => Carbon::parse($times[$i])->format('H:i'),
+                        'weather_code' => $code,
+                        'condition' => $this->getWeatherCondition($code),
+                        'is_day' => (bool) ($hourly['is_day'][$i] ?? true),
+                        'temp' => (float) ($hourly['temperature_2m'][$i] ?? 0),
+                        'precipitation_probability' => (int) ($hourly['precipitation_probability'][$i] ?? 0),
+                        'precipitation' => (float) ($hourly['precipitation'][$i] ?? 0),
+                        'wind_speed' => (float) ($hourly['wind_speed_10m'][$i] ?? 0),
+                        'wind_direction' => $this->getCompassDirection((int) ($hourly['wind_direction_10m'][$i] ?? 0)),
+                        'uv_index' => (float) ($hourly['uv_index'][$i] ?? 0),
+                    ];
+                }
+
+                return $result;
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            logger()->error('Open-Meteo hourly forecast failed: '.$e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
      * Helper to map degree angle to compass direction.
      */
     private function getCompassDirection(int $degrees): string
     {
         $sectors = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
         $index = round($degrees / 45);
+
         return $sectors[$index % 8];
     }
-
 }
