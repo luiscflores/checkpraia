@@ -143,7 +143,7 @@ class TideClient
         $s2Phase = self::S2_SPEED * $hoursSinceRef * self::DEG2RAD;
 
         $moonAge = $this->moonAge($julianDay);
-        $springNapeFactor = cos(2.0 * M_PI * ($moonAge / 29.53058867));
+        $springNapeFactor = cos(2.0 * M_PI * ($moonAge / 14.765));
 
         $amplitudeMod = 1.0 + 0.3 * $springNapeFactor;
 

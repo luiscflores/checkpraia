@@ -36,6 +36,8 @@ return [
     'footer_about' => 'À propos',
     'footer_contact' => 'Contact',
     'footer_legal' => 'Conditions & Confidentialité',
+    'footer_terms' => "Conditions d'utilisation",
+    'footer_privacy' => 'Confidentialité',
     'footer_copyright' => 'CheckPraia',
 
     // Language Switcher

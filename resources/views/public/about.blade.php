@@ -67,7 +67,9 @@
         {{-- Install PWA --}}
         <div x-data="pwaInstallHandler()" class="glass-card p-6 sm:p-8 rounded-2xl space-y-4 text-center" x-cloak>
             <div class="flex justify-center">
-                <img src="/icon-192.png" alt="CheckPraia" class="w-16 h-16 rounded-2xl shadow-lg shadow-blue-600/20">
+                <div class="p-1 rounded-2xl bg-gradient-to-br from-blue-600/20 to-slate-800/10 shadow-lg shadow-blue-600/20 ring-1 ring-blue-400/10">
+                    <img src="/icon-192.svg" alt="CheckPraia" class="w-16 h-16">
+                </div>
             </div>
             <div class="space-y-2">
                 <h2 class="text-lg font-bold">{{ __('common.about_page_install_title') }}</h2>

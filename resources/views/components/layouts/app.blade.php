@@ -222,10 +222,6 @@
             background: var(--bg-glass-bg);
             color: var(--text-primary);
         }
-        [data-theme="light"] .theme-toggle-dark-icon { display: none; }
-        [data-theme="dark"] .theme-toggle-light-icon { display: none; }
-        [data-theme="light"] .theme-toggle-light-icon { display: block; }
-        [data-theme="dark"] .theme-toggle-dark-icon { display: block; }
 
         [data-theme="light"] .text-slate-400 { color: #64748b; }
         [data-theme="light"] .text-slate-500 { color: #475569; }
@@ -375,7 +371,7 @@
                     <!-- Desktop Language Switcher -->
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" @click.outside="open = false" class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-theme-secondary hover:text-theme transition-all px-2 py-1.5 rounded-lg hover:bg-white/5" aria-label="{{ __('common.language') }}" aria-haspopup="true" :aria-expanded="open">
-                            <span class="text-base leading-none">{{ config('locales.flags.' . app()->getLocale(), '🇵🇹') }}</span>
+                            <span class="text-xs font-bold tracking-widest">{{ strtoupper(app()->getLocale()) }}</span>
                             <svg class="w-3 h-3 transition-transform duration-200" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                         <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1 w-36 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
@@ -397,7 +393,7 @@
                     <!-- Mobile Language Switcher -->
                     <div x-data="{ open: false }" class="relative md:hidden">
                         <button @click="open = !open" @click.outside="open = false" class="theme-toggle-btn touch-target" aria-label="{{ __('common.language') }}" aria-haspopup="true" :aria-expanded="open">
-                            <span class="text-lg leading-none">{{ config('locales.flags.' . app()->getLocale(), '🇵🇹') }}</span>
+                            <span class="text-xs font-bold tracking-widest">{{ strtoupper(app()->getLocale()) }}</span>
                         </button>
                         <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1 w-36 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
                             @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $code)
@@ -412,18 +408,26 @@
                         </div>
                     </div>
 
-                    <!-- Theme Toggle -->
-                    <button onclick="toggleAppTheme()" class="theme-toggle-btn touch-target" aria-label="{{ __('common.theme_toggle') }}" title="{{ __('common.theme_toggle') }}">
-                        <span class="theme-toggle-dark-icon" style="font-size: 18px; line-height: 1; transition: transform 0.3s ease;" x-on:click="$el.style.transform = 'rotate(360deg)'">🌙</span>
-                        <span class="theme-toggle-light-icon" style="font-size: 18px; line-height: 1; transition: transform 0.3s ease;">☀️</span>
+                    <!-- Theme Toggle Switch -->
+                    <button x-data="{ dark: localStorage.getItem('checkpraia-theme') !== 'light' }"
+                            @click="toggleAppTheme(); dark = !dark"
+                            class="relative w-14 h-7 rounded-full transition-colors duration-300 shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex items-center"
+                            :class="dark ? 'bg-slate-600' : 'bg-amber-300'"
+                            :aria-label="dark ? '{{ __('common.theme_toggle') }}' : '{{ __('common.theme_toggle') }}'"
+                            role="switch"
+                            :aria-checked="!dark">
+                        <span class="absolute left-1 top-1/2 -translate-y-1/2 text-sm pointer-events-none z-10 leading-none" x-show="!dark">☀️</span>
+                        <span class="absolute right-1 top-1/2 -translate-y-1/2 text-sm pointer-events-none z-10 leading-none" x-show="dark">🌙</span>
+                        <span class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform duration-300 z-20"
+                              :class="dark ? 'translate-x-7' : 'translate-x-0'"></span>
                     </button>
                     @auth
-                        <span class="hidden sm:inline-flex text-xs sm:text-sm bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-scale-in" aria-label="{{ trans_choice('common.nav_score_label', auth()->user()->score, ['score' => auth()->user()->score]) }}">
-                            <span aria-hidden="true">🏆</span> {{ auth()->user()->score }}
+                        <span class="hidden sm:inline-flex items-baseline gap-0.5 text-xs sm:text-sm bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-scale-in" aria-label="{{ trans_choice('common.nav_score_label', auth()->user()->score, ['score' => auth()->user()->score]) }}">
+                            <span>{{ auth()->user()->score }}</span><span class="text-[10px] font-bold opacity-80">pts</span>
                         </span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] hover:border-blue-500/40 cursor-pointer focus:outline-none" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
-                                <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline"><span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 8, '') }}</span>
+                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-2 sm:px-3 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[220px] hover:border-blue-500/40 cursor-pointer focus:outline-none" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
+                                <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline flex items-center gap-1"><span aria-hidden="true">👤</span> <span class="truncate">{{ auth()->user()->name }}</span></span>
                             </button>
                             <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1.5 w-44 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
                                 <a href="{{ route('profile') }}" wire:navigate @click="open = false" class="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-sm font-semibold transition-colors hover:bg-white/5 text-theme focus:outline-none">

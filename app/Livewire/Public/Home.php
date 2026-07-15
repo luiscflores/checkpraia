@@ -88,15 +88,10 @@ class Home extends Component
         $this->hasMore = true;
     }
 
-    public function findNearby(): void
+    public function findNearby(float $lat, float $lon): void
     {
-        $this->validate([
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-        ]);
-
-        $lat = (float) $this->latitude;
-        $lon = (float) $this->longitude;
+        $this->latitude = $lat;
+        $this->longitude = $lon;
 
         $cacheKey = 'nearby:'.round($lat, 3).':'.round($lon, 3);
 

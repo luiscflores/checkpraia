@@ -260,7 +260,7 @@ class BeachDetail extends Component
 
         return Cache::remember($key, 21600, function () { // 6 hours
             return TideForecast::where('tide_station_id', $this->beachTideStationId)
-                ->whereBetween('tide_time', [now()->startOfDay(), now()->endOfDay()->addHours(12)])
+                ->whereBetween('tide_time', [now()->startOfDay()->subHours(30), now()->endOfDay()->addHours(12)])
                 ->orderBy('tide_time', 'asc')
                 ->get();
         });
@@ -329,7 +329,7 @@ class BeachDetail extends Component
     /**
      * Tide curve computation (48-point interpolation) — derived from tides, cache per day.
      */
-    private function buildTideCurve($tides): array
+    private function buildTideCurve($tides, string $beachTimezone): array
     {
         if ($tides->isEmpty()) {
             return ['curve' => [], 'points' => ''];
@@ -337,12 +337,12 @@ class BeachDetail extends Component
 
         $key = "beach_tide_curve:{$this->beachTideStationId}:".now()->format('Y-m-d');
 
-        return Cache::remember($key, 21600, function () use ($tides) {
+        return Cache::remember($key, 21600, function () use ($tides, $beachTimezone) {
             $maxH = $tides->pluck('tide_height')->push(4)->max();
             $minH = $tides->pluck('tide_height')->push(0)->min();
             $rangeH = max($maxH - $minH, 0.5);
-            $dayStart = now()->startOfDay();
-            $steps = 48;
+            $dayStart = now($beachTimezone)->startOfDay();
+            $steps = 96;
 
             $tideCurve = [];
             $tideCurvePoints = '';
@@ -362,7 +362,8 @@ class BeachDetail extends Component
                 $height = $prev ? $prev->tide_height : ($next ? $next->tide_height : $tides->first()->tide_height);
                 if ($prev && $next && $prev->tide_time->ne($next->tide_time)) {
                     $ratio = $prev->tide_time->diffInMinutes($t) / max(1, $prev->tide_time->diffInMinutes($next->tide_time));
-                    $height = $prev->tide_height + ($next->tide_height - $prev->tide_height) * $ratio;
+                    $mu = (1 - cos($ratio * M_PI)) / 2;
+                    $height = $prev->tide_height + ($next->tide_height - $prev->tide_height) * $mu;
                 }
                 $pct = $rangeH > 0 ? ($height - $minH) / $rangeH : 0.5;
                 $x = $i / $steps * 100;
@@ -405,7 +406,7 @@ class BeachDetail extends Component
         }
 
         // Tide curve — cached per day
-        $tideData = $this->buildTideCurve($tides);
+        $tideData = $this->buildTideCurve($tides, $beach->timezone);
         $tideCurve = $tideData['curve'];
         $tideCurvePoints = $tideData['points'];
 

@@ -86,7 +86,7 @@
     </div>
 
     <!-- Search and Filters Panel -->
-    <div class="glass-card p-4 rounded-3xl border border-theme-subtle/50 space-y-4 shadow-lg shadow-black/[0.02] animate-fade-in-up" x-data="{ searchFocused: false, flagOpen: false }">
+    <div class="glass-card px-4 py-3 rounded-3xl border border-theme-subtle/50 space-y-3 shadow-lg shadow-black/[0.02] animate-fade-in-up" x-data="{ searchFocused: false, flagOpen: false }">
         <div class="flex items-stretch gap-2.5">
             <div class="w-full relative flex-1">
                 <label for="beach-search" class="sr-only">{{ __('common.search_placeholder') }}</label>
@@ -133,7 +133,7 @@
         <!-- Flag Filter Dropdown -->
         <div class="relative" x-data="{ dropdownPos: { top: 0, left: 0, width: 0 } }">
             <button x-ref="flagTrigger" @click="flagOpen = !flagOpen; if(flagOpen) { const r = $refs.flagTrigger.getBoundingClientRect(); dropdownPos = { top: r.bottom + 8, left: r.left, width: r.width } }"
-                    class="relative z-[10000] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border min-h-[42px] w-full sm:w-auto sm:self-start
+                    class="relative z-[10000] flex items-center gap-2.5 px-4 py-3.5 rounded-2xl text-xs font-bold transition-all border min-h-[42px] w-full sm:w-auto sm:self-start
                     @if($selectedFlag === 'green') bg-emerald-600/10 border-emerald-500/30 text-emerald-400
                     @elseif($selectedFlag === 'yellow') bg-amber-600/10 border-amber-500/30 text-amber-400
                     @elseif($selectedFlag === 'red') bg-rose-600/10 border-rose-500/30 text-rose-400
@@ -638,6 +638,17 @@
             init() {
                 const isMobile = window.innerWidth < 1024;
 
+                window.addEventListener('nearby-updated', (event) => {
+                    this.nearby = event.detail.nearby;
+                });
+
+                window.addEventListener('beaches-updated', (event) => {
+                    this.beaches = event.detail.beaches;
+                    this.invalidateAllMaps();
+                    this.renderMarkers();
+                    this._fitBeaches();
+                });
+
                 if (isMobile) {
                     // On mobile the map starts hidden (display:none via Alpine x-show).
                     // IntersectionObserver can't observe display:none — instead, the toggle
@@ -759,17 +770,6 @@
                 this._initialRender = false;
 
                 this._applyInitialRegion();
-
-                window.addEventListener('nearby-updated', (event) => {
-                    this.nearby = event.detail.nearby;
-                });
-
-                window.addEventListener('beaches-updated', (event) => {
-                    this.beaches = event.detail.beaches;
-                    this.invalidateAllMaps();
-                    this.renderMarkers();
-                    this._fitBeaches();
-                });
 
             },
 
@@ -1016,9 +1016,7 @@
                     const lon = position.coords.longitude;
                     const acc = position.coords.accuracy;
 
-                    $wire.set('latitude', lat);
-                    $wire.set('longitude', lon);
-                    $wire.call('findNearby');
+                    this.$wire.findNearby(lat, lon);
 
                     let map = this.mapContinente;
                     if (lat > 36 && lat < 40 && lon > -32 && lon < -24) {
@@ -1027,16 +1025,18 @@
                         map = this.mapMadeira;
                     }
 
-                    map.setView([lat, lon], 12);
-                    this.userCircle = L.circle([lat, lon], {
-                        color: '#3b82f6',
-                        fillColor: '#93c5fd',
-                        fillOpacity: 0.25,
-                        radius: Math.max(acc, 50)
-                    }).addTo(map).bindPopup(`
-                        {{ __('common.gps_your_location') }}<br>
-                        <span class="text-[11px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
-                    `).openPopup();
+                    if (map) {
+                        map.setView([lat, lon], 12);
+                        this.userCircle = L.circle([lat, lon], {
+                            color: '#3b82f6',
+                            fillColor: '#93c5fd',
+                            fillOpacity: 0.25,
+                            radius: Math.max(acc, 50)
+                        }).addTo(map).bindPopup(`
+                            {{ __('common.gps_your_location') }}<br>
+                            <span class="text-[11px] text-slate-400">{{ __('common.gps_accuracy') }}: ${Math.round(acc)}m</span>
+                        `).openPopup();
+                    }
                 }).catch((err) => {
                     if (auto) return;
                     const msgs = {
