@@ -1,12 +1,12 @@
 <div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches), @js($defaultRegion ?? null))">
 
 @pushOnce('leaflet-css')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"></noscript>
+<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.min.css') }}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.min.css') }}"></noscript>
 @endPushOnce
 
 @pushOnce('leaflet-js')
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" defer></script>
+<script src="{{ asset('vendor/leaflet/leaflet.min.js') }}" defer></script>
 @endPushOnce
 
     @section('title', __('home.title'))

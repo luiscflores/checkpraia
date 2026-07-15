@@ -1,12 +1,12 @@
 <div class="space-y-8" x-data="beachDetailHandler()" @if(auth()->check() && auth()->user()->is_admin) data-is-admin="1" @endif>
 
 @pushOnce('leaflet-css')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"></noscript>
+<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.min.css') }}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.min.css') }}"></noscript>
 @endPushOnce
 
 @pushOnce('leaflet-js')
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" defer></script>
+<script src="{{ asset('vendor/leaflet/leaflet.min.js') }}" defer></script>
 @endPushOnce
 
     @section('title', $beach->name . ' - ' . __('common.site_name'))
