@@ -162,10 +162,14 @@ echo "=== 6. SSH Hardening ==="
 
 sudo sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
 sudo sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
-sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config 2>/dev/null || true
-sudo sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config 2>/dev/null || true
+
+# Keep password auth ENABLED so any device can SSH in
+sudo mkdir -p /etc/ssh/sshd_config.d
+echo "PasswordAuthentication yes" | sudo tee /etc/ssh/sshd_config.d/checkpraia.conf > /dev/null
+echo "KbdInteractiveAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/checkpraia.conf
+
 sudo systemctl restart sshd 2>/dev/null || true
-echo "SSH: root login + password auth disabled."
+echo "SSH: root login disabled, password auth enabled."
 
 # ── 7. Auto-security-updates ─────────────────────────────────────────────
 echo "=== 7. Atualizacoes automaticas de seguranca ==="
@@ -241,7 +245,7 @@ echo "  Fail2Ban:     SSH + Nginx auth + rate-limit"
 echo "  SSL:          Certbot + auto-renew"
 echo "  Logrotate:    App 7d + Nginx 14d"
 echo "  Session:      ENCRYPT=true, SECURE_COOKIE=true"
-echo "  SSH:          Root + password desativados"
+echo "  SSH:          Root desativado, password ativo"
 echo "  Rate Limit:   10r/s geral, 2r/s auth"
 echo "  Kernel:       SYN flood + ICMP redirect protecao"
 echo "  SD Card:      tmpfs /tmp + noatime"

@@ -48,6 +48,20 @@ sudo apt-get install -y -qq \
     certbot python3-certbot-nginx \
     build-essential 2>/dev/null || true
 
+# ── 1b. Configurar SSH com password ──────────────────────────────────────
+log "=== 1b. Configurar SSH (password auth) ==="
+
+sudo mkdir -p /etc/ssh/sshd_config.d
+echo "PasswordAuthentication yes" | sudo tee /etc/ssh/sshd_config.d/checkpraia.conf > /dev/null
+echo "KbdInteractiveAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/checkpraia.conf
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
+sudo systemctl restart sshd 2>/dev/null || true
+
+# Garantir que o user pi tem password definida
+if ! passwd -S "$PI_USER" 2>/dev/null | grep -q "P"; then
+    log "Password do user $PI_USER nao definida. Define com: sudo passwd $PI_USER"
+fi
+
 # ── 2. Instalar PHP 8.4 (sury repository) ────────────────────────────────
 log "=== 2. Instalar PHP $PHP_VERSION ==="
 

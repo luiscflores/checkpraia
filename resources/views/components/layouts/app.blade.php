@@ -70,6 +70,7 @@
     <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
     <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com">
     <link rel="dns-prefetch" href="https://c.basemaps.cartocdn.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <!-- Leaflet CSS: only injected on pages that have a map (via stack) -->
     @stack('leaflet-css')
     @section('leaflet-inline')
