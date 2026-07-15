@@ -430,8 +430,9 @@ step_project_deps() {
         rm -rf node_modules
     fi
 
-    # Laravel caches
+    # Laravel caches (limpa primeiro para evitar stale cache)
     php artisan migrate --force --quiet 2>/dev/null || warn "Migration falhou (podes correr manualmente)"
+    php artisan optimize:clear --quiet 2>/dev/null || true
     php artisan config:cache --quiet 2>/dev/null || true
     php artisan route:cache --quiet 2>/dev/null || true
     php artisan view:cache --quiet 2>/dev/null || true

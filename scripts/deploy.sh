@@ -80,11 +80,12 @@ fi
 # ── 5. Migrations ────────────────────────────────────────────────────────
 php artisan migrate --force --quiet 2>/dev/null || true
 
-# ── 6. Cache everything ──────────────────────────────────────────────────
-php artisan config:cache --quiet 2>/dev/null
-php artisan route:cache --quiet 2>/dev/null
-php artisan view:cache --quiet 2>/dev/null
-php artisan event:cache --quiet 2>/dev/null
+# ── 6. Clear old cache, then rebuild ────────────────────────────────────
+php artisan optimize:clear --quiet 2>/dev/null || true
+php artisan config:cache --quiet 2>/dev/null || true
+php artisan route:cache --quiet 2>/dev/null || true
+php artisan view:cache --quiet 2>/dev/null || true
+php artisan event:cache --quiet 2>/dev/null || true
 php artisan storage:link --no-interaction 2>/dev/null || true
 
 # ── 7. Permissions (fast, targeted) ──────────────────────────────────────
