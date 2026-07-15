@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,17 +15,12 @@ return new class extends Migration
             }
         });
 
-        try {
-            Schema::table('beach_hourly_snapshots', function (Blueprint $table) {
-                $sm = Schema::getConnection()->getDoctrineSchemaManager();
-                $indexes = $sm->listTableIndexes('beach_hourly_snapshots');
-                $exists = collect($indexes)->has('idx_beach_hourly_snapshots_unique');
-                if (!$exists) {
-                    $table->unique(['beach_id', 'captured_at'], 'idx_beach_hourly_snapshots_unique');
-                }
-            });
-        } catch (\Exception $e) {
-            // SQLite may not support this check gracefully; try directly
+        $indexExists = DB::selectOne(
+            "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?",
+            ['idx_beach_hourly_snapshots_unique']
+        );
+
+        if (!$indexExists) {
             Schema::table('beach_hourly_snapshots', function (Blueprint $table) {
                 $table->unique(['beach_id', 'captured_at'], 'idx_beach_hourly_snapshots_unique');
             });
