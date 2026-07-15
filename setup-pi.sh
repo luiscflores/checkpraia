@@ -229,8 +229,22 @@ sudo chmod +x "/home/$PI_USER" 2>/dev/null || true
 sudo chown -R "$PI_USER":www-data "$WORK_TREE"
 sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
 
-# ── 13. Arrancar servicos ────────────────────────────────────────────────
+# ── 13. SSL placeholder (self-signed) + Arrancar servicos ───────────────
 log "=== 13. Arrancar servicos ==="
+
+# Generate self-signed cert so nginx can start before Let's Encrypt is ready
+CERT_DIR="/etc/letsencrypt/live/checkpraia.pt"
+if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+    log "A gerar certificado self-signed como placeholder..."
+    sudo mkdir -p "$CERT_DIR"
+    sudo openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "$CERT_DIR/privkey.pem" \
+        -out "$CERT_DIR/fullchain.pem" \
+        -subj "/CN=checkpraia.pt" 2>/dev/null
+    sudo cp "$CERT_DIR/fullchain.pem" "$CERT_DIR/chain.pem"
+    log "Certificado self-signed criado (será substituido pelo certbot)."
+fi
 
 sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
 sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
