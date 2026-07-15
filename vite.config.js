@@ -11,7 +11,6 @@ export default defineConfig({
         tailwindcss(),
     ],
     build: {
-        // Produce smaller chunks, better caching on repeat visits
         rollupOptions: {
             output: {
                 manualChunks(id) {
@@ -20,10 +19,11 @@ export default defineConfig({
                     }
                 },
             },
+            // Limit parallel file ops on RPi3 to avoid OOM
+            maxParallelFileOps: 2,
         },
         // Inline small assets to save HTTP round-trips on weak connections
         assetsInlineLimit: 4096,
-        // Enable minification source maps for production debugging
         sourcemap: false,
         chunkSizeWarningLimit: 800,
     },

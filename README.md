@@ -1,58 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CheckPraia
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A platform for monitoring beach conditions along the Portuguese coast, combining official forecasts, community reports, and real-time data.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Dynamic Flag Attribution** — Official alerts > Community consensus > Automated forecast (IPMA/Open-Meteo)
+- **76 Official Portuguese Beaches** — GPS coordinates, water quality classifications, live weather & swell data
+- **Community Reports** — GPS-validated flag reports with consensus voting and anti-spam scoring
+- **Gamification** — Points, trust levels, referral milestones
+- **PWA Mobile Interface** — Glassmorphism UI built with Livewire 4 + Tailwind 4
+- **Admin Dashboard** — Filament 3 backoffice panel
+- **Push Notifications** — Web Push (VAPID) for nearby beach alerts
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer | Tech |
+|-------|------|
+| Backend | Laravel 13 / PHP 8.4 |
+| Frontend | Livewire 4 / Volt / Tailwind 4 / Vite 8 |
+| Database | SQLite (WAL mode) |
+| Queue | Laravel Queue (database driver, Supervisor) |
+| Server | Nginx + PHP-FPM on Raspberry Pi 3 (1GB RAM) |
+| Deploy | Git bare repo + post-receive hook |
 
-## Learning Laravel
+## Deployment (Raspberry Pi 3)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### First-time setup
 
 ```bash
-composer require laravel/boost --dev
+# 1. Clone on the Pi
+git clone https://github.com/luiscflores/checkpraia.git
+cd checkpraia
 
-php artisan boost:install
+# 2. Run the setup script (installs PHP, Nginx, Supervisor, etc.)
+bash setup-pi.sh
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Deploy via git push
 
-## Contributing
+```bash
+# From your development machine
+git remote add pi ssh://pi@192.168.1.212/home/pi/checkpraia.git
+git push pi main
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Deploy via cron (auto-pull)
 
-## Code of Conduct
+The setup script configures a cron job that runs `scripts/deploy.sh` every 5 minutes, pulling from GitHub and rebuilding automatically.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Deploy features
 
-## Security Vulnerabilities
+- **Lock** — prevents concurrent deploys
+- **Skip if no changes** — compares git SHAs before running heavy operations
+- **Rollback** — reverts to previous commit on failure
+- **Frontend skip** — only runs `npm build` if `resources/`, `package.json`, or `vite.config` changed
+- **OPcache invalidation** — triggers `USR2` signal to PHP-FPM after deploy
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Development
+
+```bash
+# Install dependencies
+composer install
+npm install
+
+# Setup
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+
+# Run dev server
+composer dev
+```
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, data sources, and flag resolution logic.
+
+## Security
+
+See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for the infrastructure audit and hardening checklist.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT

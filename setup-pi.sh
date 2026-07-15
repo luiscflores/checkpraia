@@ -1,4 +1,6 @@
 #!/bin/bash
+# ── CheckPraia - Setup Nativo Raspberry Pi 3 (Production) ──────────────────
+# Internet-exposed. Includes SSL, firewall, rate limiting, hardening.
 set -euo pipefail
 
 PI_USER="${PI_USER:-pi}"
@@ -6,28 +8,55 @@ PI_DIR="/home/$PI_USER"
 WORK_TREE="$PI_DIR/checkpraia"
 BARE_REPO="$PI_DIR/checkpraia.git"
 PHP_VERSION="8.4"
+LOG_FILE="/tmp/checkpraia-setup.log"
+
+log()  { echo ">>> $(date '+%H:%M:%S') $*" | tee -a "$LOG_FILE"; }
+fail() { log "FAILED: $*"; exit 1; }
 
 echo ""
 echo "============================================"
 echo "  Setup Nativo - CheckPraia no Raspberry Pi"
+echo "  Production: Internet-Exposed"
 echo "============================================"
 echo ""
 
+# ── 0. Pre-flight: enable swap ───────────────────────────────────────────
+log "=== 0. Garantir swap (critico para RPi3 1GB RAM) ==="
+
+if [ ! -f /swapfile ]; then
+    sudo fallocate -l 512M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=512 2>/dev/null
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    log "Swap 512MB criado."
+else
+    log "Swap ja existe."
+fi
+
+if ! grep -q "vm.swappiness=10" /etc/sysctl.conf 2>/dev/null; then
+    echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+    sudo sysctl vm.swappiness=10 2>/dev/null || true
+fi
+
 # ── 1. Instalar dependencias do sistema ──────────────────────────────────
-echo "=== 1. Instalar dependencias do sistema ==="
+log "=== 1. Instalar dependencias do sistema ==="
 
-sudo apt-get update -y
-
-sudo apt-get install -y curl wget git unzip nginx supervisor sqlite3 cron
+sudo apt-get update -y -qq
+sudo apt-get install -y -qq \
+    curl wget git unzip nginx supervisor sqlite3 cron \
+    certbot python3-certbot-nginx \
+    build-essential 2>/dev/null || true
 
 # ── 2. Instalar PHP 8.4 (sury repository) ────────────────────────────────
-echo "=== 2. Instalar PHP $PHP_VERSION ==="
+log "=== 2. Instalar PHP $PHP_VERSION ==="
 
-if ! command -v php &>/dev/null || ! php -v | grep -q "$PHP_VERSION"; then
+if ! command -v php &>/dev/null || ! php -v 2>/dev/null | grep -q "$PHP_VERSION"; then
     sudo curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/sury-php.gpg
-    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/sury-php.list
-    sudo apt-get update -y
-    sudo apt-get install -y \
+    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" \
+        | sudo tee /etc/apt/sources.list.d/sury-php.list > /dev/null
+    sudo apt-get update -y -qq
+    sudo apt-get install -y -qq \
         php${PHP_VERSION}-fpm \
         php${PHP_VERSION}-cli \
         php${PHP_VERSION}-common \
@@ -44,17 +73,17 @@ if ! command -v php &>/dev/null || ! php -v | grep -q "$PHP_VERSION"; then
 fi
 
 # ── 3. Instalar Composer ─────────────────────────────────────────────────
-echo "=== 3. Instalar Composer ==="
+log "=== 3. Instalar Composer ==="
 
 if ! command -v composer &>/dev/null; then
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
     php -r "unlink('composer-setup.php');"
-    echo "Composer installed."
+    log "Composer installed."
 fi
 
-# ── 4. Instalar Node.js + npm ────────────────────────────────────────────
-echo "=== 4. Instalar Node.js ==="
+# ── 4. Instalar Node.js ─────────────────────────────────────────────────
+log "=== 4. Instalar Node.js ==="
 
 if ! command -v node &>/dev/null; then
     ARCH=$(uname -m)
@@ -69,80 +98,109 @@ if ! command -v node &>/dev/null; then
     sudo cp -a /tmp/node-v22.14.0-linux-*/bin/* /usr/local/bin/
     sudo cp -a /tmp/node-v22.14.0-linux-*/lib/node_modules /usr/local/lib/
     rm -rf /tmp/node-v22.14.0-linux-*
-    echo "Node.js $(node --version) installed."
+    log "Node.js $(node --version) installed."
 fi
 
 # ── 5. Configurar OPCache + JIT ──────────────────────────────────────────
-echo "=== 5. Configurar OPCache + JIT ==="
+log "=== 5. Configurar OPCache + JIT ==="
 
-sudo cp scripts/php-opcache-jit.ini /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null || true
+sudo cp "$WORK_TREE/scripts/php-opcache-jit.ini" /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null \
+    || sudo cp scripts/php-opcache-jit.ini /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null \
+    || true
 sudo phpenmod opcache 2>/dev/null || true
 
 # ── 6. Configurar nginx ──────────────────────────────────────────────────
-echo "=== 6. Configurar nginx ==="
+log "=== 6. Configurar nginx ==="
 
-sudo cp scripts/checkpraia-nginx.conf /etc/nginx/sites-available/checkpraia
-sudo cp scripts/security-headers.conf /etc/nginx/snippets/security-headers.conf 2>/dev/null || true
+# Rate limit zone (must be in http context, before server blocks)
+sudo tee /etc/nginx/snippets/rate-limit.conf > /dev/null << 'EOF'
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=2r/s;
+limit_req_status 429;
+EOF
+
+# Include rate-limit in nginx.conf http block
+if ! grep -q "rate-limit.conf" /etc/nginx/nginx.conf 2>/dev/null; then
+    sudo sed -i '/http {/a \    include /etc/nginx/snippets/rate-limit.conf;' /etc/nginx/nginx.conf 2>/dev/null || true
+fi
+
+sudo cp "$WORK_TREE/scripts/checkpraia-nginx.conf" /etc/nginx/sites-available/checkpraia 2>/dev/null \
+    || sudo cp scripts/checkpraia-nginx.conf /etc/nginx/sites-available/checkpraia 2>/dev/null \
+    || true
+
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
 
-# ── 7. Clonar repositorio (primeira vez) ──────────────────────────────────
-echo "=== 7. Clonar repositorio ==="
+# Validate nginx config before restarting
+sudo nginx -t 2>/dev/null && log "Nginx config OK." || log "WARNING: nginx config test failed!"
+
+# ── 7. Clonar repositorio ───────────────────────────────────────────────
+log "=== 7. Clonar repositorio ==="
 
 if [ ! -d "$WORK_TREE" ]; then
-    git clone https://github.com/luiscflores/checkpraia.git "$WORK_TREE"
-    echo "Repo clonado em $WORK_TREE"
+    git clone --depth 1 https://github.com/luiscflores/checkpraia.git "$WORK_TREE"
+    log "Repo clonado (shallow) em $WORK_TREE"
 fi
 
 cd "$WORK_TREE"
 
-mkdir -p storage bootstrap/cache database
+mkdir -p storage bootstrap/cache database storage/logs
 chmod -R 775 storage bootstrap/cache
 
 if [ ! -f .env ]; then
     cp .env.example .env
     php artisan key:generate --no-interaction
-    echo ">>> .env criado a partir de .env.example."
-    echo ">>> EDITA O .ENV com as chaves de API primeiro:"
-    echo "    nano $WORK_TREE/.env"
+    log ".env criado — edita-o: nano $WORK_TREE/.env"
 fi
 
 # ── 8. Instalar dependencias do projeto ──────────────────────────────────
-echo "=== 8. Instalar dependencias PHP/JS ==="
+log "=== 8. Instalar dependencias PHP/JS ==="
 
 export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --optimize-autoloader --no-interaction
+composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction \
+    --no-progress \
+    --no-suggest \
+    --prefer-dist \
+    --quiet
 
 if [ -f package.json ]; then
-    npm ci --ignore-scripts --no-audit --no-fund
-    npm run build
+    npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null
+    npm run build --quiet 2>/dev/null
     rm -rf node_modules
 fi
 
-php artisan migrate --force --seed
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan migrate --force --quiet 2>/dev/null || true
+php artisan config:cache --quiet 2>/dev/null
+php artisan route:cache --quiet 2>/dev/null
+php artisan view:cache --quiet 2>/dev/null
+php artisan event:cache --quiet 2>/dev/null
 php artisan storage:link --no-interaction 2>/dev/null || true
 
-# ── 9. Configurar Supervisor (queue worker) ──────────────────────────────
-echo "=== 9. Configurar Supervisor ==="
+# ── 9. Configurar Supervisor ──────────────────────────────────────────────
+log "=== 9. Configurar Supervisor ==="
 
-sudo cp "$WORK_TREE/checkpraia-worker.conf" /etc/supervisor/conf.d/checkpraia-worker.conf
-sudo supervisorctl reread
-sudo supervisorctl update
+if [ -f "$WORK_TREE/checkpraia-worker.conf" ]; then
+    sudo cp "$WORK_TREE/checkpraia-worker.conf" /etc/supervisor/conf.d/checkpraia-worker.conf
+    sudo supervisorctl reread 2>/dev/null || true
+    sudo supervisorctl update 2>/dev/null || true
+fi
 
-# ── 10. Configurar Cron (Laravel scheduler + auto-deploy) ────────────────
-echo "=== 10. Configurar Cron ==="
+# ── 10. Configurar Cron ────────────────────────────────────────────────
+log "=== 10. Configurar Cron ==="
 
 CRON_SCHEDULER="* * * * * cd $WORK_TREE && php artisan schedule:run >> /dev/null 2>&1"
 CRON_DEPLOY="*/5 * * * * cd $WORK_TREE && bash scripts/deploy.sh >> $WORK_TREE/storage/logs/deploy.log 2>&1"
+CRON_CERT="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
 
-(crontab -u "$PI_USER" -l 2>/dev/null || true; echo "$CRON_SCHEDULER") | crontab -u "$PI_USER" -
-(crontab -u "$PI_USER" -l 2>/dev/null || true; echo "$CRON_DEPLOY") | crontab -u "$PI_USER" -
+(crontab -u "$PI_USER" -l 2>/dev/null | grep -v "checkpraia" | grep -v "certbot renew"; \
+ echo "$CRON_SCHEDULER"; echo "$CRON_DEPLOY"; echo "$CRON_CERT") \
+    | crontab -u "$PI_USER" - 2>/dev/null || true
 
-# ── 11. Criar bare git repo + post-receive (deploy direto) ───────────────
-echo "=== 11. Configurar bare git repo ==="
+# ── 11. Bare git repo + post-receive ──────────────────────────────────────
+log "=== 11. Configurar bare git repo ==="
 
 if [ ! -d "$BARE_REPO" ]; then
     git init --bare "$BARE_REPO"
@@ -160,52 +218,62 @@ echo ">>> Deploy concluido!"
 HOOK
 
     chmod +x "$BARE_REPO/hooks/post-receive"
-
-    echo ""
-    echo "Bare repo criado em $BARE_REPO"
-    echo "Para fazer push direto: git push pi main"
+    log "Bare repo criado em $BARE_REPO"
 fi
 
-# ── 12. Adicionar utilizador ao grupo www-data ──────────────────────────
-echo "=== 12. Adicionar $PI_USER ao grupo www-data ==="
+# ── 12. Permissoes ──────────────────────────────────────────────────────
+log "=== 12. Corrigir permissoes ==="
 
-sudo usermod -aG www-data "$PI_USER"
-echo "Utilizador $PI_USER adicionado ao grupo www-data."
-
-# ── 13. Corrigir permissoes ──────────────────────────────────────────────
-echo "=== 13. Corrigir permissoes ==="
-
-sudo chmod +x "/home/$PI_USER"
+sudo usermod -aG www-data "$PI_USER" 2>/dev/null || true
+sudo chmod +x "/home/$PI_USER" 2>/dev/null || true
 sudo chown -R "$PI_USER":www-data "$WORK_TREE"
 sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
 
-# ── 14. Arrancar servicos ────────────────────────────────────────────────
-echo "=== 14. Arrancar servicos ==="
+# ── 13. Arrancar servicos ────────────────────────────────────────────────
+log "=== 13. Arrancar servicos ==="
 
-sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor
-sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor
+sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
+sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
+
+# ── 14. SSL Certificate ─────────────────────────────────────────────────
+log "=== 14. Configurar SSL ==="
+
+if [ ! -f /etc/letsencrypt/live/checkpraia.pt/fullchain.pem ]; then
+    log "SSL certificate NAO encontrado."
+    log ">>> Depois de configurar DNS para o IP publico, correr:"
+    log "    sudo certbot --nginx -d checkpraia.pt"
+    log ">>> Ou se DNS ainda nao propagou:"
+    log "    sudo certbot certonly --standalone -d checkpraia.pt"
+else
+    log "SSL certificate encontrado."
+    sudo systemctl enable certbot.timer 2>/dev/null || true
+    sudo systemctl start certbot.timer 2>/dev/null || true
+fi
 
 # ── 15. Security hardening ──────────────────────────────────────────────
-echo "=== 15. Security hardening ==="
+log "=== 15. Security hardening ==="
 
 if [ -f "$WORK_TREE/scripts/security-hardening.sh" ]; then
     bash "$WORK_TREE/scripts/security-hardening.sh"
 fi
 
+# ── Done ────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
-echo "  Setup completo!"
+echo "  Setup completo! (Production-Ready)"
 echo "============================================"
 echo ""
-echo "  Aplicacao: http://192.168.1.212"
-echo "  Diretorio: $WORK_TREE"
+echo "  App:        https://checkpraia.pt"
+echo "  Directorio: $WORK_TREE"
 echo ""
-echo "  Proximo passo:"
-echo "    1. Editar .env: nano $WORK_TREE/.env"
-echo "    2. Correr deploy: cd $WORK_TREE && bash scripts/deploy.sh"
+echo "  PROXIMO PASSO (obrigatorio):"
+echo "    1. Editar .env:     nano $WORK_TREE/.env"
+echo "    2. Configurar DNS:  apontar checkpraia.pt para o IP publico do RPi"
+echo "    3. Pedir SSL:       sudo certbot --nginx -d checkpraia.pt"
 echo ""
-echo "  Para fazer push direto do teu PC:"
+echo "  Deploy via git push:"
+echo "    git remote add pi ssh://pi@<IP_PUBLICO>/home/pi/checkpraia.git"
 echo "    git push pi main"
 echo ""
-echo "  Ou espera que o cron (a cada 5min) faca pull do GitHub."
+echo "  Nota: O cron (a cada 5min) faz pull automatico do GitHub."
 echo ""

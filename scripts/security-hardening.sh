@@ -1,40 +1,44 @@
 #!/bin/bash
+# ── Security Hardening - CheckPraia RPi3 (Internet-Exposed) ────────────────
+# Firewall + Fail2Ban + SSL + Logrotate + SSH + Rate Limiting
 set -euo pipefail
+
+WORK_TREE="${WORK_TREE:-/home/pi/checkpraia}"
+APP_ENV="$WORK_TREE/.env"
 
 echo ""
 echo "============================================"
 echo "  Security Hardening - CheckPraia RPi3"
+echo "  Production: Internet-Exposed"
 echo "============================================"
 echo ""
 
 # ── 1. Firewall (UFW) ────────────────────────────────────────────────────
 echo "=== 1. Configurar Firewall (UFW) ==="
 
-sudo apt-get install -y ufw 2>/dev/null || true
+sudo apt-get install -y -qq ufw 2>/dev/null || true
 
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
-# SSH
 sudo ufw allow 22/tcp comment 'SSH'
-
-# HTTP + HTTPS
 sudo ufw allow 80/tcp comment 'HTTP'
 sudo ufw allow 443/tcp comment 'HTTPS'
 
 sudo ufw --force enable
 sudo ufw status verbose
 
-# ── 2. Fail2Ban ──────────────────────────────────────────────────────────
+# ── 2. Fail2Ban (SSH + Nginx brute-force + rate-limit) ──────────────────
 echo "=== 2. Instalar Fail2Ban ==="
 
-sudo apt-get install -y fail2ban 2>/dev/null || true
+sudo apt-get install -y -qq fail2ban 2>/dev/null || true
 
-sudo cat > /etc/fail2ban/jail.local << 'EOF'
+sudo tee /etc/fail2ban/jail.local > /dev/null << 'EOF'
 [DEFAULT]
 bantime = 3600
 findtime = 600
 maxretry = 5
+banaction = ufw
 
 [sshd]
 enabled = true
@@ -42,6 +46,7 @@ port = ssh
 filter = sshd
 logpath = /var/log/auth.log
 maxretry = 3
+bantime = 7200
 
 [nginx-http-auth]
 enabled = true
@@ -49,15 +54,59 @@ port = http,https
 filter = nginx-http-auth
 logpath = /var/log/nginx/error.log
 maxretry = 3
+
+[nginx-limit-req]
+enabled = true
+port = http,https
+filter = nginx-limit-req
+logpath = /var/log/nginx/error.log
+maxretry = 5
+findtime = 120
+bantime = 600
+
+[nginx-botsearch]
+enabled = true
+port = http,https
+filter = nginx-botsearch
+logpath = /var/log/nginx/access.log
+maxretry = 2
+bantime = 86400
 EOF
 
 sudo systemctl enable fail2ban
 sudo systemctl restart fail2ban
 
-# ── 3. Logrotate ─────────────────────────────────────────────────────────
-echo "=== 3. Configurar Logrotate ==="
+# ── 3. Certbot (SSL Let's Encrypt) ───────────────────────────────────────
+echo "=== 3. Configurar SSL (Certbot) ==="
 
-sudo cat > /etc/logrotate.d/checkpraia << 'EOF'
+if ! command -v certbot &>/dev/null; then
+    sudo apt-get install -y -qq certbot python3-certbot-nginx 2>/dev/null || true
+fi
+
+# Auto-renewal timer
+if ! systemctl is-active --quiet certbot.timer 2>/dev/null; then
+    sudo systemctl enable certbot.timer 2>/dev/null || true
+    sudo systemctl start certbot.timer 2>/dev/null || true
+fi
+
+# Crontab fallback for cert renewal (belt and suspenders)
+CRON_CERT="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
+(crontab -l 2>/dev/null | grep -v "certbot renew"; echo "$CRON_CERT") | crontab - 2>/dev/null || true
+
+if [ ! -f /etc/letsencrypt/live/checkpraia.pt/fullchain.pem ]; then
+    echo ">>> SSL certificate not found."
+    echo ">>> Run: sudo certbot --nginx -d checkpraia.pt"
+    echo ">>> Or if DNS not ready: sudo certbot certonly --standalone -d checkpraia.pt"
+else
+    echo "SSL certificate found."
+    # Verify renewal works
+    sudo certbot renew --dry-run 2>/dev/null && echo "Cert renewal OK." || echo ">>> Warning: cert renewal test failed."
+fi
+
+# ── 4. Logrotate ─────────────────────────────────────────────────────────
+echo "=== 4. Configurar Logrotate ==="
+
+sudo tee /etc/logrotate.d/checkpraia > /dev/null << 'EOF'
 /home/pi/checkpraia/storage/logs/*.log {
     daily
     missingok
@@ -71,86 +120,132 @@ sudo cat > /etc/logrotate.d/checkpraia << 'EOF'
         [ -f /var/run/php/php8.4-fpm.pid ] && sudo systemctl reload php8.4-fpm 2>/dev/null || true
     endscript
 }
+
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        [ -f /var/run/nginx.pid ] && sudo kill -USR1 $(cat /var/run/nginx.pid) 2>/dev/null || true
+    endscript
+}
 EOF
 
-echo "Logrotate configurado: 7 dias, compressão ativa."
+echo "Logrotate: app 7 dias + nginx 14 dias."
 
-# ── 4. Session hardening ─────────────────────────────────────────────────
-echo "=== 4. Session Hardening ==="
+# ── 5. Session hardening ─────────────────────────────────────────────────
+echo "=== 5. Session Hardening ==="
 
-# Garantir que sessões são encriptadas no .env
-APP_ENV="/home/pi/checkpraia/.env"
 if [ -f "$APP_ENV" ]; then
     if grep -q "SESSION_ENCRYPT=false" "$APP_ENV"; then
         sed -i 's/SESSION_ENCRYPT=false/SESSION_ENCRYPT=true/' "$APP_ENV"
-        echo "SESSION_ENCRYPT=true definido no .env"
+        echo "SESSION_ENCRYPT=true"
     fi
     if grep -q "SESSION_DRIVER=file" "$APP_ENV"; then
         sed -i 's/SESSION_DRIVER=file/SESSION_DRIVER=database/' "$APP_ENV"
-        echo "SESSION_DRIVER alterado para database"
+        echo "SESSION_DRIVER=database"
+    fi
+    # Ensure secure cookie in production
+    if grep -q "SESSION_SECURE_COOKIE=false" "$APP_ENV"; then
+        sed -i 's/SESSION_SECURE_COOKIE=false/SESSION_SECURE_COOKIE=true/' "$APP_ENV"
+        echo "SESSION_SECURE_COOKIE=true"
     fi
 fi
 
-# ── 5. SSH Hardening ─────────────────────────────────────────────────────
-echo "=== 5. SSH Hardening ==="
+# ── 6. SSH Hardening ─────────────────────────────────────────────────────
+echo "=== 6. SSH Hardening ==="
 
 sudo sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
 sudo sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
 sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config 2>/dev/null || true
-echo "SSH: Root login desativado. Use chaves SSH."
+sudo sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config 2>/dev/null || true
+sudo systemctl restart sshd 2>/dev/null || true
+echo "SSH: root login + password auth disabled."
 
-# ── 6. Auto-security-updates ─────────────────────────────────────────────
-echo "=== 6. Atualizações automáticas de segurança ==="
+# ── 7. Auto-security-updates ─────────────────────────────────────────────
+echo "=== 7. Atualizacoes automaticas de seguranca ==="
 
-sudo apt-get install -y unattended-upgrades 2>/dev/null || true
+sudo apt-get install -y -qq unattended-upgrades 2>/dev/null || true
 sudo dpkg-reconfigure -plow unattended-upgrades 2>/dev/null || true
 
-# ── 7. Nginx hardening ───────────────────────────────────────────────────
-echo "=== 7. Nginx Security Headers ==="
+# ── 8. Nginx rate limit snippet ──────────────────────────────────────────
+echo "=== 8. Nginx Rate Limiting ==="
 
-sudo cat > /etc/nginx/snippets/security-headers.conf << 'EOF'
-# Security headers
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Content-Security-Policy "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://fcm.googleapis.com;" always;
-add_header Permissions-Policy "geolocation=(self), microphone=()" always;
+sudo tee /etc/nginx/snippets/rate-limit.conf > /dev/null << 'EOF'
+# Rate limiting zones (must be in http context)
+# 10 req/sec per IP for general, 2 req/sec for auth
+limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=2r/s;
+limit_req_status 429;
 EOF
 
-echo "Security headers criados em /etc/nginx/snippets/security-headers.conf"
-echo ">>> Adiciona 'include /etc/nginx/snippets/security-headers.conf;' no server block do checkpraia"
-
-# ── 8. SD Card wear reduction ────────────────────────────────────────────
-echo "=== 8. SD Card Wear Reduction ==="
-
-# Desativar atime no disco se ainda não estiver
-if ! grep -q "noatime" /etc/fstab; then
-    echo ">>> Considera adicionar 'noatime' ao /etc/fstab para reduzir writes no SD card"
+# Include rate-limit.conf in nginx.conf if not already included
+if ! grep -q "rate-limit.conf" /etc/nginx/nginx.conf 2>/dev/null; then
+    sudo sed -i '/http {/a \    include /etc/nginx/snippets/rate-limit.conf;' /etc/nginx/nginx.conf 2>/dev/null || true
+    echo "Rate limit snippet included in nginx.conf."
 fi
 
-# tmpfs para logs temporários
+# ── 9. SD Card wear reduction ────────────────────────────────────────────
+echo "=== 9. SD Card Wear Reduction ==="
+
+if ! grep -q "noatime" /etc/fstab; then
+    sudo sed -i 's/errors=remount-ro/errors=remount-ro,noatime/' /etc/fstab 2>/dev/null || true
+    echo "noatime adicionado."
+fi
+
 if ! grep -q "tmpfs /tmp" /etc/fstab; then
     echo "tmpfs /tmp tmpfs defaults,noatime,nosuid,nodev,size=128m 0 0" | sudo tee -a /etc/fstab
-    echo "/tmp montado como tmpfs (128MB) — reduz writes no SD card"
+    echo "/tmp como tmpfs."
 fi
+
+# ── 10. Kernel hardening (network) ───────────────────────────────────────
+echo "=== 10. Kernel Network Hardening ==="
+
+sudo tee /etc/sysctl.d/99-checkpraia.conf > /dev/null << 'EOF'
+# Disable IP forwarding (not a router)
+net.ipv4.ip_forward=0
+
+# Ignore ICMP redirects
+net.ipv4.conf.all.accept_redirects=0
+net.ipv4.conf.default.accept_redirects=0
+net.ipv6.conf.all.accept_redirects=0
+
+# Don't send ICMP redirects
+net.ipv4.conf.all.send_redirects=0
+net.ipv4.conf.default.send_redirects=0
+
+# SYN flood protection
+net.ipv4.tcp_syncookies=1
+net.ipv4.tcp_max_syn_backlog=2048
+net.ipv4.tcp_synack_retries=2
+
+# Log suspicious packets
+net.ipv4.conf.all.log_martians=1
+EOF
+
+sudo sysctl -p /etc/sysctl.d/99-checkpraia.conf 2>/dev/null || true
 
 # ── Resumo ───────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
-echo "  Security Hardening Concluído!"
+echo "  Security Hardening Concluido!"
 echo "============================================"
 echo ""
 echo "  Firewall:     UFW ativo (22, 80, 443)"
-echo "  Fail2Ban:     Ativo (SSH + Nginx)"
-echo "  Logrotate:    7 dias, compressão"
-echo "  Session:      ENCRYPT=true, DB driver"
-echo "  SSH:          Root login desativado"
-echo "  Nginx:        Security headers prontos"
-echo "  SD Card:      tmpfs para /tmp"
+echo "  Fail2Ban:     SSH + Nginx auth + rate-limit"
+echo "  SSL:          Certbot + auto-renew"
+echo "  Logrotate:    App 7d + Nginx 14d"
+echo "  Session:      ENCRYPT=true, SECURE_COOKIE=true"
+echo "  SSH:          Root + password desativados"
+echo "  Rate Limit:   10r/s geral, 2r/s auth"
+echo "  Kernel:       SYN flood + ICMP redirect protecao"
+echo "  SD Card:      tmpfs /tmp + noatime"
 echo ""
-echo "  Proximo passo:"
-echo "    1. Configurar nginx: sudo nano /etc/nginx/sites-available/checkpraia"
-echo "    2. Incluir snippet: include /etc/nginx/snippets/security-headers.conf;"
-echo "    3. Configurar SSL: sudo certbot --nginx -d checkpraia.pt"
+echo "  PROXIMO PASSO (obrigatorio para internet):"
+echo "    sudo certbot --nginx -d checkpraia.pt"
 echo ""

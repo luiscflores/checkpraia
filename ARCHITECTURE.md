@@ -1,6 +1,82 @@
 # CheckPraia - System Architecture & Data Sources
 
-This document describes the high-level software architecture, business logic domain structures, and external data integrations that power CheckPraia.
+This document describes the high-level software architecture, business logic domain structures, external data integrations, and deployment infrastructure.
+
+---
+
+## 0. Deployment Architecture (Raspberry Pi 3)
+
+```
+Internet
+    │
+    ▼
+Home Router (port 80, 443 forwarded)
+    │
+    ▼
+Raspberry Pi 3 (1GB RAM, ARMv7)
+    │
+    ├── UFW Firewall (22, 80, 443 only)
+    ├── Fail2Ban (SSH + Nginx brute-force + rate-limit)
+    │
+    ├── Nginx (SSL termination, gzip, rate limiting)
+    │   ├── /etc/nginx/sites-available/checkpraia
+    │   └── /etc/nginx/snippets/rate-limit.conf
+    │
+    ├── PHP 8.4-FPM (OPcache 128MB + JIT 48MB)
+    │   └── unix:/var/run/php/php8.4-fpm.sock
+    │
+    ├── Supervisor (queue worker × 1, 256MB memory limit)
+    │   └── artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    │
+    ├── Cron
+    │   ├── * * * * *  artisan schedule:run
+    │   ├── */5 * * * * scripts/deploy.sh (auto-pull)
+    │   └── 0 3 * * *  certbot renew
+    │
+    ├── SQLite (WAL mode, no server needed)
+    │   └── /home/pi/checkpraia/database/database.sqlite
+    │
+    ├── Certbot (Let's Encrypt, auto-renewal)
+    │   └── /etc/letsencrypt/live/checkpraia.pt/
+    │
+    └── Bare Git Repo (post-receive hook)
+        └── /home/pi/checkpraia.git
+```
+
+### Memory budget (1GB total)
+
+| Component | Allocation |
+|-----------|-----------|
+| Kernel + OS | ~150MB |
+| OPcache | 128MB |
+| JIT buffer | 48MB |
+| PHP-FPM workers (×2) | ~160MB |
+| Nginx | ~20MB |
+| Supervisor worker | ~80MB |
+| SQLite + buffers | ~20MB |
+| **Remaining for cache** | **~394MB** |
+
+Swap (512MB) provides safety margin during `composer install` / `npm build`.
+
+### Deploy pipeline
+
+```
+git push pi main  ──OR──  cron */5 (auto-pull GitHub)
+         │
+         ▼
+    scripts/deploy.sh
+         │
+         ├─ flock lock (prevent concurrent deploys)
+         ├─ Compare SHAs (skip if no changes)
+         ├─ composer install --no-dev --optimize-autoloader
+         ├─ npm build (only if resources/ changed)
+         ├─ artisan migrate --force
+         ├─ artisan config:cache / route:cache / view:cache / event:cache
+         ├─ chmod storage/ bootstrap/cache/
+         ├─ systemctl reload php8.4-fpm
+         ├─ kill -USR2 php-fpm PID (OPcache invalidation)
+         └─ supervisorctl restart worker
+```
 
 ---
 

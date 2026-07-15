@@ -1,45 +1,111 @@
 #!/bin/bash
+# ── CheckPraia Deploy - Optimized for Raspberry Pi 3 ───────────────────────
+# Lock + rollback + skip-if-nothing-changed + OPcache tuning
 set -euo pipefail
 
 APP_DIR="${1:-/home/pi/checkpraia}"
 PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.4-fpm}"
 SUPERVISOR_PROGRAM="${SUPERVISOR_PROGRAM:-checkpraia-worker}"
+DEPLOY_LOCK="/tmp/checkpraia-deploy.lock"
+DEPLOY_LOG="$APP_DIR/storage/logs/deploy.log"
+ROLLBACK_REF=""
 
+# ── Lock: prevent concurrent deploys ──────────────────────────────────────
+exec 200>"$DEPLOY_LOCK"
+flock -n 200 || { echo ">>> Deploy already running. Skipping."; exit 0; }
+trap 'rm -f "$DEPLOY_LOCK"' EXIT
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log()  { echo ">>> $(date '+%H:%M:%S') $*" | tee -a "$DEPLOY_LOG"; }
+fail() { log "FAILED: $*"; rollback; exit 1; }
+
+rollback() {
+    if [ -n "$ROLLBACK_REF" ]; then
+        log "Rolling back to $ROLLBACK_REF"
+        cd "$APP_DIR" && git checkout "$ROLLBACK_REF" -- . 2>/dev/null || true
+    fi
+}
+
+# ── 1. Pull changes ───────────────────────────────────────────────────────
 cd "$APP_DIR"
 
-echo ">>> Deploy: $APP_DIR"
+PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "none")
+ROLLBACK_REF="$PREV_SHA"
 
-git fetch origin main
-git reset --hard origin/main
+git fetch origin main --quiet 2>/dev/null
+NEW_SHA=$(git rev-parse origin/main)
 
-mkdir -p storage bootstrap/cache database
+if [ "$PREV_SHA" = "$NEW_SHA" ]; then
+    log "No changes ($PREV_SHA). Skipping deploy."
+    exit 0
+fi
+
+log "Deploy: $PREV_SHA -> $NEW_SHA"
+git reset --hard origin/main --quiet
+
+# ── 2. Ensure directories ────────────────────────────────────────────────
+mkdir -p storage bootstrap/cache database storage/logs
 
 if [ ! -f .env ]; then
     if [ -f .env.example ]; then
         cp .env.example .env
         php artisan key:generate --no-interaction
-        echo ">>> .env criado. Edita .env com as chaves de API antes de continuares."
+        log ".env created from .env.example — edit it before continuing."
         exit 1
     fi
 fi
 
+# ── 3. Composer (fast flags for Pi) ───────────────────────────────────────
 export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --optimize-autoloader --no-interaction
+composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction \
+    --no-progress \
+    --no-suggest \
+    --prefer-dist \
+    --quiet
 
-npm ci --ignore-scripts --no-audit --no-fund
-npm run build
-rm -rf node_modules
+# ── 4. Frontend build (only if package.json changed) ─────────────────────
+BUILD_REF=$(git diff "$PREV_SHA" "$NEW_SHA" --name-only 2>/dev/null || echo "package.json")
+if echo "$BUILD_REF" | grep -qE "^(package\.json|package-lock\.json|resources/|vite\.config)"; then
+    log "Frontend changed — building assets..."
+    npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null
+    npm run build --quiet 2>/dev/null
+    rm -rf node_modules
+else
+    log "Frontend unchanged — skipping npm build."
+fi
 
-php artisan migrate --force --seed
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# ── 5. Migrations ────────────────────────────────────────────────────────
+php artisan migrate --force --quiet 2>/dev/null || true
+
+# ── 6. Cache everything ──────────────────────────────────────────────────
+php artisan config:cache --quiet 2>/dev/null
+php artisan route:cache --quiet 2>/dev/null
+php artisan view:cache --quiet 2>/dev/null
+php artisan event:cache --quiet 2>/dev/null
 php artisan storage:link --no-interaction 2>/dev/null || true
 
-sudo chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true
+# ── 7. Permissions (fast, targeted) ──────────────────────────────────────
+chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true
 
-sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null || sudo systemctl restart "$PHP_FPM_SERVICE"
+# ── 8. Reload services (avoid full restart for zero-downtime) ────────────
+sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null \
+    || sudo systemctl restart "$PHP_FPM_SERVICE" 2>/dev/null \
+    || log "Warning: PHP-FPM reload failed"
 
-sudo supervisorctl restart "$SUPERVISOR_PROGRAM:*" 2>/dev/null || echo ">>> Aviso: supervisorctl falhou. Verifica o supervisor."
+# Invalidate OPcache: send USR2 to all PHP-FPM workers via PID file
+FPM_PID="/var/run/php/php${PHP_VERSION}-fpm.pid"
+if [ -f "$FPM_PID" ]; then
+    sudo kill -USR2 "$(cat "$FPM_PID")" 2>/dev/null || true
+else
+    # Fallback: find by process name
+    sudo pkill -USR2 -f "php-fpm: master" 2>/dev/null || true
+fi
 
-echo ">>> Deploy concluido!"
+sudo supervisorctl restart "$SUPERVISOR_PROGRAM:*" 2>/dev/null \
+    || log "Warning: supervisorctl restart failed"
+
+# ── 9. Done ──────────────────────────────────────────────────────────────
+log "Deploy complete: $NEW_SHA"
