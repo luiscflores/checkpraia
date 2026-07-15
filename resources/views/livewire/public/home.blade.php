@@ -632,6 +632,8 @@
             activeRegion: 'Continental',
             _defaultRegion: serverDefaultRegion,
             _swapPending: null,
+            _tileFallbackAttempted: { continente: false, acores: false, madeira: false },
+            _skeletonTimeout: null,
 
             init() {
                 const isMobile = window.innerWidth < 1024;
@@ -656,17 +658,25 @@
                     this._initMaps();
                     return;
                 }
-                // Script is loading (defer) — poll until ready (max 10s)
+                // Script is loading (defer) — poll until ready (max 20s)
                 let attempts = 0;
                 const check = setInterval(() => {
                     attempts++;
                     if (typeof L !== 'undefined') {
                         clearInterval(check);
                         this._initMaps();
-                    } else if (attempts > 200) {
-                        clearInterval(check); // Timeout safety — 10s
+                    } else if (attempts > 400) {
+                        clearInterval(check); // Timeout safety — 20s
+                        this._initMapsFailed();
                     }
                 }, 50);
+            },
+
+            _initMapsFailed() {
+                // Leaflet never loaded — remove skeleton so user isn't stuck
+                const sk = document.getElementById('map-continente-skeleton');
+                if (sk) { sk.style.transition = 'opacity 0.3s'; sk.style.opacity = '0'; setTimeout(() => sk.remove(), 300); }
+                console.warn('CheckPraia: Leaflet did not load within timeout');
             },
 
             _initMaps() {
@@ -720,8 +730,17 @@
 
                 // Hide skeleton once first tile loads
                 this.tileLayers.continente.once('tileload', () => {
-                    const sk = document.getElementById('map-continente-skeleton');
-                    if (sk) { sk.style.transition = 'opacity 0.3s'; sk.style.opacity = '0'; setTimeout(() => sk.remove(), 300); }
+                    this._hideSkeleton();
+                });
+
+                // Fail-safe: hide skeleton after 15s even if tiles never arrive
+                this._skeletonTimeout = setTimeout(() => {
+                    this._hideSkeleton();
+                }, 15000);
+
+                // Handle tile errors — try fallback
+                this.tileLayers.continente.on('tileerror', () => {
+                    this._tryFallbackTile('continente', this.mapContinente);
                 });
 
                 // Island maps: defer via requestIdleCallback to keep main thread free
@@ -810,6 +829,9 @@
                 el.__leafletMap = map;
                 const layer = this.createTileLayer();
                 layer.addTo(map);
+                layer.on('tileerror', () => {
+                    this._tryFallbackTile(region, map);
+                });
                 this['map' + region.charAt(0).toUpperCase() + region.slice(1)] = map;
                 this.tileLayers[region] = layer;
                 this.renderRegionMarkers(map, this.markers[region], this.beaches.filter(b => {
@@ -826,6 +848,39 @@
                         this._performSwap(pendingRegion);
                     }
                 }, 100);
+            },
+
+            _hideSkeleton() {
+                if (this._skeletonTimeout) {
+                    clearTimeout(this._skeletonTimeout);
+                    this._skeletonTimeout = null;
+                }
+                const sk = document.getElementById('map-continente-skeleton');
+                if (sk) { sk.style.transition = 'opacity 0.3s'; sk.style.opacity = '0'; setTimeout(() => sk.remove(), 300); }
+            },
+
+            _tryFallbackTile(region, map) {
+                const key = region || 'continente';
+                if (this._tileFallbackAttempted[key]) return;
+                this._tileFallbackAttempted[key] = true;
+
+                // Remove failed CARTO layer; fallback to OSM
+                if (this.tileLayers[key]) {
+                    map.removeLayer(this.tileLayers[key]);
+                }
+                const fallback = L.tileLayer(
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                        maxZoom: 19,
+                        keepBuffer: 1,
+                        updateWhenIdle: true,
+                        updateWhenZooming: false,
+                    }
+                );
+                fallback.addTo(map);
+                this.tileLayers[key] = fallback;
+                this._hideSkeleton();
             },
 
             createTileLayer() {

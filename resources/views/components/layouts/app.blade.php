@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="dark" x-data="themeHandler()">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="themeHandler()">
 <head>
     <script>
         (function() {
@@ -124,7 +124,6 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-base-gradient);
             color: var(--text-primary);
-            transition: background 0.3s ease, color 0.3s ease;
         }
         .glass-input {
             background: var(--bg-input);
@@ -318,10 +317,10 @@
         </svg>
     </div>
 
-    <div class="w-full flex-1 flex flex-col relative">
+    <div class="w-full flex-1 flex flex-col relative overflow-x-clip">
 
         <!-- Header -->
-        <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle transition-all duration-300 pt-safe" role="banner">
+        <header class="sticky top-0 z-50 bg-theme-header backdrop-blur-md border-b border-theme-subtle pt-safe" role="banner">
             <div class="w-full max-w-7xl mx-auto px-5 sm:px-6 md:px-8 py-3 flex items-center justify-between">
                 <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 group shrink-0" aria-label="{{ __('common.nav_home') }}">
                     <img src="{{ asset('logo.png') }}" alt="{{ __('common.site_name') }}" width="132" height="48" class="h-11 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105" fetchpriority="high">
@@ -423,7 +422,7 @@
                             <span aria-hidden="true">🏆</span> {{ auth()->user()->score }}
                         </span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] transition-all hover:border-blue-500/40 cursor-pointer focus:outline-none" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
+                            <button @click="open = !open" @click.outside="open = false" class="flex items-center text-xs sm:text-sm font-semibold text-theme bg-theme-card border border-theme-medium px-1.5 sm:px-2.5 py-1.5 rounded-lg truncate max-w-[60px] sm:max-w-[120px] hover:border-blue-500/40 cursor-pointer focus:outline-none" aria-label="{{ __('common.nav_profile') }}" aria-haspopup="true" :aria-expanded="open">
                                 <span class="sm:hidden" aria-hidden="true">👤</span><span class="hidden sm:inline"><span aria-hidden="true">👤</span> {{ Str::limit(auth()->user()->name, 8, '') }}</span>
                             </button>
                             <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="absolute right-0 mt-1.5 w-44 bg-theme-card border border-theme-medium rounded-xl shadow-xl overflow-hidden z-50">
@@ -520,7 +519,7 @@
     </div>
 
     <!-- Mobile Bottom Navigation (outside relative wrapper for proper fixed positioning) -->
-    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px);" aria-label="{{ __('common.nav_mobile_map') }}">
+    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px); will-change: transform;" aria-label="{{ __('common.nav_mobile_map') }}">
         <div class="relative">
             <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-nav)] via-[var(--bg-nav)]/98 to-transparent pointer-events-none"></div>
             <div class="relative bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]">
@@ -633,6 +632,15 @@
                 navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
             });
         }
+    </script>
+
+    {{-- Capture beforeinstallprompt early, before Alpine.js is ready --}}
+    <script>
+        window._deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window._deferredPrompt = e;
+        });
     </script>
 
     <script>
@@ -812,6 +820,12 @@
 
                     const dismissed = localStorage.getItem('checkpraia-pwa-dismissed');
                     if (dismissed) { this.dismissed = true; return; }
+
+                    // Use globally captured prompt if beforeinstallprompt fired early
+                    if (window._deferredPrompt) {
+                        this.deferredPrompt = window._deferredPrompt;
+                        this.showInstall = true;
+                    }
 
                     window.addEventListener('beforeinstallprompt', (e) => {
                         e.preventDefault();
@@ -1238,7 +1252,7 @@
         };
 
         // Share Handlers
-        const shareViaAPI = async (data) => {
+        if (!window.shareViaAPI) window.shareViaAPI = async (data) => {
             if (navigator.share) {
                 try { await navigator.share(data); return true; } catch {}
             }
@@ -1259,6 +1273,11 @@
             if (meta) meta.setAttribute('content', next === 'dark' ? 'dark' : 'light');
             window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: next } }));
         };
+
+        document.addEventListener('livewire:navigated', () => {
+            const saved = localStorage.getItem('checkpraia-theme');
+            document.documentElement.setAttribute('data-theme', saved || 'dark');
+        });
     </script>
 
     @livewireScripts
