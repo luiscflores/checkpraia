@@ -244,6 +244,7 @@ return [
 
     // Terms page
     'terms_page_title' => 'Terms of Service',
+    'terms_page_subtitle' => 'The rules governing your use of CheckPraia.',
     'terms_last_update' => 'Last updated: July 2025',
     'terms_acceptance_title' => 'Acceptance of Terms',
     'terms_acceptance' => 'By accessing or using CheckPraia you agree to be bound by these Terms of Service. If you do not agree, do not use the service.',
@@ -261,6 +262,7 @@ return [
     'terms_changes' => 'We reserve the right to update these terms at any time. Users will be notified of material changes via the application.',
     // Privacy page
     'privacy_page_title' => 'Privacy Policy',
+    'privacy_page_subtitle' => 'How we handle your personal data on CheckPraia.',
     'privacy_last_update' => 'Last updated: July 2025',
     'privacy_data_title' => 'Data We Collect',
     'privacy_data' => 'We collect the following information to provide and improve our service:',

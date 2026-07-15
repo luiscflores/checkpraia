@@ -244,6 +244,7 @@ return [
 
     // Terms page
     'terms_page_title' => 'Termos de Utilização',
+    'terms_page_subtitle' => 'As regras que regem a utilização do CheckPraia.',
     'terms_last_update' => 'Última actualização: Julho 2025',
     'terms_acceptance_title' => 'Aceitação dos Termos',
     'terms_acceptance' => 'Ao acederes ou utilizares o CheckPraia, concordas em cumprir estes Termos de Utilização. Se não concordares, não utilizes o serviço.',
@@ -261,6 +262,7 @@ return [
     'terms_changes' => 'Reservamo-nos o direito de actualizar estes termos em qualquer momento. Os utilizadores serão notificados de alterações materiais através da aplicação.',
     // Privacy page
     'privacy_page_title' => 'Política de Privacidade',
+    'privacy_page_subtitle' => 'Como tratamos os teus dados pessoais no CheckPraia.',
     'privacy_last_update' => 'Última actualização: Julho 2025',
     'privacy_data_title' => 'Dados que Recolhemos',
     'privacy_data' => 'Recolhemos as seguintes informações para fornecer e melhorar o nosso serviço:',

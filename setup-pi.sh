@@ -1,75 +1,195 @@
 #!/bin/bash
 # ── CheckPraia - Setup Nativo Raspberry Pi 3 (Production) ──────────────────
 # Internet-exposed. Includes SSL, firewall, rate limiting, hardening.
+# Idempotent — safe to re-run at any stage.
 set -euo pipefail
 
+# ── Config ──────────────────────────────────────────────────────────────────
 PI_USER="${PI_USER:-pi}"
 PI_DIR="/home/$PI_USER"
 WORK_TREE="$PI_DIR/checkpraia"
 BARE_REPO="$PI_DIR/checkpraia.git"
-PHP_VERSION="8.4"
+PHP_VERSION="${PHP_VERSION:-8.4}"
 LOG_FILE="/tmp/checkpraia-setup.log"
+MIN_DISK_MB=1024
 
-log()  { echo ">>> $(date '+%H:%M:%S') $*" | tee -a "$LOG_FILE"; }
-fail() { log "FAILED: $*"; exit 1; }
+# ── Colors ──────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
+BOLD='\033[1m'; NC='\033[0m'
 
-echo ""
-echo "============================================"
-echo "  Setup Nativo - CheckPraia no Raspberry Pi"
-echo "  Production: Internet-Exposed"
-echo "============================================"
-echo ""
+ok()   { echo -e " ${GREEN}✓${NC} $1"; }
+info() { echo -e " ${CYAN}→${NC} $1"; }
+warn() { echo -e " ${YELLOW}⚠${NC} $1"; }
+fail() { echo -e " ${RED}✗${NC} $1"; exit 1; }
+header() { echo -e "\n${BOLD}── $1 ──${NC}"; }
+log()  { echo "$(date '+%H:%M:%S') $*" >> "$LOG_FILE"; }
 
-# ── 0. Pre-flight: enable swap ───────────────────────────────────────────
-log "=== 0. Garantir swap (critico para RPi3 1GB RAM) ==="
+cleanup() {
+    [ $? -ne 0 ] && echo -e "\n${YELLOW}⚠ Setup interrompido. Log: $LOG_FILE${NC}"
+}
+trap cleanup EXIT
 
-if [ ! -f /swapfile ]; then
-    sudo fallocate -l 512M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=512 2>/dev/null
-    sudo chmod 600 /swapfile
-    sudo mkswap /swapfile
-    sudo swapon /swapfile
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-    log "Swap 512MB criado."
-else
-    log "Swap ja existe."
-fi
+# ── Helpers ─────────────────────────────────────────────────────────────────
+run_step() {
+    local name="$1"; shift
+    info "$name..."
+    log "STEP: $name"
+    "$@" 2>>"$LOG_FILE" || fail "$name falhou — log: $LOG_FILE"
+    ok "$name"
+}
 
-if ! grep -q "vm.swappiness=10" /etc/sysctl.conf 2>/dev/null; then
-    echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
-    sudo sysctl vm.swappiness=10 2>/dev/null || true
-fi
+ensure_dir() {
+    sudo mkdir -p "$1" && sudo chown "$PI_USER":www-data "$1" 2>/dev/null
+}
 
-# ── 1. Instalar dependencias do sistema ──────────────────────────────────
-log "=== 1. Instalar dependencias do sistema ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  MAIN
+# ──────────────────────────────────────────────────────────────────────────
+main() {
+    echo ""
+    echo -e "${BOLD}============================================${NC}"
+    echo -e "${BOLD}  Setup Nativo - CheckPraia no Raspberry Pi${NC}"
+    echo -e "${BOLD}  Production: Internet-Exposed${NC}"
+    echo -e "${BOLD}============================================${NC}"
+    echo ""
 
-sudo apt-get update -y -qq
-sudo apt-get install -y -qq \
-    curl wget git unzip nginx supervisor sqlite3 cron \
-    certbot python3-certbot-nginx \
-    build-essential 2>/dev/null || true
+    pre_flight
+    step_swap
+    step_system_deps
+    step_ssh
+    step_php
+    step_composer
+    step_node
+    step_opcache
+    step_php_fpm_tuning
+    step_nginx
+    step_clone_or_pull
+    step_project_deps
+    step_supervisor
+    step_cron
+    step_bare_repo
+    step_permissions
+    step_services
+    step_ssl
+    step_security
+    step_env_validate
+    step_self_test
+    step_summary
+}
 
-# ── 1b. Configurar SSH com password ──────────────────────────────────────
-log "=== 1b. Configurar SSH (password auth) ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  0. Pre-flight
+# ──────────────────────────────────────────────────────────────────────────
+pre_flight() {
+    header "Pre-flight"
 
-sudo mkdir -p /etc/ssh/sshd_config.d
-echo "PasswordAuthentication yes" | sudo tee /etc/ssh/sshd_config.d/checkpraia.conf > /dev/null
-echo "KbdInteractiveAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/checkpraia.conf
-sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
-sudo systemctl restart sshd 2>/dev/null || true
+    if [ "$EUID" -eq 0 ]; then
+        warn "A correr como root. A script faz sudo automaticamente."
+    fi
 
-# Garantir que o user pi tem password definida
-if ! passwd -S "$PI_USER" 2>/dev/null | grep -q "P"; then
-    log "Password do user $PI_USER nao definida. Define com: sudo passwd $PI_USER"
-fi
+    # Verificar arquitetura
+    local arch; arch=$(uname -m)
+    case "$arch" in
+        armv7l|armhf|aarch64|x86_64) ok "Arquitetura: $arch" ;;
+        *) fail "Arquitetura nao suportada: $arch" ;;
+    esac
 
-# ── 2. Instalar PHP 8.4 (sury repository) ────────────────────────────────
-log "=== 2. Instalar PHP $PHP_VERSION ==="
+    # Disco
+    local avail_mb
+    avail_mb=$(df -m "$PI_DIR" 2>/dev/null | awk 'NR==2{print $4}')
+    if [ -n "$avail_mb" ] && [ "$avail_mb" -lt "$MIN_DISK_MB" ]; then
+        fail "Apenas ${avail_mb}MB livres em $PI_DIR (min: ${MIN_DISK_MB}MB)"
+    fi
+    ok "Disco: ${avail_mb}MB disponiveis"
 
-if ! command -v php &>/dev/null || ! php -v 2>/dev/null | grep -q "$PHP_VERSION"; then
-    sudo curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/sury-php.gpg
-    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" \
-        | sudo tee /etc/apt/sources.list.d/sury-php.list > /dev/null
-    sudo apt-get update -y -qq
+    # User existe
+    id "$PI_USER" &>/dev/null || fail "User $PI_USER nao existe. Cria com: sudo adduser $PI_USER"
+    ok "User: $PI_USER"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  1. Swap (critico para RPi3 1GB RAM)
+# ──────────────────────────────────────────────────────────────────────────
+step_swap() {
+    header "Swap"
+
+    if [ ! -f /swapfile ]; then
+        info "A criar swap de 512MB..."
+        sudo fallocate -l 512M /swapfile 2>/dev/null ||
+            sudo dd if=/dev/zero of=/swapfile bs=1M count=512 2>/dev/null
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        grep -q "/swapfile" /etc/fstab ||
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+        ok "Swap 512MB criada e ativa"
+    else
+        ok "Swap ja existe ($(grep SwapTotal /proc/meminfo | awk '{print $2$3}'))"
+    fi
+
+    if ! grep -q "vm.swappiness=10" /etc/sysctl.conf 2>/dev/null; then
+        echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf >/dev/null
+        sudo sysctl vm.swappiness=10 2>/dev/null || true
+        ok "swappiness=10"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  2. Dependencias do sistema
+# ──────────────────────────────────────────────────────────────────────────
+step_system_deps() {
+    header "Dependencias do sistema"
+
+    sudo apt-get update -y -qq || fail "apt update falhou"
+    sudo apt-get install -y -qq \
+        curl wget git unzip nginx supervisor sqlite3 cron \
+        certbot python3-certbot-nginx \
+        build-essential 2>/dev/null || true
+    ok "System packages installed"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  3. SSH (password auth)
+# ──────────────────────────────────────────────────────────────────────────
+step_ssh() {
+    header "SSH"
+
+    sudo mkdir -p /etc/ssh/sshd_config.d
+    if [ ! -f /etc/ssh/sshd_config.d/checkpraia.conf ]; then
+        echo "PasswordAuthentication yes" | sudo tee /etc/ssh/sshd_config.d/checkpraia.conf >/dev/null
+        echo "KbdInteractiveAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/checkpraia.conf
+        sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config 2>/dev/null || true
+        sudo systemctl restart sshd 2>/dev/null || true
+        ok "SSH configurado (password auth + root desativado)"
+    else
+        ok "SSH ja configurado"
+    fi
+
+    if ! passwd -S "$PI_USER" 2>/dev/null | grep -q "P"; then
+        warn "Password do user $PI_USER nao definida. Corre: sudo passwd $PI_USER"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  4. PHP
+# ──────────────────────────────────────────────────────────────────────────
+step_php() {
+    header "PHP $PHP_VERSION"
+
+    if command -v php &>/dev/null && php -v 2>/dev/null | grep -q "$PHP_VERSION"; then
+        ok "PHP $PHP_VERSION ja instalado"
+        return
+    fi
+
+    # Sury repo
+    local sury_key="/usr/share/keyrings/sury-php.gpg"
+    if [ ! -f "$sury_key" ]; then
+        sudo curl -sSL https://packages.sury.org/php/apt.gpg -o "$sury_key"
+        echo "deb [signed-by=$sury_key] https://packages.sury.org/php/ $(lsb_release -sc) main" \
+            | sudo tee /etc/apt/sources.list.d/sury-php.list >/dev/null
+        sudo apt-get update -y -qq
+    fi
+
     sudo apt-get install -y -qq \
         php${PHP_VERSION}-fpm \
         php${PHP_VERSION}-cli \
@@ -84,140 +204,288 @@ if ! command -v php &>/dev/null || ! php -v 2>/dev/null | grep -q "$PHP_VERSION"
         php${PHP_VERSION}-opcache \
         php${PHP_VERSION}-bcmath \
         php${PHP_VERSION}-json
-fi
 
-# ── 3. Instalar Composer ─────────────────────────────────────────────────
-log "=== 3. Instalar Composer ==="
+    ok "PHP $PHP_VERSION instalado ($(php -v 2>/dev/null | head -1))"
+}
 
-if ! command -v composer &>/dev/null; then
+# ──────────────────────────────────────────────────────────────────────────
+#  5. Composer
+# ──────────────────────────────────────────────────────────────────────────
+step_composer() {
+    header "Composer"
+
+    if command -v composer &>/dev/null; then
+        ok "Composer $(composer --version 2>/dev/null | head -1)"
+        return
+    fi
+
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
     php -r "unlink('composer-setup.php');"
-    log "Composer installed."
-fi
+    ok "Composer instalado"
+}
 
-# ── 4. Instalar Node.js ─────────────────────────────────────────────────
-log "=== 4. Instalar Node.js ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  6. Node.js
+# ──────────────────────────────────────────────────────────────────────────
+step_node() {
+    header "Node.js"
 
-if ! command -v node &>/dev/null; then
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armhf" ]; then
-        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-armv7l.tar.xz"
-    elif [ "$ARCH" = "aarch64" ]; then
-        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-arm64.tar.xz"
-    else
-        NODE_URL="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz"
+    if command -v node &>/dev/null; then
+        ok "Node.js $(node --version)"
+        return
     fi
-    curl -fsSL "$NODE_URL" | tar -xJ -C /tmp
+
+    local arch; arch=$(uname -m)
+    local node_url
+    case "$arch" in
+        armv7l|armhf) node_url="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-armv7l.tar.xz" ;;
+        aarch64)      node_url="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-arm64.tar.xz" ;;
+        *)            node_url="https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz" ;;
+    esac
+
+    curl -fsSL "$node_url" | tar -xJ -C /tmp
     sudo cp -a /tmp/node-v22.14.0-linux-*/bin/* /usr/local/bin/
     sudo cp -a /tmp/node-v22.14.0-linux-*/lib/node_modules /usr/local/lib/
     rm -rf /tmp/node-v22.14.0-linux-*
-    log "Node.js $(node --version) installed."
-fi
+    ok "Node.js $(node --version) instalado"
+}
 
-# ── 5. Configurar OPCache + JIT ──────────────────────────────────────────
-log "=== 5. Configurar OPCache + JIT ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  7. OPCache + JIT
+# ──────────────────────────────────────────────────────────────────────────
+step_opcache() {
+    header "OPCache + JIT"
 
-sudo cp "$WORK_TREE/scripts/php-opcache-jit.ini" /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null \
-    || sudo cp scripts/php-opcache-jit.ini /etc/php/${PHP_VERSION}/mods-available/10-opcache.ini 2>/dev/null \
-    || true
-sudo phpenmod opcache 2>/dev/null || true
+    local php_ini_dir="/etc/php/${PHP_VERSION}/mods-available"
+    local src_ini="$WORK_TREE/scripts/php-opcache-jit.ini"
+    local dest_ini="$php_ini_dir/10-opcache.ini"
 
-# ── 6. Configurar nginx ──────────────────────────────────────────────────
-log "=== 6. Configurar nginx ==="
+    if [ -f "$src_ini" ]; then
+        sudo cp "$src_ini" "$dest_ini" 2>/dev/null
+    elif [ -f "$(dirname "$0")/scripts/php-opcache-jit.ini" ]; then
+        sudo cp "$(dirname "$0")/scripts/php-opcache-jit.ini" "$dest_ini" 2>/dev/null
+    else
+        warn "Ficheiro php-opcache-jit.ini nao encontrado — a usar opcache predefinido"
+    fi
 
-# Rate limit zone (must be in http context, before server blocks)
-sudo tee /etc/nginx/snippets/rate-limit.conf > /dev/null << 'EOF'
+    sudo phpenmod opcache 2>/dev/null || true
+    ok "OPCache + JIT configurado (memoria: 128M, JIT: tracing 48M)"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  7b. PHP-FPM pool tuning (critico para 1GB RAM)
+# ──────────────────────────────────────────────────────────────────────────
+step_php_fpm_tuning() {
+    header "PHP-FPM pool tuning"
+
+    local pool_path="/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
+    if [ ! -f "$pool_path" ]; then
+        warn "Pool www.conf nao encontrado em $pool_path"
+        return
+    fi
+
+    # Tuning conservador para 1GB RAM
+    sudo tee -a "$pool_path" >/dev/null <<'EOF'
+
+; ── CheckPraia Tuning (RPi3 1GB RAM) ─────────────────────────────────
+pm = static
+pm.max_children = 4
+pm.max_requests = 500
+pm.status_path = /status
+request_terminate_timeout = 120s
+emergency_restart_threshold = 3
+emergency_restart_interval = 60s
+process_control_timeout = 10s
+EOF
+
+    # Substituir definicoes existentes
+    sudo sed -i 's/^pm =.*/pm = static/' "$pool_path"
+    sudo sed -i 's/^pm\.max_children =.*/pm.max_children = 4/' "$pool_path"
+    sudo sed -i 's/^pm\.max_requests =.*/pm.max_requests = 500/' "$pool_path"
+    sudo sed -i 's/^;request_terminate_timeout.*/request_terminate_timeout = 120s/' "$pool_path"
+
+    ok "PHP-FPM pool: static, max_children=4, max_requests=500"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  8. Nginx
+# ──────────────────────────────────────────────────────────────────────────
+step_nginx() {
+    header "Nginx"
+
+    # Rate limit zone
+    sudo tee /etc/nginx/snippets/rate-limit.conf >/dev/null <<'EOF'
 limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
 limit_req_zone $binary_remote_addr zone=auth:10m rate=2r/s;
 limit_req_status 429;
 EOF
 
-# Include rate-limit in nginx.conf http block
-if ! grep -q "rate-limit.conf" /etc/nginx/nginx.conf 2>/dev/null; then
-    sudo sed -i '/http {/a \    include /etc/nginx/snippets/rate-limit.conf;' /etc/nginx/nginx.conf 2>/dev/null || true
-fi
+    if ! grep -q "rate-limit.conf" /etc/nginx/nginx.conf 2>/dev/null; then
+        sudo sed -i '/http {/a \    include /etc/nginx/snippets/rate-limit.conf;' /etc/nginx/nginx.conf 2>/dev/null || true
+    fi
 
-sudo cp "$WORK_TREE/scripts/checkpraia-nginx.conf" /etc/nginx/sites-available/checkpraia 2>/dev/null \
-    || sudo cp scripts/checkpraia-nginx.conf /etc/nginx/sites-available/checkpraia 2>/dev/null \
-    || true
+    # Site config
+    local src_nginx="$WORK_TREE/scripts/checkpraia-nginx.conf"
+    if [ ! -f "$src_nginx" ]; then
+        src_nginx="$(dirname "$0")/scripts/checkpraia-nginx.conf"
+    fi
 
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo rm -f /etc/nginx/sites-enabled/checkpraia.pt
-sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
+    if [ -f "$src_nginx" ]; then
+        sudo cp "$src_nginx" /etc/nginx/sites-available/checkpraia
+    else
+        fail "checkpraia-nginx.conf nao encontrado"
+    fi
 
-# Validate nginx config before restarting
-sudo nginx -t 2>/dev/null && log "Nginx config OK." || log "WARNING: nginx config test failed!"
+    sudo rm -f /etc/nginx/sites-enabled/default
+    sudo rm -f /etc/nginx/sites-enabled/checkpraia.pt
+    sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
 
-# ── 7. Clonar repositorio ───────────────────────────────────────────────
-log "=== 7. Clonar repositorio ==="
+    if sudo nginx -t 2>/dev/null; then
+        ok "Nginx config: valido"
+    else
+        warn "Nginx config: INVALIDO. Corrige manualmente."
+    fi
+}
 
-if [ ! -d "$WORK_TREE" ]; then
-    git clone --depth 1 https://github.com/luiscflores/checkpraia.git "$WORK_TREE"
-    log "Repo clonado (shallow) em $WORK_TREE"
-fi
+# ──────────────────────────────────────────────────────────────────────────
+#  9. Clonar (ou atualizar) repositorio
+# ──────────────────────────────────────────────────────────────────────────
+step_clone_or_pull() {
+    header "Repositorio"
 
-cd "$WORK_TREE"
+    if [ ! -d "$WORK_TREE" ]; then
+        git clone --depth 1 https://github.com/luiscflores/checkpraia.git "$WORK_TREE"
+        ok "Repo clonado (shallow) em $WORK_TREE"
+    else
+        info "Repo ja existe — a fazer git fetch..."
+        cd "$WORK_TREE"
+        git fetch origin main --quiet 2>/dev/null || true
+        if git rev-parse origin/main &>/dev/null; then
+            git reset --hard origin/main --quiet 2>/dev/null || true
+            ok "Repo atualizado para origin/main"
+        else
+            warn "Nao foi possivel fazer fetch — repo mantem-se como esta"
+        fi
+    fi
+}
 
-mkdir -p storage bootstrap/cache database storage/logs
-chmod -R 775 storage bootstrap/cache
+# ──────────────────────────────────────────────────────────────────────────
+#  10. Dependencias do projeto + .env + caches
+# ──────────────────────────────────────────────────────────────────────────
+step_project_deps() {
+    header "Dependencias do projeto"
 
-if [ ! -f .env ]; then
-    cp .env.example .env
-    php artisan key:generate --no-interaction
-    log ".env criado — edita-o: nano $WORK_TREE/.env"
-fi
+    cd "$WORK_TREE"
 
-# ── 8. Instalar dependencias do projeto ──────────────────────────────────
-log "=== 8. Instalar dependencias PHP/JS ==="
+    # Estrutura de diretorios
+    ensure_dir storage/framework/cache/data
+    ensure_dir storage/framework/sessions
+    ensure_dir storage/framework/views
+    ensure_dir storage/logs
+    ensure_dir bootstrap/cache
+    ensure_dir database
+    chmod -R 775 storage bootstrap/cache database
 
-export COMPOSER_ALLOW_SUPERUSER=1
-composer install \
-    --no-dev \
-    --optimize-autoloader \
-    --no-interaction \
-    --no-progress \
-    --no-suggest \
-    --prefer-dist \
-    --quiet
+    # .env
+    if [ ! -f .env ]; then
+        if [ -f .env.example ]; then
+            cp .env.example .env
+            php artisan key:generate --no-interaction
+            ok ".env criado — edita-o: nano $WORK_TREE/.env"
+        else
+            fail ".env.example nao encontrado"
+        fi
+    else
+        ok ".env ja existe"
+    fi
 
-if [ -f package.json ]; then
-    npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null
-    npm run build --quiet 2>/dev/null
-    rm -rf node_modules
-fi
+    # Git config (para o post-receive hook)
+    git config user.name 2>/dev/null || git config user.name "pi" || true
+    git config user.email 2>/dev/null || git config user.email "pi@checkpraia.pt" || true
 
-php artisan migrate --force --quiet 2>/dev/null || true
-php artisan config:cache --quiet 2>/dev/null
-php artisan route:cache --quiet 2>/dev/null
-php artisan view:cache --quiet 2>/dev/null
-php artisan event:cache --quiet 2>/dev/null
-php artisan storage:link --no-interaction 2>/dev/null || true
+    # Composer
+    export COMPOSER_ALLOW_SUPERUSER=1
+    composer install \
+        --no-dev \
+        --optimize-autoloader \
+        --no-interaction \
+        --no-progress \
+        --no-suggest \
+        --prefer-dist \
+        --quiet
+    ok "Dependencias PHP instaladas"
 
-# ── 9. Configurar Supervisor ──────────────────────────────────────────────
-log "=== 9. Configurar Supervisor ==="
+    # Frontend (com retry para RPi3)
+    if [ -f package.json ]; then
+        info "A compilar assets (com retry se falhar)..."
+        npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null || true
+        if npm run build --quiet 2>/dev/null; then
+            ok "Assets compilados"
+        else
+            warn "npm build falhou — tenta novamente..."
+            npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null || true
+            npm run build --quiet 2>/dev/null || warn "npm build falhou novamente (pode ser compilado manualmente)"
+        fi
+        rm -rf node_modules
+    fi
 
-if [ -f "$WORK_TREE/checkpraia-worker.conf" ]; then
-    sudo cp "$WORK_TREE/checkpraia-worker.conf" /etc/supervisor/conf.d/checkpraia-worker.conf
+    # Laravel caches
+    php artisan migrate --force --quiet 2>/dev/null || warn "Migration falhou (podes correr manualmente)"
+    php artisan config:cache --quiet 2>/dev/null || true
+    php artisan route:cache --quiet 2>/dev/null || true
+    php artisan view:cache --quiet 2>/dev/null || true
+    php artisan event:cache --quiet 2>/dev/null || true
+    php artisan storage:link --no-interaction 2>/dev/null || true
+    ok "Caches Laravel carregados"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  11. Supervisor (queue worker)
+# ──────────────────────────────────────────────────────────────────────────
+step_supervisor() {
+    header "Supervisor"
+
+    local worker_src="$WORK_TREE/checkpraia-worker.conf"
+    if [ ! -f "$worker_src" ]; then
+        warn "checkpraia-worker.conf nao encontrado"
+        return
+    fi
+
+    sudo cp "$worker_src" /etc/supervisor/conf.d/checkpraia-worker.conf
     sudo supervisorctl reread 2>/dev/null || true
     sudo supervisorctl update 2>/dev/null || true
-fi
+    ok "Supervisor configurado (checkpraia-worker)"
+}
 
-# ── 10. Configurar Cron ────────────────────────────────────────────────
-log "=== 10. Configurar Cron ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  12. Cron (scheduler + deploy + cert renewal)
+# ──────────────────────────────────────────────────────────────────────────
+step_cron() {
+    header "Cron"
 
-CRON_SCHEDULER="* * * * * cd $WORK_TREE && php artisan schedule:run >> /dev/null 2>&1"
-CRON_DEPLOY="*/5 * * * * cd $WORK_TREE && bash scripts/deploy.sh >> $WORK_TREE/storage/logs/deploy.log 2>&1"
-CRON_CERT="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
+    local scheduler="* * * * * cd $WORK_TREE && php artisan schedule:run >> /dev/null 2>&1"
+    local deploy="*/5 * * * * cd $WORK_TREE && bash scripts/deploy.sh >> $WORK_TREE/storage/logs/deploy.log 2>&1"
+    local cert="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
 
-(crontab -u "$PI_USER" -l 2>/dev/null | grep -v "checkpraia" | grep -v "certbot renew"; \
- echo "$CRON_SCHEDULER"; echo "$CRON_DEPLOY"; echo "$CRON_CERT") \
-    | crontab -u "$PI_USER" - 2>/dev/null || true
+    (crontab -u "$PI_USER" -l 2>/dev/null | grep -v "checkpraia" | grep -v "certbot renew"; \
+     echo "$scheduler"; echo "$deploy"; echo "$cert") \
+        | crontab -u "$PI_USER" - 2>/dev/null || true
 
-# ── 11. Bare git repo + post-receive ──────────────────────────────────────
-log "=== 11. Configurar bare git repo ==="
+    ok "Cron: scheduler (1min) + deploy (5min) + cert (3am)"
+}
 
-if [ ! -d "$BARE_REPO" ]; then
+# ──────────────────────────────────────────────────────────────────────────
+#  13. Bare git repo + post-receive hook
+# ──────────────────────────────────────────────────────────────────────────
+step_bare_repo() {
+    header "Bare git repo (git push deploy)"
+
+    if [ -d "$BARE_REPO" ]; then
+        ok "Bare repo ja existe em $BARE_REPO"
+        return
+    fi
+
     git init --bare "$BARE_REPO"
 
     cat > "$BARE_REPO/hooks/post-receive" << 'HOOK'
@@ -233,76 +501,237 @@ echo ">>> Deploy concluido!"
 HOOK
 
     chmod +x "$BARE_REPO/hooks/post-receive"
-    log "Bare repo criado em $BARE_REPO"
-fi
+    ok "Bare repo criado em $BARE_REPO"
+    info "Adiciona remote: git remote add pi ssh://$PI_USER@<IP>/$BARE_REPO"
+}
 
-# ── 12. Permissoes ──────────────────────────────────────────────────────
-log "=== 12. Corrigir permissoes ==="
+# ──────────────────────────────────────────────────────────────────────────
+#  14. Permissoes
+# ──────────────────────────────────────────────────────────────────────────
+step_permissions() {
+    header "Permissoes"
 
-sudo usermod -aG www-data "$PI_USER" 2>/dev/null || true
-sudo chmod +x "/home/$PI_USER" 2>/dev/null || true
-sudo chown -R "$PI_USER":www-data "$WORK_TREE"
-sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
+    sudo usermod -aG www-data "$PI_USER" 2>/dev/null || true
+    sudo chmod +x "$PI_DIR" 2>/dev/null || true
+    sudo chown -R "$PI_USER":www-data "$WORK_TREE"
+    sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
 
-# ── 13. SSL placeholder (self-signed) + Arrancar servicos ───────────────
-log "=== 13. Arrancar servicos ==="
+    # Logrotate para a app (se nao existir)
+    if [ ! -f /etc/logrotate.d/checkpraia ]; then
+        sudo tee /etc/logrotate.d/checkpraia >/dev/null << 'EOF'
+/home/pi/checkpraia/storage/logs/*.log {
+    daily
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 0664 pi www-data
+    sharedscripts
+    postrotate
+        [ -f /var/run/php/php8.4-fpm.pid ] && sudo systemctl reload php8.4-fpm 2>/dev/null || true
+    endscript
+}
+EOF
+        ok "Logrotate configurado (7 dias)"
+    fi
 
-# Generate self-signed cert so nginx can start before Let's Encrypt is ready
-CERT_DIR="/etc/letsencrypt/live/checkpraia.pt"
-if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
-    log "A gerar certificado self-signed como placeholder..."
-    sudo mkdir -p "$CERT_DIR"
-    sudo openssl req -x509 -nodes -days 365 \
-        -newkey rsa:2048 \
-        -keyout "$CERT_DIR/privkey.pem" \
-        -out "$CERT_DIR/fullchain.pem" \
-        -subj "/CN=checkpraia.pt" 2>/dev/null
-    sudo cp "$CERT_DIR/fullchain.pem" "$CERT_DIR/chain.pem"
-    log "Certificado self-signed criado (será substituido pelo certbot)."
-fi
+    ok "Permissoes corrigidas"
+}
 
-sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
-sudo systemctl restart nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
+# ──────────────────────────────────────────────────────────────────────────
+#  15. Servicos (arrancar)
+# ──────────────────────────────────────────────────────────────────────────
+step_services() {
+    header "Servicos"
 
-# ── 14. SSL Certificate ─────────────────────────────────────────────────
-log "=== 14. Configurar SSL ==="
+    # Self-signed placeholder para nginx arrancar antes do certbot
+    local cert_dir="/etc/letsencrypt/live/checkpraia.pt"
+    if [ ! -f "$cert_dir/fullchain.pem" ]; then
+        info "A gerar certificado self-signed placeholder..."
+        sudo mkdir -p "$cert_dir"
+        sudo openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
+            -keyout "$cert_dir/privkey.pem" \
+            -out "$cert_dir/fullchain.pem" \
+            -subj "/CN=checkpraia.pt" 2>/dev/null
+        sudo cp "$cert_dir/fullchain.pem" "$cert_dir/chain.pem"
+        ok "Self-signed placeholder criado"
+    fi
 
-if [ ! -f /etc/letsencrypt/live/checkpraia.pt/fullchain.pem ]; then
-    log "SSL certificate NAO encontrado."
-    log ">>> Depois de configurar DNS para o IP publico, correr:"
-    log "    sudo certbot --nginx -d checkpraia.pt"
-    log ">>> Ou se DNS ainda nao propagou:"
-    log "    sudo certbot certonly --standalone -d checkpraia.pt"
-else
-    log "SSL certificate encontrado."
-    sudo systemctl enable certbot.timer 2>/dev/null || true
-    sudo systemctl start certbot.timer 2>/dev/null || true
-fi
+    sudo systemctl enable nginx php${PHP_VERSION}-fpm supervisor 2>/dev/null || true
 
-# ── 15. Security hardening ──────────────────────────────────────────────
-log "=== 15. Security hardening ==="
+    # Dar reload primeiro (mais rapido que restart)
+    sudo systemctl reload nginx 2>/dev/null ||
+        sudo systemctl restart nginx 2>/dev/null || true
+    sudo systemctl reload php${PHP_VERSION}-fpm 2>/dev/null ||
+        sudo systemctl restart php${PHP_VERSION}-fpm 2>/dev/null || true
+    sudo supervisorctl start checkpraia-worker:* 2>/dev/null || true
 
-if [ -f "$WORK_TREE/scripts/security-hardening.sh" ]; then
-    bash "$WORK_TREE/scripts/security-hardening.sh"
-fi
+    ok "Servicos: nginx + php${PHP_VERSION}-fpm + supervisor"
+}
 
-# ── Done ────────────────────────────────────────────────────────────────
-echo ""
-echo "============================================"
-echo "  Setup completo! (Production-Ready)"
-echo "============================================"
-echo ""
-echo "  App:        https://checkpraia.pt"
-echo "  Directorio: $WORK_TREE"
-echo ""
-echo "  PROXIMO PASSO (obrigatorio):"
-echo "    1. Editar .env:     nano $WORK_TREE/.env"
-echo "    2. Configurar DNS:  apontar checkpraia.pt para o IP publico do RPi"
-echo "    3. Pedir SSL:       sudo certbot --nginx -d checkpraia.pt"
-echo ""
-echo "  Deploy via git push:"
-echo "    git remote add pi ssh://pi@<IP_PUBLICO>/home/pi/checkpraia.git"
-echo "    git push pi main"
-echo ""
-echo "  Nota: O cron (a cada 5min) faz pull automatico do GitHub."
-echo ""
+# ──────────────────────────────────────────────────────────────────────────
+#  16. SSL (info-only — certbot corre depois do DNS)
+# ──────────────────────────────────────────────────────────────────────────
+step_ssl() {
+    header "SSL"
+
+    if [ -f /etc/letsencrypt/live/checkpraia.pt/fullchain.pem ]; then
+        ok "Certificado SSL encontrado"
+        sudo systemctl enable certbot.timer 2>/dev/null || true
+        sudo systemctl start certbot.timer 2>/dev/null || true
+    else
+        warn "SSL certificate NAO encontrado."
+        info "Depois de configurar DNS, corre:"
+        info "  sudo certbot --nginx -d checkpraia.pt"
+        info "  sudo certbot certonly --standalone -d checkpraia.pt (se porta 80 ocupada)"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  17. Security hardening (scripts/security-hardening.sh)
+# ──────────────────────────────────────────────────────────────────────────
+step_security() {
+    header "Security hardening"
+
+    local harden_script="$WORK_TREE/scripts/security-hardening.sh"
+    if [ ! -f "$harden_script" ]; then
+        warn "security-hardening.sh nao encontrado — salta"
+        return
+    fi
+
+    info "A correr security-hardening.sh..."
+    bash "$harden_script" 2>>"$LOG_FILE" || warn "Security hardening falhou (podes correr manualmente)"
+    ok "Security hardening concluido"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  18. Validar .env
+# ──────────────────────────────────────────────────────────────────────────
+step_env_validate() {
+    header "Validar .env"
+
+    local env_file="$WORK_TREE/.env"
+    if [ ! -f "$env_file" ]; then
+        warn ".env nao encontrado — cria-o manualmente"
+        return
+    fi
+
+    local required_keys=(
+        "APP_KEY" "APP_URL" "APP_ENV" "DB_CONNECTION"
+    )
+    local optional_keys=(
+        "GOOGLE_CLIENT_ID" "GOOGLE_CLIENT_SECRET" "GOOGLE_REDIRECT_URI"
+        "ADSENSE_PUBLISHER_ID"
+        "VAPID_PUBLIC_KEY" "VAPID_PRIVATE_KEY"
+    )
+    local missing_required=()
+    local missing_optional=()
+
+    for key in "${required_keys[@]}"; do
+        if ! grep -q "^${key}=" "$env_file" 2>/dev/null; then
+            missing_required+=("$key")
+        fi
+    done
+
+    for key in "${optional_keys[@]}"; do
+        if ! grep -q "^${key}=" "$env_file" 2>/dev/null; then
+            missing_optional+=("$key")
+        fi
+    done
+
+    if [ ${#missing_required[@]} -eq 0 ]; then
+        ok "Variaveis obrigatorias: todas presentes"
+    else
+        warn "Faltam variaveis OBRIGATORIAS: ${missing_required[*]}"
+    fi
+
+    if [ ${#missing_optional[@]} -gt 0 ]; then
+        info "Faltam variaveis OPCIONAIS: ${missing_optional[*]}"
+    fi
+
+    if grep -q "^APP_KEY=$" "$env_file" 2>/dev/null; then
+        warn "APP_KEY esta vazio — corre: php artisan key:generate"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  19. Self-test
+# ──────────────────────────────────────────────────────────────────────────
+step_self_test() {
+    header "Self-test"
+
+    local tries=0
+    local max_tries=5
+
+    while [ $tries -lt $max_tries ]; do
+        if curl -sI -o /dev/null -w "%{http_code}" http://localhost 2>/dev/null | grep -q "30[0-9]"; then
+            ok "Nginx responde a http://localhost (redirect 301)"
+            break
+        fi
+        tries=$((tries + 1))
+        [ $tries -lt $max_tries ] && sleep 2
+    done
+
+    if [ $tries -eq $max_tries ]; then
+        warn "Nginx nao responde localmente — verifica: sudo nginx -t && sudo systemctl status nginx"
+    fi
+
+    # PHP-FPM
+    if sudo systemctl is-active --quiet php${PHP_VERSION}-fpm 2>/dev/null; then
+        ok "PHP $PHP_VERSION-FPM: ativo"
+    else
+        warn "PHP $PHP_VERSION-FPM: inativo"
+    fi
+
+    # Supervisor
+    if sudo supervisorctl status checkpraia-worker:* 2>/dev/null | grep -q RUNNING; then
+        ok "Supervisor worker: RUNNING"
+    else
+        warn "Supervisor worker: PARADO (pode ser normal se nao ha fila)"
+    fi
+
+    # SQLite
+    if [ -f "$WORK_TREE/database/database.sqlite" ]; then
+        ok "Base de dados SQLite: presente ($(ls -lh "$WORK_TREE/database/database.sqlite" | awk '{print $5}'))"
+    else
+        warn "Base de dados SQLite nao encontrada — corre: php artisan migrate --force"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  Resumo final
+# ──────────────────────────────────────────────────────────────────────────
+step_summary() {
+    echo ""
+    echo -e "${BOLD}============================================${NC}"
+    echo -e "${GREEN}${BOLD}  Setup completo! (Production-Ready)${NC}"
+    echo -e "${BOLD}============================================${NC}"
+    echo ""
+    echo -e "  ${CYAN}App:${NC}        https://checkpraia.pt"
+    echo -e "  ${CYAN}Directorio:${NC} $WORK_TREE"
+    echo ""
+    echo -e "  ${YELLOW}PROXIMOS PASSOS:${NC}"
+    echo "    1. Editar .env:     nano $WORK_TREE/.env"
+    echo "    2. Configurar DNS:  apontar checkpraia.pt para o IP publico do RPi"
+    echo "    3. Pedir SSL:       sudo certbot --nginx -d checkpraia.pt"
+    echo ""
+    echo -e "  ${CYAN}Deploy via git push:${NC}"
+    echo "    git remote add pi ssh://$PI_USER@<IP_PUBLICO>$BARE_REPO"
+    echo "    git push pi main"
+    echo ""
+    echo -e "  ${CYAN}Deploy automatico:${NC} cron a cada 5min faz pull do GitHub"
+    echo ""
+
+    # Mostrar IP publico se disponivel
+    local public_ip
+    public_ip=$(curl -s4 ifconfig.co 2>/dev/null || curl -s4 icanhazip.com 2>/dev/null || echo "")
+    if [ -n "$public_ip" ]; then
+        echo -e "  ${CYAN}IP Publico:${NC} $public_ip"
+        echo ""
+    fi
+}
+
+# ── Run ──────────────────────────────────────────────────────────────────
+main "$@"

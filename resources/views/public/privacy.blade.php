@@ -3,10 +3,31 @@
 <x-layouts.app>
     <x-slot:title>{{ $title }}</x-slot:title>
 
+    @section('meta_description', __('common.privacy_page_subtitle'))
+    @section('og_title', $title)
+    @section('og_description', __('common.privacy_page_subtitle'))
+    @section('og_type', 'website')
+
+    @section('ld_json')
+    @parent
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'WebPage',
+        '@id' => url('/privacidade') . '#webpage',
+        'name' => $title,
+        'description' => __('common.privacy_page_subtitle'),
+        'url' => url('/privacidade'),
+        'isPartOf' => ['@id' => url('/') . '#website'],
+        'about' => ['@type' => 'Thing', 'name' => 'Privacy Policy'],
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    @endsection
+
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div class="text-center space-y-3">
             <div class="text-5xl mb-2">🔒</div>
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ __('common.privacy_page_title') }}</h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ $title }}</h1>
             <p class="text-theme-secondary text-sm">{{ __('common.privacy_last_update') }}</p>
         </div>
 

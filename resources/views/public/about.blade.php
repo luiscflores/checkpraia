@@ -3,11 +3,36 @@
 <x-layouts.app>
     <x-slot:title>{{ $title }}</x-slot:title>
 
+    @section('meta_description', __('common.about_page_subtitle'))
+    @section('og_title', $title)
+    @section('og_description', __('common.about_page_subtitle'))
+    @section('og_type', 'website')
+
+    @section('ld_json')
+    @parent
+    <script type="application/ld+json">
+    @php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'WebPage',
+        '@id' => url('/sobre') . '#webpage',
+        'name' => $title,
+        'description' => __('common.about_page_subtitle'),
+        'url' => url('/sobre'),
+        'isPartOf' => ['@id' => url('/') . '#website'],
+        'about' => [
+            '@type' => 'Thing',
+            'name' => 'CheckPraia - Informação de Praias Portuguesas',
+            'description' => __('common.about_page_mission'),
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); @endphp
+    </script>
+    @endsection
+
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-10">
         {{-- Hero --}}
         <div class="text-center space-y-3">
             <div class="text-5xl mb-2">🏖️</div>
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ __('common.about_page_title') }}</h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ $title }}</h1>
             <p class="text-theme-secondary max-w-xl mx-auto leading-relaxed">{{ __('common.about_page_subtitle') }}</p>
         </div>
 

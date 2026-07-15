@@ -36,11 +36,14 @@
 
     <!-- Hreflang / Alternate Language URLs (override per page for dynamic routes) -->
     @section('hreflang')
+        @php
+            $path = trim(str_replace(url('/'), '', @yield('canonical', url()->current())), '/');
+        @endphp
         @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale)
-            <link rel="alternate" hreflang="{{ $locale }}" href="{{ url($locale === 'pt' ? '' : "/{$locale}") }}">
+            <link rel="alternate" hreflang="{{ $locale }}" href="{{ $path ? url($locale === 'pt' ? $path : "/{$locale}/{$path}") : url($locale === 'pt' ? '/' : "/{$locale}") }}">
         @endforeach
+        <link rel="alternate" hreflang="x-default" href="{{ url($path ? "/{$path}" : '/') }}">
     @show
-    <link rel="alternate" hreflang="x-default" href="{{ url('/') }}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="@yield('og_title', __('common.site_name'))">

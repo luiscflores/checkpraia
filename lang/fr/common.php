@@ -243,6 +243,7 @@ return [
 
     // Terms page
     'terms_page_title' => 'Conditions d\'Utilisation',
+    'terms_page_subtitle' => 'Les règles régissant l\'utilisation de CheckPraia.',
     'terms_last_update' => 'Dernière mise à jour : Juillet 2025',
     'terms_acceptance_title' => 'Acceptation des Conditions',
     'terms_acceptance' => 'En accédant ou en utilisant CheckPraia, vous acceptez ces Conditions d\'Utilisation. Si vous n\'êtes pas d\'accord, n\'utilisez pas le service.',
@@ -260,6 +261,7 @@ return [
     'terms_changes' => 'Nous nous réservons le droit de mettre à jour ces conditions à tout moment. Les utilisateurs seront informés des modifications importantes via l\'application.',
     // Privacy page
     'privacy_page_title' => 'Politique de Confidentialité',
+    'privacy_page_subtitle' => 'Comment nous traitons vos données personnelles sur CheckPraia.',
     'privacy_last_update' => 'Dernière mise à jour : Juillet 2025',
     'privacy_data_title' => 'Données que Nous Collectons',
     'privacy_data' => 'Nous collectons les informations suivantes pour fournir et améliorer notre service :',
