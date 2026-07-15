@@ -129,6 +129,7 @@ sudo cp "$WORK_TREE/scripts/checkpraia-nginx.conf" /etc/nginx/sites-available/ch
     || true
 
 sudo rm -f /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/checkpraia.pt
 sudo ln -sf /etc/nginx/sites-available/checkpraia /etc/nginx/sites-enabled/
 
 # Validate nginx config before restarting
