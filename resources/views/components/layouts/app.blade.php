@@ -1320,53 +1320,25 @@
         </div>
     </div>
 
-    <!-- Cookie Consent Banner (GDPR) -->
+    <!-- Google CMP (GDPR consent) — certified, IAB TCF compliant -->
     @if(config('ads.publisher_id'))
-    <div x-data="cookieConsent()" x-init="init()" x-show="visible" x-cloak
-         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4"
-         class="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-auto md:max-w-md z-[70]">
-        <div class="glass-card rounded-2xl border border-theme-subtle/60 shadow-2xl p-4 sm:p-5">
-            <div class="flex items-start gap-3">
-                <div class="shrink-0 w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mt-0.5">
-                    <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-theme mb-1">{{ __('common.cookie_title') }}</p>
-                    <p class="text-xs text-theme-secondary leading-relaxed">{{ __('common.cookie_description') }}</p>
-                    <div class="flex items-center gap-2 mt-3">
-                        <button @click="accept()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 touch-target">
-                            {{ __('common.cookie_accept') }}
-                        </button>
-                        <button @click="reject()" class="px-4 py-2 text-xs text-theme-muted hover:text-theme transition-colors font-medium touch-target">
-                            {{ __('common.cookie_reject') }}
-                        </button>
-                        <a href="{{ route('privacy') }}" wire:navigate class="text-[10px] text-blue-400 hover:text-blue-300 underline ml-auto">{{ __('common.cookie_learn_more') }}</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <script async src="https://fundingchoicesmessages.google.com/i/pub-{{ config('ads.publisher_id') }}?ers=1"></script>
     <script>
-        function cookieConsent() {
-            return {
-                visible: false,
-                init() {
-                    const consent = localStorage.getItem('cookie_consent');
-                    if (!consent) this.visible = true;
-                },
-                accept() {
-                    localStorage.setItem('cookie_consent', 'accepted');
-                    this.visible = false;
-                    if (typeof gtag === 'function') gtag('consent', 'update', { ad_storage: 'granted', analytics_storage: 'granted' });
-                },
-                reject() {
-                    localStorage.setItem('cookie_consent', 'rejected');
-                    this.visible = false;
-                    if (typeof gtag === 'function') gtag('consent', 'update', { ad_storage: 'denied', analytics_storage: 'denied' });
+        (function() {
+            function signalGooglefcPresent() {
+                if (!window.frames['googlefcPresent']) {
+                    if (document.body) {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.cssText = 'width:0;height:0;border:none;z-index:-1000;left:-1000px;top:-1000px;display:none';
+                        iframe.name = 'googlefcPresent';
+                        document.body.appendChild(iframe);
+                    } else {
+                        setTimeout(signalGooglefcPresent, 0);
+                    }
                 }
             }
-        }
+            signalGooglefcPresent();
+        })();
     </script>
     @endif
 </body>

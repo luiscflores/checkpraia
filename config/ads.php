@@ -5,8 +5,6 @@ return [
 
     'publisher_src' => 'ca-pub-'.env('ADSENSE_PUBLISHER_ID', ''),
 
-    'auto_ads_enabled' => env('ADSENSE_AUTO_ADS_ENABLED', true),
-
     'slots' => [
         // Home page — ad every 4 beaches in the list
         'home_between_cards' => env('ADSENSE_SLOT_HOME_BETWEEN', ''),
