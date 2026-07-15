@@ -90,6 +90,8 @@ php artisan storage:link --no-interaction 2>/dev/null || true
 
 # ── 7. Permissions (fast, targeted) ──────────────────────────────────────
 chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true
+# PHP-FPM runs as www-data — it must OWN cache dirs to avoid touch(): utime failed
+sudo chown -R www-data:www-data storage/framework 2>/dev/null || true
 
 # ── 8. Reload services (avoid full restart for zero-downtime) ────────────
 sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null \

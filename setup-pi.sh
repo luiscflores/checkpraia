@@ -516,6 +516,8 @@ step_permissions() {
     sudo chmod +x "$PI_DIR" 2>/dev/null || true
     sudo chown -R "$PI_USER":www-data "$WORK_TREE"
     sudo chmod -R 2775 "$WORK_TREE/storage" "$WORK_TREE/bootstrap/cache" "$WORK_TREE/database"
+    # PHP-FPM runs as www-data — cache dirs must be owned by www-data
+    sudo chown -R www-data:www-data "$WORK_TREE/storage/framework" "$WORK_TREE/storage/logs" 2>/dev/null || true
 
     # Logrotate para a app (se nao existir)
     if [ ! -f /etc/logrotate.d/checkpraia ]; then
