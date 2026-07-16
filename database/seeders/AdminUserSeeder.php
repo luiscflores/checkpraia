@@ -15,7 +15,7 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => config('app.admin_name', 'Admin'),
                 'username' => config('app.admin_username', 'admin'),
-                'password' => bcrypt(config('app.admin_password', Str::random(16))),
+                'password' => bcrypt(config('app.admin_password', 'password')),
                 'is_admin' => true,
                 'referral_code' => strtoupper(Str::random(8)),
             ]
