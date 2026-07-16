@@ -402,7 +402,7 @@
                                 <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_air') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
-                                {{ $beach['air_temp'] !== null ? $beach['air_temp'] . '°' : '—' }}
+                                {{ ($beach['air_temp'] ?? null) !== null ? $beach['air_temp'] . '°' : '—' }}
                             </span>
                         </div>
 
@@ -414,7 +414,7 @@
                                 <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_water') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
-                                {{ $beach['water_temp'] !== null ? $beach['water_temp'] . '°' : '—' }}
+                                {{ ($beach['water_temp'] ?? null) !== null ? $beach['water_temp'] . '°' : '—' }}
                             </span>
                         </div>
 
@@ -426,7 +426,7 @@
                                 <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_waves') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 tabular-nums">
-                                {{ $beach['wave_height_max'] !== null ? $beach['wave_height_max'] . 'm' : '—' }}
+                                {{ ($beach['wave_height_max'] ?? null) !== null ? $beach['wave_height_max'] . 'm' : '—' }}
                             </span>
                         </div>
 
@@ -438,8 +438,8 @@
                                 <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ __('common.weather_wind') }}</span>
                             </div>
                             <span class="text-xs sm:text-sm font-bold text-slate-300 mt-1.5 flex items-center justify-center gap-1 tabular-nums">
-                                <span>{{ $beach['wind_speed'] !== null ? (int)round($beach['wind_speed'] * 1.852) : '—' }}</span>
-                                @if($beach['wind_direction'] !== null)
+                                <span>{{ ($beach['wind_speed'] ?? null) !== null ? (int)round($beach['wind_speed'] * 1.852) : '—' }}</span>
+                                @if(($beach['wind_direction'] ?? null) !== null)
                                     <span class="text-[11px] font-extrabold text-slate-500 uppercase">{{ $beach['wind_direction'] }}</span>
                                 @endif
                             </span>

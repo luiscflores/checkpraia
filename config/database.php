@@ -39,11 +39,12 @@ return [
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
-            'journal_mode' => env('DB_JOURNAL_MODE', 'DELETE'), // Changed from WAL to DELETE to prevent disk I/O errors on RPi3
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'), // Use WAL for better concurrency if mmap is disabled
             'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
             'pragmas' => [
                 'cache_size' => -128000,
                 'temp_store' => 'MEMORY',
+                'mmap_size' => 0,
             ],
             'transaction_mode' => 'IMMEDIATE',
         ],
