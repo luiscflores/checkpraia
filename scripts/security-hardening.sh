@@ -3,7 +3,7 @@
 # Firewall + Fail2Ban + SSL + Logrotate + SSH + Rate Limiting
 set -euo pipefail
 
-WORK_TREE="${WORK_TREE:-/home/pi/checkpraia}"
+WORK_TREE="${WORK_TREE:-/var/www/checkpraia}"
 APP_ENV="$WORK_TREE/.env"
 
 echo ""
@@ -107,7 +107,7 @@ fi
 echo "=== 4. Configurar Logrotate ==="
 
 sudo tee /etc/logrotate.d/checkpraia > /dev/null << 'EOF'
-/home/pi/checkpraia/storage/logs/*.log {
+/var/www/checkpraia/storage/logs/*.log {
     daily
     missingok
     rotate 7

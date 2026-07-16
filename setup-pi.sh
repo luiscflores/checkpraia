@@ -494,7 +494,7 @@ step_bare_repo() {
 #!/bin/bash
 set -euo pipefail
 
-TARGET="/home/pi/checkpraia"
+TARGET="/var/www/checkpraia"
 cd "$TARGET"
 git --work-tree="$TARGET" checkout -f
 bash scripts/deploy.sh "$TARGET"
@@ -523,7 +523,7 @@ step_permissions() {
     # Logrotate para a app (se nao existir)
     if [ ! -f /etc/logrotate.d/checkpraia ]; then
         sudo tee /etc/logrotate.d/checkpraia >/dev/null << 'EOF'
-/home/pi/checkpraia/storage/logs/*.log {
+/var/www/checkpraia/storage/logs/*.log {
     daily
     missingok
     rotate 7
