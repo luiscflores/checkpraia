@@ -70,6 +70,9 @@ chown www-data:www-data database/database.sqlite 2>/dev/null || true
 chmod 2775 database 2>/dev/null || true
 
 # ── 3. Composer (fast flags for Pi) ───────────────────────────────────────
+# IMPORTANT: --no-scripts prevents composer from running post-autoload-dump
+# hooks (package:discover) which crash if database/database.sqlite is missing.
+# We run package:discover manually below after SQLite is guaranteed to exist.
 export COMPOSER_ALLOW_SUPERUSER=1
 composer install \
     --no-dev \
@@ -78,7 +81,11 @@ composer install \
     --no-progress \
     --no-suggest \
     --prefer-dist \
+    --no-scripts \
     --quiet
+
+# Now that composer is done and SQLite exists, run artisan bootstrap safely
+php artisan package:discover --ansi 2>/dev/null || true
 
 # ── 4. Frontend build (only if package.json changed) ─────────────────────
 BUILD_REF=$(git diff "$PREV_SHA" "$NEW_SHA" --name-only 2>/dev/null || echo "package.json")
