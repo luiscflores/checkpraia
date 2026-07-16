@@ -55,7 +55,6 @@ class FetchInfoAguaData implements ShouldQueue
 
         // Process in chunks to avoid loading all 570 beaches into memory at once
         Beach::where('is_active', true)
-            ->select('id')
             ->chunk(20, function ($beaches) use ($infoAgua, $engine, $resolver) {
                 foreach ($beaches as $beach) {
                     try {

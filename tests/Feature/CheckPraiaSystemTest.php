@@ -70,7 +70,7 @@ class CheckPraiaSystemTest extends TestCase
             'user_id' => $this->user->id,
             'beach_id' => $this->beach->id,
             'flag' => 'green',
-            'status' => 'pending',
+            'status' => 'confirmed',
         ]);
 
         // 2. Try reporting 2 km away (e.g. 40.662, -8.748) -> should fail with error

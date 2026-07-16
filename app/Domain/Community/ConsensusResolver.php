@@ -67,7 +67,7 @@ class ConsensusResolver
         $distinctUsersCount = $todayReports->pluck('user_id')->unique()->count();
         $totalVotes = $todayReports->count();
 
-        if ($distinctUsersCount >= 1 && $totalVotes > 0) {
+        if ($distinctUsersCount >= config('prediction.consensus.community_min_users', 2) && $totalVotes > 0) {
             $votes = ['green' => 0, 'yellow' => 0, 'red' => 0];
             $latestReportTime = null;
             $latestReportFlag = null;

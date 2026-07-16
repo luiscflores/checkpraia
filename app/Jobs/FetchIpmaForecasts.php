@@ -54,7 +54,6 @@ class FetchIpmaForecasts implements ShouldQueue
         // Process all active beaches in batches within this single job.
         // On RPI3, dispatching 570 individual jobs wastes ~28s in DB overhead alone.
         Beach::where('is_active', true)
-            ->select('id')
             ->chunk(20, function ($beaches) {
                 foreach ($beaches as $beach) {
                     try {
