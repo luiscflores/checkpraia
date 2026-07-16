@@ -37,7 +37,7 @@
     <!-- Hreflang / Alternate Language URLs (override per page for dynamic routes) -->
     @section('hreflang')
         @php
-            $path = trim(str_replace(url('/'), '', @yield('canonical', url()->current())), '/');
+            $path = trim(str_replace(url('/'), '', $__env->yieldContent('canonical', url()->current())), '/');
         @endphp
         @foreach(config('locales.supported', ['pt', 'en', 'es', 'fr']) as $locale)
             <link rel="alternate" hreflang="{{ $locale }}" href="{{ $path ? url($locale === 'pt' ? $path : "/{$locale}/{$path}") : url($locale === 'pt' ? '/' : "/{$locale}") }}">
