@@ -44,7 +44,7 @@ return [
             'pragmas' => [
                 'cache_size' => -128000,
                 'temp_store' => 'MEMORY',
-                'mmap_size' => 268435456,
+                'mmap_size' => 33554432, // 32MB instead of 256MB for RPi3 compatibility
             ],
             'transaction_mode' => 'IMMEDIATE',
         ],
