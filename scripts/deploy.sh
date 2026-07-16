@@ -66,7 +66,7 @@ fi
 
 # Ensure www-data can read/write the database
 chmod 664 database/database.sqlite 2>/dev/null || true
-chown www-data:www-data database/database.sqlite 2>/dev/null || true
+sudo chown www-data:www-data database/database.sqlite 2>/dev/null || true
 chmod 2775 database 2>/dev/null || true
 
 # ── 3. Composer (fast flags for Pi) ───────────────────────────────────────
@@ -77,6 +77,7 @@ export COMPOSER_ALLOW_SUPERUSER=1
 composer install \
     --no-dev \
     --optimize-autoloader \
+    --classmap-authoritative \
     --no-interaction \
     --no-progress \
     --no-suggest \
@@ -87,11 +88,11 @@ composer install \
 # Now that composer is done and SQLite exists, run artisan bootstrap safely
 php artisan package:discover --ansi 2>/dev/null || true
 
-# ── 4. Frontend build (only if package.json changed) ─────────────────────
+# ── 4. Frontend build (only if package.json changed or manifest missing) ──────
 BUILD_REF=$(git diff "$PREV_SHA" "$NEW_SHA" --name-only 2>/dev/null || echo "package.json")
-if echo "$BUILD_REF" | grep -qE "^(package\.json|package-lock\.json|resources/|vite\.config)"; then
-    log "Frontend changed — building assets..."
-    npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null
+if [ ! -f "public/build/manifest.json" ] || echo "$BUILD_REF" | grep -qE "^(package\.json|package-lock\.json|resources/|vite\.config)"; then
+    log "Frontend changed or manifest missing — building assets..."
+    npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null || npm install --no-audit --no-fund --quiet 2>/dev/null || true
     npm run build --quiet 2>/dev/null
     rm -rf node_modules
 else

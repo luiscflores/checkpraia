@@ -397,7 +397,14 @@ step_project_deps() {
     ensure_dir storage/logs
     ensure_dir bootstrap/cache
     ensure_dir database
+    
+    # Criar SQLite antes do composer install para evitar crash no package:discover
+    if [ ! -f database/database.sqlite ]; then
+        touch database/database.sqlite
+    fi
+    sudo chown -R www-data:www-data database
     chmod -R 775 storage bootstrap/cache database
+    chmod 664 database/database.sqlite 2>/dev/null || true
 
     # .env
     if [ ! -f .env ]; then
@@ -450,6 +457,8 @@ step_project_deps() {
     php artisan view:cache --quiet 2>/dev/null || true
     php artisan event:cache --quiet 2>/dev/null || true
     php artisan storage:link --no-interaction 2>/dev/null || true
+    
+    sudo chown -R www-data:www-data storage/framework storage/logs bootstrap/cache database 2>/dev/null || true
     ok "Caches Laravel carregados"
 }
 
