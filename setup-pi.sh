@@ -69,6 +69,7 @@ main() {
     step_cron
     step_bare_repo
     step_permissions
+    step_deploy_sudoers
     step_services
     step_ssl
     step_security
@@ -540,6 +541,45 @@ EOF
     fi
 
     ok "Permissoes corrigidas"
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+#  14b. Sudoers para deploy sem TTY (git push automatico)
+# ──────────────────────────────────────────────────────────────────────────
+step_deploy_sudoers() {
+    header "Sudoers para deploy"
+
+    local sudoers_file="/etc/sudoers.d/checkpraia-deploy"
+
+    # Detectar versão PHP instalada
+    local php_ver
+    php_ver=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo "$PHP_VERSION")
+
+    sudo tee "$sudoers_file" > /dev/null << EOF
+# CheckPraia deploy — permite ao user $PI_USER recarregar servicos sem password
+# Necessario para git push automatico via post-receive hook sem TTY
+Defaults:$PI_USER !requiretty
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload php${php_ver}-fpm
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart php${php_ver}-fpm
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl restart checkpraia-worker:*
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl status *
+$PI_USER ALL=(ALL) NOPASSWD: /bin/chown -R www-data\:www-data $WORK_TREE/storage/framework
+$PI_USER ALL=(ALL) NOPASSWD: /bin/chown -R www-data\:www-data $WORK_TREE/storage/logs
+$PI_USER ALL=(ALL) NOPASSWD: /bin/chown -R www-data\:www-data $WORK_TREE/bootstrap/cache
+$PI_USER ALL=(ALL) NOPASSWD: /bin/chown -R www-data\:www-data $WORK_TREE/database
+$PI_USER ALL=(ALL) NOPASSWD: /usr/bin/pkill -USR2 -f php-fpm\: master
+EOF
+
+    # Validar o ficheiro sudoers antes de ativar
+    if sudo visudo -cf "$sudoers_file" 2>/dev/null; then
+        sudo chmod 440 "$sudoers_file"
+        ok "Sudoers deploy: $sudoers_file (sem password para reload/chown)"
+    else
+        sudo rm -f "$sudoers_file"
+        warn "Sudoers inválido — removido. Deploy manual funciona; git push pode ter warnings."
+    fi
 }
 
 # ──────────────────────────────────────────────────────────────────────────
