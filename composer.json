@@ -56,6 +56,7 @@
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php -r \"@mkdir('database', 0775, true); file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan package:discover --ansi",
             "@php artisan filament:upgrade"
         ],
