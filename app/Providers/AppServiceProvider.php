@@ -24,9 +24,5 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // SQLite: all PRAGMAs are set via config/database.php on connection.
-        // Only mmap_size needs a runtime statement since it's not a connection option.
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            DB::statement('PRAGMA mmap_size=33554432'); // 32 MB memory-mapped I/O
-        }
     }
 }
