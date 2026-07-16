@@ -43,17 +43,31 @@ fi
 log "Deploy: $PREV_SHA -> $NEW_SHA"
 git reset --hard origin/main --quiet
 
-# ── 2. Ensure directories ────────────────────────────────────────────────
-mkdir -p storage bootstrap/cache database storage/logs
+# ── 2. Ensure directories + SQLite (MUST be before composer install) ─────────
+# composer's post-autoload-dump triggers `php artisan package:discover`
+# which tries to connect to SQLite — the file must exist before that.
+mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views
+mkdir -p bootstrap/cache database storage/logs
 
 if [ ! -f .env ]; then
     if [ -f .env.example ]; then
         cp .env.example .env
         php artisan key:generate --no-interaction
         log ".env created from .env.example — edit it before continuing."
-        exit 1
+        # Don't exit — continue so the rest of the deploy can finish
     fi
 fi
+
+# Create SQLite file BEFORE composer install
+if [ ! -f database/database.sqlite ]; then
+    touch database/database.sqlite
+    log "SQLite database file created."
+fi
+
+# Ensure www-data can read/write the database
+chmod 664 database/database.sqlite 2>/dev/null || true
+chown www-data:www-data database/database.sqlite 2>/dev/null || true
+chmod 2775 database 2>/dev/null || true
 
 # ── 3. Composer (fast flags for Pi) ───────────────────────────────────────
 export COMPOSER_ALLOW_SUPERUSER=1
@@ -93,13 +107,23 @@ chmod -R g+rwX storage bootstrap/cache database 2>/dev/null || true
 # PHP-FPM runs as www-data — it must OWN cache dirs to avoid touch(): utime failed
 sudo chown -R www-data:www-data storage/framework 2>/dev/null || true
 
-# ── 8. Reload services (avoid full restart for zero-downtime) ────────────
-sudo systemctl reload "$PHP_FPM_SERVICE" 2>/dev/null \
-    || sudo systemctl restart "$PHP_FPM_SERVICE" 2>/dev/null \
+# ── 8. Permissões finais (garantir após deploy) ───────────────────────────
+sudo chown -R www-data:www-data \
+    storage/framework \
+    storage/logs \
+    bootstrap/cache \
+    database 2>/dev/null || true
+
+# ── 9. Reload services (avoid full restart for zero-downtime) ────────────
+_PHP_FPM=$(systemctl list-units --type=service --state=active 2>/dev/null | grep 'php.*fpm' | awk '{print $1}' | head -1)
+_PHP_FPM="${_PHP_FPM:-$PHP_FPM_SERVICE}"
+sudo systemctl reload "$_PHP_FPM" 2>/dev/null \
+    || sudo systemctl restart "$_PHP_FPM" 2>/dev/null \
     || log "Warning: PHP-FPM reload failed"
 
 # Invalidate OPcache: send USR2 to all PHP-FPM workers via PID file
-FPM_PID="/var/run/php/php${PHP_VERSION}-fpm.pid"
+_PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo "8.4")
+FPM_PID="/var/run/php/php${_PHP_VERSION}-fpm.pid"
 if [ -f "$FPM_PID" ]; then
     sudo kill -USR2 "$(cat "$FPM_PID")" 2>/dev/null || true
 else
