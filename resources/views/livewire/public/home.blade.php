@@ -636,6 +636,26 @@
 
                 window.addEventListener('nearby-updated', (event) => {
                     this.nearby = event.detail.nearby;
+                    
+                    if (this.nearby.length > 0) {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Encontrámos ${this.nearby.length} praias perto de si!` } }));
+                        
+                        const coords = this.nearby.map(b => [b.latitude, b.longitude]);
+                        if (this.userCircle) coords.push(this.userCircle.getLatLng());
+                        
+                        let map = this.mapContinente;
+                        if (this.activeRegion === 'Açores') map = this.mapAcores;
+                        else if (this.activeRegion === 'Madeira') map = this.mapMadeira;
+                        
+                        if (map) {
+                            map.fitBounds(coords, { padding: [40, 40], maxZoom: 13 });
+                        }
+                        
+                        if (window.innerWidth < 1024 && this.viewState === 'map') {
+                            this.viewState = 'list';
+                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }
+                    }
                 });
 
                 window.addEventListener('beaches-updated', (event) => {

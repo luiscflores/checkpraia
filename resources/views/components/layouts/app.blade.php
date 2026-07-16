@@ -856,8 +856,19 @@
                         || localStorage.getItem('checkpraia-pwa-installed') === '1';
                 },
 
+                _isIOS() {
+                    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                },
+
                 async install() {
-                    if (!this.deferredPrompt) return;
+                    if (this._isIOS()) {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'No iPhone/iPad, toque em 📤 (Partilhar) e depois em "Adicionar ao Ecrã Principal" ➕.' } }));
+                        return;
+                    }
+                    if (!this.deferredPrompt) {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'A app já está instalada ou o teu browser não suporta a instalação nativa.' } }));
+                        return;
+                    }
                     this.deferredPrompt.prompt();
                     const result = await this.deferredPrompt.userChoice;
                     this.deferredPrompt = null;
