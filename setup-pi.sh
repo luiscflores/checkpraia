@@ -286,27 +286,38 @@ step_php_fpm_tuning() {
         return
     fi
 
-    # Tuning conservador para 1GB RAM
-    sudo tee -a "$pool_path" >/dev/null <<'EOF'
+    # NOTA: emergency_restart_threshold e emergency_restart_interval sao
+    # directivas GLOBAIS (php-fpm.conf) — NAO vao no pool www.conf.
+    # Usar apenas sed (idempotente — seguro em re-execucoes).
 
-; ── CheckPraia Tuning (RPi3 1GB RAM) ─────────────────────────────────
-pm = static
-pm.max_children = 4
-pm.max_requests = 500
-pm.status_path = /status
-request_terminate_timeout = 120s
-emergency_restart_threshold = 3
-emergency_restart_interval = 60s
-process_control_timeout = 10s
-EOF
+    # Remover qualquer bloco CheckPraia antigo (legado de versoes anteriores)
+    sudo sed -i '/; ── CheckPraia Tuning/,/process_control_timeout.*10s/d' "$pool_path" 2>/dev/null || true
+    sudo sed -i '/emergency_restart_threshold/d' "$pool_path" 2>/dev/null || true
+    sudo sed -i '/emergency_restart_interval/d' "$pool_path" 2>/dev/null || true
 
-    # Substituir definicoes existentes
-    sudo sed -i 's/^pm =.*/pm = static/' "$pool_path"
-    sudo sed -i 's/^pm\.max_children =.*/pm.max_children = 4/' "$pool_path"
-    sudo sed -i 's/^pm\.max_requests =.*/pm.max_requests = 500/' "$pool_path"
+    # Aplicar tuning conservador para RPi3 1GB RAM (apenas directivas de pool validas)
+    sudo sed -i 's/^pm =.*/pm = dynamic/'                                "$pool_path"
+    sudo sed -i 's/^pm\.max_children =.*/pm.max_children = 4/'           "$pool_path"
+    sudo sed -i 's/^pm\.start_servers =.*/pm.start_servers = 2/'         "$pool_path"
+    sudo sed -i 's/^pm\.min_spare_servers =.*/pm.min_spare_servers = 1/' "$pool_path"
+    sudo sed -i 's/^pm\.max_spare_servers =.*/pm.max_spare_servers = 3/' "$pool_path"
+    sudo sed -i 's/^pm\.max_requests =.*/pm.max_requests = 500/'         "$pool_path"
     sudo sed -i 's/^;request_terminate_timeout.*/request_terminate_timeout = 120s/' "$pool_path"
 
-    ok "PHP-FPM pool: static, max_children=4, max_requests=500"
+    # Configuracoes globais (estas vao no php-fpm.conf, nao no pool)
+    local global_conf="/etc/php/${PHP_VERSION}/fpm/php-fpm.conf"
+    if grep -q "emergency_restart_threshold" "$global_conf" 2>/dev/null; then
+        sudo sed -i 's/^;emergency_restart_threshold.*/emergency_restart_threshold = 3/' "$global_conf" 2>/dev/null || true
+        sudo sed -i 's/^;emergency_restart_interval.*/emergency_restart_interval = 60s/' "$global_conf" 2>/dev/null || true
+        sudo sed -i 's/^;process_control_timeout.*/process_control_timeout = 10s/' "$global_conf" 2>/dev/null || true
+    fi
+
+    # Validar configuracao final
+    if sudo php-fpm${PHP_VERSION} -t 2>/dev/null; then
+        ok "PHP-FPM pool: dynamic, max_children=4, max_requests=500"
+    else
+        warn "PHP-FPM config invalida — verifica: sudo php-fpm${PHP_VERSION} -t"
+    fi
 }
 
 # ──────────────────────────────────────────────────────────────────────────
