@@ -471,12 +471,12 @@
             <div class="space-y-3">
                 @php
                     $ipmaTimestamp = $systemInfo['last_ipma_sync'];
-                    $ipmaAge = ($ipmaTimestamp !== 'Nunca') ? now()->diffInHours($ipmaTimestamp) : PHP_INT_MAX;
+                    $ipmaAge = (!in_array($ipmaTimestamp, ['Nunca', 'Never', __('beach.admin_never')])) ? now()->diffInHours($ipmaTimestamp) : PHP_INT_MAX;
                     $ipmaStatus = $ipmaAge < 48 ? 'Operacional' : 'Sem dados recentes';
                     $ipmaColor = $ipmaAge < 48 ? 'text-emerald-400' : 'text-amber-400';
 
                     $infoaguaTimestamp = $systemInfo['last_infoagua_sync'];
-                    $infoaguaAge = ($infoaguaTimestamp !== 'Nunca') ? now()->diffInHours($infoaguaTimestamp) : PHP_INT_MAX;
+                    $infoaguaAge = (!in_array($infoaguaTimestamp, ['Nunca', 'Never', __('beach.admin_never')])) ? now()->diffInHours($infoaguaTimestamp) : PHP_INT_MAX;
                     $infoaguaStatus = $infoaguaAge < 72 ? 'Operacional' : 'Sem dados recentes';
                     $infoaguaColor = $infoaguaAge < 72 ? 'text-emerald-400' : 'text-amber-400';
                 @endphp
