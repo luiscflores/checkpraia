@@ -38,9 +38,9 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => 30000,
-            'journal_mode' => 'wal',
-            'synchronous' => 'NORMAL',
+            'busy_timeout' => null,
+            'journal_mode' => env('DB_JOURNAL_MODE', 'DELETE'), // Changed from WAL to DELETE to prevent disk I/O errors on RPi3
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
             'pragmas' => [
                 'cache_size' => -128000,
                 'temp_store' => 'MEMORY',
