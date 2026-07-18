@@ -163,4 +163,8 @@ sudo supervisorctl restart "$SUPERVISOR_PROGRAM:*" 2>/dev/null \
     || log "Warning: supervisorctl restart failed"
 
 # ── 9. Done ──────────────────────────────────────────────────────────────
-log "Deploy complete: $NEW_SHA"
+if [ "$SKIP_GIT" -eq 0 ]; then
+    log "Deploy complete: $NEW_SHA"
+else
+    log "Deploy complete: Git operations skipped (--no-git)"
+fi
