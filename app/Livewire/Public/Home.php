@@ -121,11 +121,15 @@ class Home extends Component
 
             $rows = DB::select($sql, $bindings);
 
+            $lisbonTime = $now->copy()->timezone('Europe/Lisbon')->format('H:i:s');
+            $azoresTime = $now->copy()->timezone('Atlantic/Azores')->format('H:i:s');
+            $todayStr = $now->format('Y-m-d');
+
             $result = [];
             foreach ($rows as $r) {
                 $distance = $geoService->haversine($lat, $lon, (float) $r->latitude, (float) $r->longitude);
                 if ($distance <= 30) {
-                    $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $now, $distance);
+                    $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $lisbonTime, $azoresTime, $todayStr, $distance);
                 }
             }
 
@@ -174,7 +178,7 @@ class Home extends Component
                 'flag' => $b['flag'],
                 'region' => $b['region'],
                 'municipality' => $b['municipality'],
-                'url' => route($routeName, ['locale' => $locale, 'slug' => $b['slug']]),
+                'url' => $b['url'],
             ];
         }
 
@@ -211,29 +215,27 @@ class Home extends Component
             WHERE b.is_active = 1";
     }
 
-    private function resolveFlag(array $r, bool $isAdmin, $now): string
+    private function resolveFlag(array $r, bool $isAdmin, string $lisbonTime, string $azoresTime, string $todayStr): string
     {
         if ($isAdmin) {
             return $r['current_flag'] ?? 'gray';
         }
 
-        $sStart = $r['season_start'] ? new Carbon($r['season_start']) : null;
-        $sEnd = $r['season_end'] ? new Carbon($r['season_end']) : null;
-        $inSeason = ! $sStart || ! $sEnd || $now->between($sStart, $sEnd);
+        $inSeason = ! $r['season_start'] || ! $r['season_end']
+            || ($todayStr >= $r['season_start'] && $todayStr <= $r['season_end']);
 
         if (! $inSeason) {
             return 'gray';
         }
 
-        $tz = $r['longitude'] < -20 ? 'Atlantic/Azores' : 'Europe/Lisbon';
-        $t = $now->copy()->timezone($tz)->format('H:i:s');
+        $t = $r['longitude'] < -20 ? $azoresTime : $lisbonTime;
         $inHours = ! $r['is_supervised'] || ! $r['lifeguard_start'] || ! $r['lifeguard_end']
             || ($t >= $r['lifeguard_start'] && $t <= $r['lifeguard_end']);
 
         return $inHours ? ($r['current_flag'] ?? 'gray') : 'gray';
     }
 
-    private function mapRow(object|array $r, string $routeName, string $locale, bool $isAdmin, $now, ?float $distance = null): array
+    private function mapRow(object|array $r, string $routeName, string $locale, bool $isAdmin, string $lisbonTime, string $azoresTime, string $todayStr, ?float $distance = null): array
     {
         $row = is_object($r) ? (array) $r : $r;
 
@@ -249,7 +251,7 @@ class Home extends Component
             'accessible' => (bool) $row['accessible'],
             'region' => $row['region'],
             'municipality' => $row['municipality'],
-            'flag' => $this->resolveFlag($row, $isAdmin, $now),
+            'flag' => $this->resolveFlag($row, $isAdmin, $lisbonTime, $azoresTime, $todayStr),
             'air_temp' => $row['air_temp'] !== null ? (float) $row['air_temp'] : null,
             'water_temp' => $row['water_temp'] !== null ? (float) $row['water_temp'] : null,
             'wave_height_min' => $row['wave_height_min'] !== null ? (float) $row['wave_height_min'] : null,
@@ -274,8 +276,6 @@ class Home extends Component
     private function dispatchBeachesUpdated(): void
     {
         $beaches = $this->buildBeachesList();
-        $locale = app()->getLocale();
-        $routeName = $this->routeNameFor($locale);
         $mapBeaches = [];
         foreach ($beaches as $b) {
             $mapBeaches[] = [
@@ -286,7 +286,7 @@ class Home extends Component
                 'flag' => $b['flag'],
                 'region' => $b['region'],
                 'municipality' => $b['municipality'],
-                'url' => route($routeName, ['locale' => $locale, 'slug' => $b['slug']]),
+                'url' => $b['url'],
             ];
         }
         $this->dispatch('beaches-updated', beaches: $mapBeaches);
@@ -360,8 +360,12 @@ class Home extends Component
         $routeName = $this->routeNameFor($locale);
         $result = [];
 
+        $lisbonTime = $now->copy()->timezone('Europe/Lisbon')->format('H:i:s');
+        $azoresTime = $now->copy()->timezone('Atlantic/Azores')->format('H:i:s');
+        $todayStr = $now->format('Y-m-d');
+
         foreach ($rows as $r) {
-            $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $now);
+            $result[] = $this->mapRow($r, $routeName, $locale, $isAdmin, $lisbonTime, $azoresTime, $todayStr);
         }
 
         $favoriteSet = array_flip($this->favoriteIds);

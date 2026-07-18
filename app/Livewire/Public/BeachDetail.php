@@ -169,9 +169,10 @@ class BeachDetail extends Component
             $resolver = app(ConsensusResolver::class);
 
             // Points only once per hour per beach
-            $hasPointsThisHour = ScoreTransaction::where('user_id', $user->id)
-                ->whereHas('report', fn ($q) => $q->where('beach_id', $this->beachId))
-                ->where('created_at', '>=', now()->startOfHour())
+            $hasPointsThisHour = ScoreTransaction::where('score_transactions.user_id', $user->id)
+                ->join('flag_reports', 'score_transactions.flag_report_id', '=', 'flag_reports.id')
+                ->where('flag_reports.beach_id', $this->beachId)
+                ->where('score_transactions.created_at', '>=', now()->startOfHour())
                 ->exists();
 
             if ($hasPointsThisHour) {

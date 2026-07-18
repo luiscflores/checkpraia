@@ -132,7 +132,10 @@ class Rankings extends Component
             $usersQuery->where('username', 'like', '%'.$this->search.'%');
         }
 
-        $users = $usersQuery->take($this->perPage + 1)->get();
+        $cacheKey = 'rankings_users:v2:' . $this->type . ':' . ($this->district ?: '') . ':' . md5($this->search) . ':' . $this->perPage;
+        $users = Cache::remember($cacheKey, 300, function () use ($usersQuery) {
+            return $usersQuery->take($this->perPage + 1)->get();
+        });
 
         $hasMore = $users->count() > $this->perPage;
         $displayedUsers = $users->take($this->perPage);
