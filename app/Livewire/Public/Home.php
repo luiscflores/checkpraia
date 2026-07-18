@@ -202,14 +202,12 @@ class Home extends Component
             FROM beaches b
             LEFT JOIN beach_current_statuses bcs ON bcs.beach_id = b.id
             LEFT JOIN beach_translations bt ON bt.beach_id = b.id AND bt.locale = ?
-            LEFT JOIN (
-                SELECT beach_id, MAX(id) as max_id FROM weather_forecasts GROUP BY beach_id
-            ) wf_latest ON wf_latest.beach_id = b.id
-            LEFT JOIN weather_forecasts wf ON wf.id = wf_latest.max_id
-            LEFT JOIN (
-                SELECT beach_id, MAX(id) as max_id FROM ocean_forecasts GROUP BY beach_id
-            ) of2_latest ON of2_latest.beach_id = b.id
-            LEFT JOIN ocean_forecasts of2 ON of2.id = of2_latest.max_id
+            LEFT JOIN weather_forecasts wf ON wf.beach_id = b.id AND wf.id = (
+                SELECT MAX(id) FROM weather_forecasts WHERE beach_id = b.id
+            )
+            LEFT JOIN ocean_forecasts of2 ON of2.beach_id = b.id AND of2.id = (
+                SELECT MAX(id) FROM ocean_forecasts WHERE beach_id = b.id
+            )
             WHERE b.is_active = 1";
     }
 

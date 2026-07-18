@@ -3,7 +3,7 @@
 # Lock + rollback + skip-if-nothing-changed + OPcache tuning
 set -euo pipefail
 
-APP_DIR="${1:-/home/pi/checkpraia}"
+APP_DIR="${1:-/var/www/checkpraia}"
 PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-php8.4-fpm}"
 SUPERVISOR_PROGRAM="${SUPERVISOR_PROGRAM:-checkpraia-worker}"
 DEPLOY_LOCK="/tmp/checkpraia-deploy.lock"
@@ -29,19 +29,28 @@ rollback() {
 # ── 1. Pull changes ───────────────────────────────────────────────────────
 cd "$APP_DIR"
 
-PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "none")
-ROLLBACK_REF="$PREV_SHA"
-
-git fetch origin main --quiet 2>/dev/null
-NEW_SHA=$(git rev-parse origin/main)
-
-if [ "$PREV_SHA" = "$NEW_SHA" ]; then
-    log "No changes ($PREV_SHA). Skipping deploy."
-    exit 0
+SKIP_GIT=0
+if [ "${2:-}" = "--no-git" ] || [ ! -d .git ]; then
+    SKIP_GIT=1
 fi
 
-log "Deploy: $PREV_SHA -> $NEW_SHA"
-git reset --hard origin/main --quiet
+if [ "$SKIP_GIT" -eq 0 ]; then
+    PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "none")
+    ROLLBACK_REF="$PREV_SHA"
+
+    git fetch origin main --quiet 2>/dev/null
+    NEW_SHA=$(git rev-parse origin/main)
+
+    if [ "$PREV_SHA" = "$NEW_SHA" ]; then
+        log "No changes ($PREV_SHA). Skipping deploy."
+        exit 0
+    fi
+
+    log "Deploy: $PREV_SHA -> $NEW_SHA"
+    git reset --hard origin/main --quiet
+else
+    log "Skipping Git operations (--no-git flag or no .git directory)"
+fi
 
 # ── 2. Ensure directories + SQLite (MUST be before composer install) ─────────
 # composer's post-autoload-dump triggers `php artisan package:discover`
@@ -88,13 +97,24 @@ composer install \
 # Now that composer is done and SQLite exists, run artisan bootstrap safely
 php artisan package:discover --ansi 2>/dev/null || true
 
-# ── 4. Frontend build (only if package.json changed or manifest missing) ──────
-BUILD_REF=$(git diff "$PREV_SHA" "$NEW_SHA" --name-only 2>/dev/null || echo "package.json")
-if [ ! -f "public/build/manifest.json" ] || echo "$BUILD_REF" | grep -qE "^(package\.json|package-lock\.json|resources/|vite\.config)"; then
+# ── 4. Frontend build (cached via content hashing) ────────────────────────────
+if [ -d resources ]; then
+    CURRENT_HASH=$(find resources package-lock.json vite.config.js -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum | awk '{print $1}')
+else
+    CURRENT_HASH="force"
+fi
+PREV_HASH=""
+if [ -f storage/framework/frontend-build-hash ]; then
+    PREV_HASH=$(cat storage/framework/frontend-build-hash)
+fi
+
+if [ "$CURRENT_HASH" != "$PREV_HASH" ] || [ ! -f "public/build/manifest.json" ]; then
     log "Frontend changed or manifest missing — building assets..."
     npm ci --ignore-scripts --no-audit --no-fund --prefer-offline --quiet 2>/dev/null || npm install --no-audit --no-fund --quiet 2>/dev/null || true
     npm run build --quiet 2>/dev/null
     rm -rf node_modules
+    mkdir -p storage/framework
+    echo "$CURRENT_HASH" > storage/framework/frontend-build-hash
 else
     log "Frontend unchanged — skipping npm build."
 fi

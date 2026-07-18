@@ -29,12 +29,11 @@ Raspberry Pi 3 (1GB RAM, ARMv7)
     │   └── artisan queue:work --sleep=3 --tries=3 --max-time=3600
     │
     ├── Cron
-    │   ├── * * * * *  artisan schedule:run
-    │   ├── */5 * * * * scripts/deploy.sh (auto-pull)
+    │   ├── * * * * *  cd /var/www/checkpraia && php artisan schedule:run
     │   └── 0 3 * * *  certbot renew
     │
     ├── SQLite (WAL mode, no server needed)
-    │   └── /home/pi/checkpraia/database/database.sqlite
+    │   └── /var/www/checkpraia/database/database.sqlite
     │
     ├── Certbot (Let's Encrypt, auto-renewal)
     │   └── /etc/letsencrypt/live/checkpraia.pt/
@@ -61,15 +60,17 @@ Swap (512MB) provides safety margin during `composer install` / `npm build`.
 ### Deploy pipeline
 
 ```
-git push pi main  ──OR──  cron */5 (auto-pull GitHub)
+git push pi main
          │
          ▼
-    scripts/deploy.sh
+    Bare Git Repo post-receive hook (checkout main to /var/www/checkpraia)
+         │
+         ▼
+    scripts/deploy.sh --no-git
          │
          ├─ flock lock (prevent concurrent deploys)
-         ├─ Compare SHAs (skip if no changes)
+         ├─ Skip NPM build if assets content md5 hash matches (fast cache)
          ├─ composer install --no-dev --optimize-autoloader
-         ├─ npm build (only if resources/ changed)
          ├─ artisan migrate --force
          ├─ artisan config:cache / route:cache / view:cache / event:cache
          ├─ chmod storage/ bootstrap/cache/

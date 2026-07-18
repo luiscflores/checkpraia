@@ -454,7 +454,7 @@
 
             @if($todaySnapshots && $todaySnapshots->isNotEmpty())
                 @php $totalSnapshots = $todaySnapshots->count(); @endphp
-                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate x-data="{ expanded: false }">
+                <div class="glass-card p-5 rounded-3xl border border-theme-subtle/50 space-y-3 animate-fade-in-up" data-animate x-data="{ expanded: false, isMobile: window.innerWidth < 768 }" @resize.window="isMobile = window.innerWidth < 768">
                     <h3 class="text-sm font-bold text-theme flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -488,7 +488,8 @@
                                     : $snapshot->captured_at->timezone($beach->timezone);
                                 $isHidden = $loop->index >= 6;
                             @endphp
-                            <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]">
+                            <div class="relative pb-3 {{ !$loop->last ? 'border-l-2 border-theme-subtle/30' : '' }} pl-4 ml-[-1px]"
+                                 x-show="!isMobile || expanded || !{{ $isHidden ? 'true' : 'false' }}">
                                 @if($changed)
                                     <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full {{ $dotColor }} ring-2 ring-theme-card ring-offset-2 ring-offset-theme-card shadow-lg animate-fade-in"></div>
                                 @else

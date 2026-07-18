@@ -65,6 +65,10 @@ class FetchIpmaForecasts implements ShouldQueue
                     }
                 }
             });
+
+        // Prune old forecasts (older than 48 hours) to prevent SQLite database bloat
+        WeatherForecast::where('forecasted_at', '<', now()->subDays(2))->delete();
+        OceanForecast::where('forecasted_at', '<', now()->subDays(2))->delete();
     }
 
     /**

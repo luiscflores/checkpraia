@@ -7,7 +7,7 @@ set -euo pipefail
 # ── Config ──────────────────────────────────────────────────────────────────
 PI_USER="${PI_USER:-pi}"
 PI_DIR="/home/$PI_USER"
-WORK_TREE="$PI_DIR/checkpraia"
+WORK_TREE="/var/www/checkpraia"
 BARE_REPO="$PI_DIR/checkpraia.git"
 PHP_VERSION="${PHP_VERSION:-8.4}"
 LOG_FILE="/tmp/checkpraia-setup.log"
@@ -515,9 +515,9 @@ step_bare_repo() {
 set -euo pipefail
 
 TARGET="/var/www/checkpraia"
+git --work-tree="$TARGET" --git-dir="/home/pi/checkpraia.git" checkout -f main
 cd "$TARGET"
-git --work-tree="$TARGET" checkout -f
-bash scripts/deploy.sh "$TARGET"
+bash scripts/deploy.sh "$TARGET" --no-git
 
 echo ">>> Deploy concluido!"
 HOOK

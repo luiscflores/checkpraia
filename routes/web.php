@@ -109,11 +109,3 @@ Route::get('/health', function () {
 })->name('health');
 
 require __DIR__.'/auth.php';
-
-Route::get('/run-migration-secret', function() {
-    @unlink(database_path('database.sqlite'));
-    @touch(database_path('database.sqlite'));
-    \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true, '--force' => true]);
-    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-    return "MIGRATION_DONE: " . \App\Models\User::count() . " users, " . \App\Models\Beach::count() . " beaches.";
-});

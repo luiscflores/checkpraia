@@ -529,10 +529,10 @@
     </div>
 
     <!-- Mobile Bottom Navigation (outside relative wrapper for proper fixed positioning) -->
-    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px); will-change: transform;" aria-label="{{ __('common.nav_mobile_map') }}">
+    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]" style="padding-bottom: env(safe-area-inset-bottom, 0px); will-change: transform;" aria-label="{{ __('common.nav_mobile_map') }}">
         <div class="relative">
             <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-nav)] via-[var(--bg-nav)]/98 to-transparent pointer-events-none"></div>
-            <div class="relative bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]">
+            <div class="relative">
                 <div class="flex items-stretch justify-around max-w-lg mx-auto px-1 pt-1 pb-0.5">
                     @php
                         $navItems = [
