@@ -1,4 +1,4 @@
-<div class="space-y-3 sm:space-y-6" x-data="beachMapHandler(@js($mapBeaches), @js($defaultRegion ?? null))">
+<div class="space-y-3 sm:space-y-6" x-data="beachMapHandler([], @js($defaultRegion ?? null))">
 
 @pushOnce('leaflet-css')
 <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.min.css') }}" media="print" onload="this.media='all'">
@@ -633,6 +633,15 @@
 
             init() {
                 const isMobile = window.innerWidth < 1024;
+
+                // Async fetch of map beaches to reduce initial HTML payload
+                this.$wire.getMapBeaches().then(data => {
+                    this.beaches = data;
+                    if (this.mapContinente) {
+                        this.renderMarkers();
+                        this.invalidateAllMaps();
+                    }
+                });
 
                 window.addEventListener('nearby-updated', (event) => {
                     this.nearby = event.detail.nearby;

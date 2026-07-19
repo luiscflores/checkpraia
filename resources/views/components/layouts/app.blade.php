@@ -517,7 +517,17 @@
         <x-ads.slot slot="sticky_bottom" className="fixed bottom-14 left-0 right-0 z-40 md:hidden pb-safe" />
 
         <!-- Livewire Loading Indicator -->
-        <div wire:loading class="livewire-loading-bar"></div>
+        <div wire:loading.delay.short class="fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--bg-base)]/40 backdrop-blur-sm transition-all duration-300 pointer-events-none">
+            <div class="bg-theme-card border border-theme-medium rounded-2xl shadow-2xl p-4 flex items-center gap-3 animate-fade-in-up">
+                <div class="relative flex items-center justify-center w-6 h-6">
+                    <svg class="absolute w-full h-full text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <span class="text-sm font-bold text-theme">{{ __('common.loading', 'A carregar...') }}</span>
+            </div>
+        </div>
 
         <!-- Global Toast (share/copy feedback) -->
         <div x-data="appToast()" x-show="show" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] max-w-xs w-full mx-auto px-4 pointer-events-none" role="status">
@@ -529,11 +539,11 @@
     </div>
 
     <!-- Mobile Bottom Navigation (outside relative wrapper for proper fixed positioning) -->
-    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]" style="padding-bottom: env(safe-area-inset-bottom, 0px); will-change: transform;" aria-label="{{ __('common.nav_mobile_map') }}">
+    <nav class="fixed bottom-0 inset-x-0 z-[60] md:hidden bg-[var(--bg-nav)]/95 backdrop-blur-2xl border-t border-white/[0.06]"  aria-label="{{ __('common.nav_mobile_map') }}">
         <div class="relative">
             <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-nav)] via-[var(--bg-nav)]/98 to-transparent pointer-events-none"></div>
             <div class="relative">
-                <div class="flex items-stretch justify-around max-w-lg mx-auto px-1 pt-1 pb-0.5">
+                <div class="flex items-stretch justify-around max-w-lg mx-auto px-1 pt-1 pb-0.5 pb-safe">
                     @php
                         $navItems = [
                             ['route' => 'home', 'label' => 'nav_mobile_map', 'pattern' => 'home*'],

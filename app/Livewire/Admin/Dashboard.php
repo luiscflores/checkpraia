@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -511,7 +512,7 @@ class Dashboard extends Component
         $settings = collect();
         $systemInfo = [];
 
-        if (in_array($this->activeTab, ['utilizadores', 'visao-geral'])) {
+        if ($this->activeTab === 'utilizadores') {
             $usersQuery = User::query();
             if ($this->searchUser) {
                 $usersQuery->where(function ($q) {
@@ -521,14 +522,16 @@ class Dashboard extends Component
                 });
             }
             $users = $usersQuery->orderBy('score', 'desc')->paginate(15);
+        }
 
+        if (in_array($this->activeTab, ['utilizadores', 'visao-geral'])) {
             $adjustments = AdminScoreAdjustment::with(['admin', 'target'])
                 ->orderBy('created_at', 'desc')
                 ->take(10)
                 ->get();
         }
 
-        if (in_array($this->activeTab, ['praias', 'visao-geral'])) {
+        if ($this->activeTab === 'praias') {
             $beachQuery = Beach::query()->with(['currentStatus', 'translations']);
             if ($this->searchBeach) {
                 $beachQuery->where(function ($q) {
@@ -543,7 +546,7 @@ class Dashboard extends Component
             $beaches = $beachQuery->orderBy('is_active', 'desc')->orderBy('name')->paginate(10, ['*'], 'beachesPage');
         }
 
-        if (in_array($this->activeTab, ['configuracoes', 'visao-geral'])) {
+        if ($this->activeTab === 'configuracoes') {
             $settings = Setting::orderBy('key')->get();
         }
 

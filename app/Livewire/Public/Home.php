@@ -168,6 +168,21 @@ class Home extends Component
 
         $beachesList = array_slice($allBeaches, 0, $visibleCount);
 
+        $defaultRegion = auth()->check() ? auth()->user()->default_region : null;
+
+        return view('livewire.public.home', [
+            'beachesList' => $beachesList,
+            'flagFilters' => config('flags.labels'),
+            'flagIcons' => config('flags.icons'),
+            'defaultRegion' => $defaultRegion,
+        ])->layout('components.layouts.app');
+    }
+
+    #[Renderless]
+    public function getMapBeaches(): array
+    {
+        $allBeaches = $this->buildBeachesList();
+        
         $mapBeaches = [];
         foreach ($allBeaches as $b) {
             $mapBeaches[] = [
@@ -182,16 +197,10 @@ class Home extends Component
             ];
         }
 
-        $defaultRegion = auth()->check() ? auth()->user()->default_region : null;
-
-        return view('livewire.public.home', [
-            'beachesList' => $beachesList,
-            'mapBeaches' => $mapBeaches,
-            'flagFilters' => config('flags.labels'),
-            'flagIcons' => config('flags.icons'),
-            'defaultRegion' => $defaultRegion,
-        ])->layout('components.layouts.app');
+        return $mapBeaches;
     }
+
+
 
     // ── Shared query helpers ──────────────────────────────────────────────
 
@@ -275,20 +284,7 @@ class Home extends Component
 
     private function dispatchBeachesUpdated(): void
     {
-        $beaches = $this->buildBeachesList();
-        $mapBeaches = [];
-        foreach ($beaches as $b) {
-            $mapBeaches[] = [
-                'id' => $b['id'],
-                'name' => $b['name'],
-                'latitude' => $b['latitude'],
-                'longitude' => $b['longitude'],
-                'flag' => $b['flag'],
-                'region' => $b['region'],
-                'municipality' => $b['municipality'],
-                'url' => $b['url'],
-            ];
-        }
+        $mapBeaches = $this->getMapBeaches();
         $this->dispatch('beaches-updated', beaches: $mapBeaches);
     }
 

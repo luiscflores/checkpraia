@@ -10,8 +10,8 @@ use App\Livewire\Actions\Logout;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Public\BeachDetail;
 use App\Livewire\Public\Home;
-use App\Livewire\Public\Rankings;
 use Illuminate\Http\Request;
+use Livewire\Volt\Volt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -39,12 +39,12 @@ Route::prefix('push')->middleware('auth')->group(function () {
 Route::post('/favorites/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle')->middleware('throttle:30,1');
 
 Route::get('/', Home::class)->name('home');
-Route::get('/rankings', Rankings::class)->name('rankings');
+Volt::route('/rankings', 'public.rankings')->name('rankings');
 Route::get('/area-pessoal', Profile::class)->name('profile')->middleware('auth');
 
 Route::prefix('{locale}')->group(function () {
     Route::get('/', Home::class)->name('home.locale');
-    Route::get('/rankings', Rankings::class)->name('rankings.locale');
+    Volt::route('/rankings', 'public.rankings')->name('rankings.locale');
     Route::view('/sobre', 'public.about')->name('about.locale');
     Route::view('/contactos', 'public.contact')->name('contact.locale');
     Route::view('/termos', 'public.terms')->name('terms.locale');
