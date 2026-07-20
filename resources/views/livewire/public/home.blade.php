@@ -542,7 +542,7 @@
     </div>
 
     <!-- Floating View Toggle Button -->
-    <div class="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 md:hidden pb-safe">
+    <div class="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-40 lg:hidden pb-safe">
         <button @click="
                 viewState = (viewState === 'map' ? 'list' : 'map');
                 if (viewState === 'map') {
