@@ -491,10 +491,14 @@ step_cron() {
     local cert="0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
 
     (crontab -u "$PI_USER" -l 2>/dev/null | grep -v "checkpraia" | grep -v "certbot renew"; \
-     echo "$scheduler"; echo "$deploy"; echo "$cert") \
+     echo "$deploy"; echo "$cert") \
         | crontab -u "$PI_USER" - 2>/dev/null || true
 
-    ok "Cron: scheduler (1min) + deploy (5min) + cert (3am)"
+    (sudo crontab -u www-data -l 2>/dev/null | grep -v "checkpraia"; \
+     echo "$scheduler") \
+        | sudo crontab -u www-data - 2>/dev/null || true
+
+    ok "Cron: scheduler (www-data, 1min) + deploy (pi, 5min) + cert (3am)"
 }
 
 # ──────────────────────────────────────────────────────────────────────────
